@@ -31,6 +31,7 @@
 
 #include <map>
 #include <string>
+#include <sstream>
 
 #include <iostream>
 #include <boost/bind.hpp>
@@ -88,21 +89,14 @@ namespace efgy
 
                     void reply (int status, const std::string &header, const std::string &body)
                     {
-                        char nbuf[20];
-                        snprintf (nbuf, 20, "%i", status);
-                        std::string reply("HTTP/1.1 ");
-
-                        reply += std::string(nbuf) + " NA\r\nContent-Length: ";
-
-                        snprintf (nbuf, 20, "%lu", body.length());
-
-                        reply += std::string(nbuf) + "\r\n" + header + "\r\n" + body;
+                        std::stringstream reply;
+                        reply << "HTTP/1.1 " << status << " NA\r\nContent-Length: " << body.length() << "\r\n" + header + "\r\n" + body;
 
                         if (status < 400)
                         {
                             boost::asio::async_write
                                 (socket,
-                                 boost::asio::buffer(reply),
+                                 boost::asio::buffer(reply.str()),
                                  boost::bind (&session::handle_write, this,
                                               boost::asio::placeholders::error));
                         }
@@ -110,7 +104,7 @@ namespace efgy
                         {
                             boost::asio::async_write
                                 (socket,
-                                 boost::asio::buffer(reply),
+                                 boost::asio::buffer(reply.str()),
                                  boost::bind (&session::handle_write_close, this,
                                               boost::asio::placeholders::error));
                         }

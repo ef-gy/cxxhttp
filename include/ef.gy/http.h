@@ -1,4 +1,5 @@
 /**\file
+ * \brief Boost::ASIO HTTP Server
  *
  * \copyright
  * Copyright (c) 2012-2014, ef.gy Project Members
@@ -45,12 +46,33 @@ namespace efgy
     {
         namespace http
         {
-            template<typename requestProcessor>
+            namespace state
+            {
+                class stub
+                {
+                    public:
+                        stub(void *aux) {}
+                };
+            };
+
+            template<typename requestProcessor, typename stateClass = state::stub>
+            class server;
+
+            template<typename requestProcessor, typename stateClass = state::stub>
             class session
             {
                 protected:
                     static const int maxContentLength = (1024 * 1024 * 12);
-                    enum { stRequest, stHeader, stContent, stProcessing, stErrorContentTooLarge, stShutdown } status;
+
+                    enum
+                    {
+                        stRequest,
+                        stHeader,
+                        stContent,
+                        stProcessing,
+                        stErrorContentTooLarge,
+                        stShutdown
+                    } status;
 
                     class caseInsensitiveLT : private std::binary_function<std::string, std::string, bool>
                     {
@@ -68,6 +90,7 @@ namespace efgy
                     std::string resource;
                     std::map<std::string,std::string,caseInsensitiveLT> header;
                     std::string content;
+                    stateClass *state;
 
                     session (boost::asio::io_service &pIOService)
                         : socket(pIOService), status(stRequest), input()
@@ -81,8 +104,9 @@ namespace efgy
                             socket.close();
                         }
 
-                    void start (void)
+                    void start (stateClass *state)
                     {
+                        this->state = state;
                         read();
                     }
 
@@ -303,13 +327,14 @@ namespace efgy
                     boost::asio::streambuf input;
             };
 
-            template<typename requestProcessor>
+            template<typename requestProcessor, typename stateClass>
             class server
             {
                 public:
-                    server(boost::asio::io_service &pIOService, const char *socket)
+                    server(boost::asio::io_service &pIOService, const char *socket, void *stateData = 0)
                         : IOService(pIOService),
-                          acceptor_(pIOService, boost::asio::local::stream_protocol::endpoint(socket))
+                          acceptor_(pIOService, boost::asio::local::stream_protocol::endpoint(socket)),
+                          state(stateData)
                         {
                             start_accept();
                         }
@@ -317,17 +342,18 @@ namespace efgy
                 protected:
                     void start_accept()
                     {
-                        session<requestProcessor> *new_session = new session<requestProcessor>(IOService);
+                        session<requestProcessor,stateClass> *new_session
+                            = new session<requestProcessor,stateClass>(IOService);
                         acceptor_.async_accept(new_session->socket,
                             boost::bind(&server::handle_accept, this, new_session,
                                         boost::asio::placeholders::error));
                     }
 
-                    void handle_accept(session<requestProcessor> *new_session, const boost::system::error_code &error)
+                    void handle_accept(session<requestProcessor,stateClass> *new_session, const boost::system::error_code &error)
                     {
                         if (!error)
                         {
-                            new_session->start();
+                            new_session->start(&state);
                         }
                         else
                         {
@@ -339,6 +365,7 @@ namespace efgy
 
                     boost::asio::io_service &IOService;
                     boost::asio::local::stream_protocol::acceptor acceptor_;
+                    stateClass state;
             };
         };
     };

@@ -1,6 +1,10 @@
 /**\file
  * \brief Boost::ASIO HTTP Server
  *
+ * An asynchornous HTTP server implementation using Boost::ASIO and
+ * Boost::Regex. You will need to have Boost installed and available when
+ * using this header.
+ *
  * \copyright
  * Copyright (c) 2012-2014, ef.gy Project Members
  * \copyright
@@ -42,22 +46,58 @@
 
 namespace efgy
 {
+    /**\brief Networking code
+     *
+     * Contains templates that deal with networking in one way or another.
+     * Currently only contains an HTTP server.
+     */
     namespace net
     {
+        /**\brief HTTP handling
+         *
+         * Contains an HTTP server and templates for session management and
+         * processing by user code.
+         */
         namespace http
         {
+            /**\brief HTTP state classes
+             *
+             * Contains state classes which are used to keep track of the data
+             * that a request processor functor needs to respond to a client's
+             * HTTP request.
+             */
             namespace state
             {
+                /**\brief Stub state class
+                 *
+                 * This is the default state class, which contains no data at
+                 * all. Many kinds of requests do not need additional data to
+                 * process requests, and they'll be perfectly fine with this
+                 * state class.
+                 */
                 class stub
                 {
                     public:
-                        stub(void *aux) {}
+                        /**\brief Constructor
+                         *
+                         * Discards the argument passed to it and does nothing.
+                         */
+                        stub(void *) {}
                 };
             };
 
             template<typename requestProcessor, typename stateClass = state::stub>
             class server;
 
+            /**\brief Session wrapper
+             *
+             * Used by the server to keep track of all the data associated with
+             * a single, asynchronous client connection.
+             *
+             * \tparam requestProcessor The functor class to handle requests.
+             * \tparam stateClass       Data class needed to keep track of the
+             *                          resources used by the requestProcessor.
+             */
             template<typename requestProcessor, typename stateClass = state::stub>
             class session
             {
@@ -120,7 +160,7 @@ namespace efgy
                             boost::asio::async_write
                                 (socket,
                                  boost::asio::buffer(reply.str()),
-                                 boost::bind (&session::handle_write, this,
+                                 boost::bind (&session::handleWrite, this,
                                               boost::asio::placeholders::error));
                         }
                         else
@@ -128,7 +168,7 @@ namespace efgy
                             boost::asio::async_write
                                 (socket,
                                  boost::asio::buffer(reply.str()),
-                                 boost::bind (&session::handle_write_close, this,
+                                 boost::bind (&session::handleWriteClose, this,
                                               boost::asio::placeholders::error));
                         }
                     }
@@ -139,7 +179,7 @@ namespace efgy
                     }
 
                 protected:
-                    void handle_read(const boost::system::error_code &error, size_t bytes_transferred)
+                    void handleRead(const boost::system::error_code &error, size_t bytes_transferred)
                     {
                         if (status == stShutdown)
                         {
@@ -256,7 +296,7 @@ namespace efgy
                         }
                     }
 
-                    void handle_write(const boost::system::error_code &error)
+                    void handleWrite(const boost::system::error_code &error)
                     {
                         if (status == stShutdown)
                         {
@@ -277,7 +317,7 @@ namespace efgy
                         }
                     }
 
-                    void handle_write_close(const boost::system::error_code &error)
+                    void handleWriteClose(const boost::system::error_code &error)
                     {
                         if (status == stShutdown)
                         {
@@ -295,7 +335,7 @@ namespace efgy
                             case stHeader:
                                 boost::asio::async_read_until
                                     (socket, input, "\n", 
-                                     boost::bind(&session::handle_read, this,
+                                     boost::bind(&session::handleRead, this,
                                                  boost::asio::placeholders::error,
                                                  boost::asio::placeholders::bytes_transferred));
                                 break;
@@ -305,7 +345,7 @@ namespace efgy
                                      boost::bind(&session::contentReadP, this,
                                                  boost::asio::placeholders::error,
                                                  boost::asio::placeholders::bytes_transferred),
-                                     boost::bind(&session::handle_read, this,
+                                     boost::bind(&session::handleRead, this,
                                                  boost::asio::placeholders::error,
                                                  boost::asio::placeholders::bytes_transferred));
                                 break;
@@ -327,29 +367,47 @@ namespace efgy
                     boost::asio::streambuf input;
             };
 
+            /**\brief HTTP server wrapper
+             *
+             * Contains the code that accepts incoming HTTP requests and
+             * dispatches asynchronous processing.
+             *
+             * \tparam requestProcessor The functor class to handle requests.
+             * \tparam stateClass       Data class needed to keep track of the
+             *                          resources used by the requestProcessor.
+             */
             template<typename requestProcessor, typename stateClass>
             class server
             {
                 public:
+                    /**\brief Initialise with IO service
+                     *
+                     * Default constructor which binds an IOService to a UNIX
+                     * socket. The socket is bound asynchronously.
+                     *
+                     * \param[out] pIOService IO service to use.
+                     * \param[in]  socket     UNIX socket to bind.
+                     * \param[in]  stateData  Data to pas to the state class.
+                     */
                     server(boost::asio::io_service &pIOService, const char *socket, void *stateData = 0)
                         : IOService(pIOService),
-                          acceptor_(pIOService, boost::asio::local::stream_protocol::endpoint(socket)),
+                          acceptor(pIOService, boost::asio::local::stream_protocol::endpoint(socket)),
                           state(stateData)
                         {
-                            start_accept();
+                            startAccept();
                         }
 
                 protected:
-                    void start_accept()
+                    void startAccept()
                     {
                         session<requestProcessor,stateClass> *new_session
                             = new session<requestProcessor,stateClass>(IOService);
-                        acceptor_.async_accept(new_session->socket,
-                            boost::bind(&server::handle_accept, this, new_session,
+                        acceptor.async_accept(new_session->socket,
+                            boost::bind(&server::handleAccept, this, new_session,
                                         boost::asio::placeholders::error));
                     }
 
-                    void handle_accept(session<requestProcessor,stateClass> *new_session, const boost::system::error_code &error)
+                    void handleAccept(session<requestProcessor,stateClass> *new_session, const boost::system::error_code &error)
                     {
                         if (!error)
                         {
@@ -360,11 +418,11 @@ namespace efgy
                             delete new_session;
                         }
 
-                        start_accept();
+                        startAccept();
                     }
 
                     boost::asio::io_service &IOService;
-                    boost::asio::local::stream_protocol::acceptor acceptor_;
+                    boost::asio::local::stream_protocol::acceptor acceptor;
                     stateClass state;
             };
         };

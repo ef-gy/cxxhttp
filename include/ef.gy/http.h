@@ -86,7 +86,9 @@ namespace efgy
                 };
             };
 
-            template<typename requestProcessor, typename stateClass = state::stub>
+            template <typename requestProcessor,
+                      typename stateClass = state::stub,
+                      std::size_t maxContentLength = (1024 * 1024 * 12)>
             class server;
 
             /**\brief Session wrapper
@@ -97,26 +99,60 @@ namespace efgy
              * \tparam requestProcessor The functor class to handle requests.
              * \tparam stateClass       Data class needed to keep track of the
              *                          resources used by the requestProcessor.
+             * \tparam maxContentLength Maximum size incoming body data.
              */
-            template<typename requestProcessor, typename stateClass = state::stub>
+            template <typename requestProcessor,
+                      typename stateClass = state::stub,
+                      std::size_t maxContentLength = (1024 * 1024 * 12)>
             class session
             {
                 protected:
-                    static const int maxContentLength = (1024 * 1024 * 12);
-
+                    /**\brief HTTP request parser status
+                     *
+                     * Contains the current status of the request parser for the
+                     * current session.
+                     */
                     enum
                     {
-                        stRequest,
-                        stHeader,
-                        stContent,
-                        stProcessing,
-                        stErrorContentTooLarge,
-                        stShutdown
+                        stRequest,              /**< Request received. */
+                        stHeader,               /**< Currently parsing the
+                                                 *   request header.
+                                                 */
+                        stContent,              /**< Currently parsing the
+                                                 *   request body.
+                                                 */
+                        stProcessing,           /**< Currently processing the
+                                                 *   request.
+                                                 */
+                        stErrorContentTooLarge, /**< Error: Content-Length is
+                                                 *   greater than
+                                                 *   maxContentLength
+                                                 */
+                        stShutdown              /**< Will shut down the
+                                                 *   connection now.
+                                                 */
                     } status;
 
+                    /**\brief Case-insensitive comparison functor
+                     *
+                     * A simple functor used by the attribute map to compare
+                     * strings without caring for the letter case.
+                     */
                     class caseInsensitiveLT : private std::binary_function<std::string, std::string, bool>
                     {
                         public:
+                            /**\brief Case-insensitive string comparison
+                             *
+                             * Compares two strings case-insensitively.
+                             *
+                             * \param[in] a The first of the two strings to
+                             *              compare.
+                             * \param[in] b The second of the two strings to
+                             *              compare.
+                             *
+                             * \returns 'true' if the first string is less than
+                             *          the second.
+                             */
                             bool operator() (const std::string &a, const std::string &b) const
                             {
                                 return lexicographical_compare (a, b, boost::is_iless());
@@ -375,8 +411,11 @@ namespace efgy
              * \tparam requestProcessor The functor class to handle requests.
              * \tparam stateClass       Data class needed to keep track of the
              *                          resources used by the requestProcessor.
+             * \tparam maxContentLength Maximum size incoming body data.
              */
-            template<typename requestProcessor, typename stateClass>
+            template <typename requestProcessor,
+                      typename stateClass,
+                      std::size_t maxContentLength>
             class server
             {
                 public:
@@ -398,31 +437,67 @@ namespace efgy
                         }
 
                 protected:
-                    void startAccept()
+                    /**\brief Accept the next incoming connection
+                     *
+                     * This function creates a new, blank session to handle the
+                     * next incoming request.
+                     */
+                    void startAccept(void)
                     {
-                        session<requestProcessor,stateClass> *new_session
-                            = new session<requestProcessor,stateClass>(IOService);
-                        acceptor.async_accept(new_session->socket,
-                            boost::bind(&server::handleAccept, this, new_session,
+                        session<requestProcessor,stateClass> *newSession
+                            = new session<requestProcessor,stateClass,maxContentLength>(IOService);
+                        acceptor.async_accept(newSession->socket,
+                            boost::bind(&server::handleAccept, this, newSession,
                                         boost::asio::placeholders::error));
                     }
 
-                    void handleAccept(session<requestProcessor,stateClass> *new_session, const boost::system::error_code &error)
+                    /**\brief Handle next incoming connection
+                     *
+                     * Called by Boost::ASIO when a new inbound connection has
+                     * been accepted; this will make the session parse the
+                     * incoming request and dispatch it to the request processor
+                     * specified as a template argument.
+                     *
+                     * \param[in] newSession The blank session object that was
+                     *                       created by startAccept().
+                     * \param[in] error      Describes any error condition that
+                     *                       may have occurred.
+                     */
+                    void handleAccept
+                        (session<requestProcessor,stateClass,maxContentLength> *newSession,
+                         const boost::system::error_code &error)
                     {
                         if (!error)
                         {
-                            new_session->start(&state);
+                            newSession->start(&state);
                         }
                         else
                         {
-                            delete new_session;
+                            delete newSession;
                         }
 
                         startAccept();
                     }
 
+                    /**\brief IO service
+                     *
+                     * Bound in the constructor to a Boost::ASIO IO service
+                     * which handles asynchronous connections.
+                     */
                     boost::asio::io_service &IOService;
+
+                    /**\brief Socket acceptor
+                     *
+                     * This is the acceptor which has been bound to the socket
+                     * specified in the constructor.
+                     */
                     boost::asio::local::stream_protocol::acceptor acceptor;
+
+                    /**\brief Server state instance
+                     *
+                     * Contains the global server state, which is passed to each
+                     * new session upon being created.
+                     */
                     stateClass state;
             };
         };

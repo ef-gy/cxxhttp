@@ -44,6 +44,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <regex>
+
 namespace efgy
 {
     /**\brief Networking code
@@ -224,14 +226,14 @@ namespace efgy
 
                         if (!error)
                         {
-                            static const boost::regex req("(\\w+)\\s+([\\w\\d%/.:;()+-]+)\\s+HTTP/1.[01]\\s*");
-                            static const boost::regex mime("([\\w-]+):\\s*(.*)\\s*");
-                            static const boost::regex mimeContinued("[ \t]\\s*(.*)\\s*");
+                            static const std::regex req("(\\w+)\\s+([\\w\\d%/.:;()+-]+)\\s+HTTP/1.[01]\\s*");
+                            static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
+                            static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");
 
                             std::istream is(&input);
                             std::string s;
 
-                            boost::smatch matches;
+                            std::smatch matches;
 
                             switch(status)
                             {
@@ -252,7 +254,7 @@ namespace efgy
                             switch(status)
                             {
                                 case stRequest:
-                                    if (boost::regex_match(s, matches, req))
+                                    if (std::regex_match(s, matches, req))
                                     {
                                         method   = matches[1];
                                         resource = matches[2];
@@ -284,11 +286,11 @@ namespace efgy
                                             status = stContent;
                                         }
                                     }
-                                    else if (boost::regex_match(s, matches, mimeContinued))
+                                    else if (std::regex_match(s, matches, mimeContinued))
                                     {
-                                        header[lastHeader] += "," + matches[1];
+                                        header[lastHeader] += "," + std::string(matches[1]);
                                     }
-                                    else if (boost::regex_match(s, matches, mime))
+                                    else if (std::regex_match(s, matches, mime))
                                     {
                                         lastHeader = matches[1];
                                         header[matches[1]] = matches[2];

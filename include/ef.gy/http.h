@@ -27,7 +27,7 @@
  * THE SOFTWARE.
  *
  * \see Project Documentation: http://ef.gy/documentation/libefgy
- * \see Project Source Code: https://github.com/ef-gy/libefgy.git
+ * \see Project Source Code: https://github.com/ef-gy/libefgy
  */
 
 #if !defined(EF_GY_HTTP_H)

@@ -101,7 +101,7 @@ namespace efgy
              * \tparam requestProcessor The functor class to handle requests.
              * \tparam stateClass       Data class needed to keep track of the
              *                          resources used by the requestProcessor.
-             * \tparam maxContentLength Maximum size incoming body data.
+             * \tparam maxContentLength Maximum size of incoming body data.
              */
             template <typename requestProcessor,
                       typename stateClass = state::stub,
@@ -163,17 +163,66 @@ namespace efgy
                     };
 
                 public:
+                    /**\brief Stream socket
+                     *
+                     * This is the asynchronous I/O socket that is used to
+                     * communicate with the client.
+                     */
                     boost::asio::local::stream_protocol::socket socket;
+
+                    /**\brief The request's HTTP method
+                     *
+                     * Contains the HTTP method that was used in the request,
+                     * e.g. GET, HEAD, POST, PUT, etc.
+                     */
                     std::string method;
+
+                    /**\brief Requested HTTP resource location
+                     *
+                     * This is the location that was requested, e.g. / or
+                     * /fortune or something like that.
+                     */
                     std::string resource;
+
+                    /**\brief HTTP request headers
+                     *
+                     * Contains all the headers that were sent along with the
+                     * request. Things like Host: or DNT:. Uses a special
+                     * case-insensitive sorting function for the map, so that
+                     * you can query the contents without having to know the
+                     * case of the headers as they were sent.
+                     */
                     std::map<std::string,std::string,caseInsensitiveLT> header;
+
+                    /**\brief HTTP request body
+                     *
+                     * Contains the request body, if the request contained one.
+                     */
                     std::string content;
+
+                    /**\brief Auxiliary state
+                     *
+                     * This is a reference to a state object, if one was passed
+                     * to the constructor. Only useful for the user code to keep
+                     * track of programme state - such as database connections -
+                     * and completely ignored by the HTTP wrapper.
+                     */
                     stateClass *state;
 
+                    /**\brief Construct with I/O service
+                     *
+                     * Constructs a session with the given asynchronous I/O
+                     * service.
+                     */
                     session (boost::asio::io_service &pIOService)
                         : socket(pIOService), status(stRequest), input()
                         {}
 
+                    /**\brief Destructor
+                     *
+                     * Closes the socket, cancels all remaining requests and
+                     * sets the status to stShutdown.
+                     */
                     ~session (void)
                         {
                             status = stShutdown;
@@ -182,12 +231,40 @@ namespace efgy
                             socket.close();
                         }
 
+                    /**\brief Start processing
+                     *
+                     * Starts processing the incoming request. As a side-effect,
+                     * this method also sets the auxiliary state which is later
+                     * used by the request processor.
+                     *
+                     * \param[in] state The auxiliary state for the request
+                     *                  processor.
+                     */
                     void start (stateClass *state)
                     {
                         this->state = state;
                         read();
                     }
 
+                    /**\brief Send reply
+                     *
+                     * Used by the processing code once it is known how to
+                     * answer the request contained in this object. The code
+                     * will automatically add a correct Content-Length header,
+                     * but further headers may be added using the free-form
+                     * header parameter. Headers are not checked for validity.
+                     *
+                     * \note The code will always reply with an HTTP/1.1 reply,
+                     *       regardless of the version in the request. If this
+                     *       is a concern for you, put the server behind an
+                     *       an nginx instance, which should fix up the output
+                     *       as necessary.
+                     *
+                     * \param[in] status The status to return.
+                     * \param[in] header Any additional headers to be sent.
+                     * \param[in] body   The response body to send back to the
+                     *                   client.
+                     */
                     void reply (int status, const std::string &header, const std::string &body)
                     {
                         std::stringstream reply;
@@ -211,12 +288,34 @@ namespace efgy
                         }
                     }
 
+                    /**\brief Send reply without custom headers
+                     *
+                     * Wraps around the 3-parameter reply() function, so that
+                     * you don't have to specify an empty header parameter if
+                     * you don't intend to set custom headers.
+                     *
+                     * \param[in] status The status to return.
+                     * \param[in] body   The response body to send back to the
+                     *                   client.
+                     */
                     void reply (int status, const std::string &body)
                     {
                         reply (status, "", body);
                     }
 
                 protected:
+                    /**\brief Read more data
+                     *
+                     * Called by ASIO to indicate that new data has been read
+                     * and can now be processed.
+                     *
+                     * The actual processing for the header is done with a set
+                     * of regexen, which greatly simplifies the header parsing.
+                     *
+                     * \param[in] error             Current error state.
+                     * \param[in] bytes_transferred The amount of data that has
+                     *                              been read.
+                     */
                     void handleRead(const boost::system::error_code &error, size_t bytes_transferred)
                     {
                         if (status == stShutdown)
@@ -334,6 +433,16 @@ namespace efgy
                         }
                     }
 
+                    /**\brief Asynchronouse write handler
+                     *
+                     * Decides whether or not things need to be written to the
+                     * stream, or if things need to be read instead.
+                     *
+                     * Automatically deletes the object on errors - which also
+                     * closes the connection automagically.
+                     *
+                     * \param[in] error Current error state.
+                     */
                     void handleWrite(const boost::system::error_code &error)
                     {
                         if (status == stShutdown)
@@ -355,6 +464,16 @@ namespace efgy
                         }
                     }
 
+                    /**\brief Asynchronouse write and close handler
+                     *
+                     * Decides whether or not things need to be written to the
+                     * stream, or if things need to be read instead.
+                     *
+                     * Automatically deletes the object on errors - which also
+                     * closes the connection automagically.
+                     *
+                     * \param[in] error Current error state.
+                     */
                     void handleWriteClose(const boost::system::error_code &error)
                     {
                         if (status == stShutdown)
@@ -365,6 +484,14 @@ namespace efgy
                         delete this;
                     }
 
+                    /**\brief Asynchronouse read handler
+                     *
+                     * Decides if things need to be read in and - if so - what
+                     * needs to be read.
+                     *
+                     * Automatically deletes the object on errors - which also
+                     * closes the connection automagically.
+                     */
                     void read(void)
                     {
                         switch (status)
@@ -394,14 +521,42 @@ namespace efgy
                         }
                     }
 
+                    /**\brief Predicate: has the request been fully parsed?
+                     *
+                     * Determines whether a request has fully been parsed and if
+                     * the connection can safely be severed. Will be nonzero if
+                     * an error occurred or if there is still data to be read.
+                     *
+                     * \param[in] error             Current error context.
+                     * \param[in] bytes_transferred How much data has been read.
+                     *
+                     * \returns 0 when the request has been fully parsed and the
+                     *          connection can now be dropped.
+                     */
                     std::size_t contentReadP (const boost::system::error_code& error, std::size_t bytes_transferred)
                     {
                         return (bool(error) || (bytes_transferred >= contentLength)) ? 0 : (contentLength - bytes_transferred);
                     }
 
+                    /**\brief Name of the last parsed header
+                     *
+                     * This is the name of the last header line that was parsed.
+                     * Used with multi-line headers.
+                     */
                     std::string lastHeader;
+
+                    /**\brief Content length
+                     *
+                     * This is the value of the Content-Length header. Used when
+                     * parsing a request with a body.
+                     */
                     std::size_t contentLength;
 
+                    /**\brief ASIO input stream buffer
+                     *
+                     * This is the stream buffer that the object is reading
+                     * from.
+                     */
                     boost::asio::streambuf input;
             };
 
@@ -413,7 +568,7 @@ namespace efgy
              * \tparam requestProcessor The functor class to handle requests.
              * \tparam stateClass       Data class needed to keep track of the
              *                          resources used by the requestProcessor.
-             * \tparam maxContentLength Maximum size incoming body data.
+             * \tparam maxContentLength Maximum size of incoming body data.
              */
             template <typename requestProcessor,
                       typename stateClass,

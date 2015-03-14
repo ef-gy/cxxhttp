@@ -1,9 +1,7 @@
 /**\file
- * \brief Boost::ASIO HTTP Server
+ * \brief asio.hpp HTTP Server
  *
- * An asynchornous HTTP server implementation using Boost::ASIO and
- * Boost::Regex. You will need to have Boost installed and available when
- * using this header.
+ * An asynchronous HTTP server implementation using asio.hpp and std::regex.
  *
  * \copyright
  * Copyright (c) 2012-2015, ef.gy Project Members
@@ -38,13 +36,13 @@
 #include <sstream>
 
 #include <iostream>
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
-#include <boost/regex.hpp>
-
-#include <boost/algorithm/string.hpp>
 
 #include <regex>
+#include <system_error>
+#include <algorithm>
+
+#define ASIO_STANDALONE
+#include <asio.hpp>
 
 namespace efgy {
 /**\brief Networking code
@@ -109,22 +107,22 @@ protected:
   enum {
     stRequest, /**< Request received. */
     stHeader,
-        /**< Currently parsing the
-         *   request header.
-         */
+    /**< Currently parsing the
+     *   request header.
+     */
     stContent,
-        /**< Currently parsing the
-         *   request body.
-         */
+    /**< Currently parsing the
+     *   request body.
+     */
     stProcessing,
-        /**< Currently processing the
-         *   request.
-         */
+    /**< Currently processing the
+     *   request.
+     */
     stErrorContentTooLarge,
-        /**< Error: Content-Length is
-         *   greater than
-         *   maxContentLength
-         */
+    /**< Error: Content-Length is
+     *   greater than
+     *   maxContentLength
+     */
     stShutdown /**< Will shut down the
                 *   connection now.
                 */
@@ -138,6 +136,12 @@ protected:
   class caseInsensitiveLT
       : private std::binary_function<std::string, std::string, bool> {
   public:
+    struct nocase_compare
+        : public std::binary_function<unsigned char, unsigned char, bool> {
+      bool operator()(const unsigned char &c1, const unsigned char &c2) const {
+        return tolower(c1) < tolower(c2);
+      }
+    };
     /**\brief Case-insensitive string comparison
      *
      * Compares two strings case-insensitively.
@@ -151,7 +155,8 @@ protected:
      *          the second.
      */
     bool operator()(const std::string &a, const std::string &b) const {
-      return lexicographical_compare(a, b, boost::is_iless());
+      return std::lexicographical_compare(a.begin(), a.end(), b.begin(),
+                                          b.end(), nocase_compare());
     }
 
   };
@@ -162,7 +167,7 @@ public:
    * This is the asynchronous I/O socket that is used to
    * communicate with the client.
    */
-  boost::asio::local::stream_protocol::socket socket;
+  asio::local::stream_protocol::socket socket;
 
   /**\brief The request's HTTP method
    *
@@ -208,7 +213,7 @@ public:
    * Constructs a session with the given asynchronous I/O
    * service.
    */
-  session(boost::asio::io_service &pIOService)
+  session(asio::io_service &pIOService)
       : socket(pIOService), status(stRequest), input() {}
 
   /**\brief Destructor
@@ -218,7 +223,7 @@ public:
    */
   ~session(void) {
     status = stShutdown;
-    socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_both);
+    socket.shutdown(asio::local::stream_protocol::socket::shutdown_both);
     socket.cancel();
     socket.close();
   }
@@ -262,13 +267,15 @@ public:
           << "\r\n" + header + "\r\n" + body;
 
     if (status < 400) {
-      boost::asio::async_write(socket, boost::asio::buffer(reply.str()),
-                               boost::bind(&session::handleWrite, this,
-                                           boost::asio::placeholders::error));
+      asio::async_write(socket, asio::buffer(reply.str()),
+                        [&](std::error_code ec, std::size_t length) {
+        handleWrite(ec);
+      });
     } else {
-      boost::asio::async_write(socket, boost::asio::buffer(reply.str()),
-                               boost::bind(&session::handleWriteClose, this,
-                                           boost::asio::placeholders::error));
+      asio::async_write(socket, asio::buffer(reply.str()),
+                        [&](std::error_code ec, std::size_t length) {
+        handleWriteClose(ec);
+      });
     }
   }
 
@@ -297,8 +304,7 @@ protected:
    * \param[in] bytes_transferred The amount of data that has
    *                              been read.
    */
-  void handleRead(const boost::system::error_code &error,
-                  size_t bytes_transferred) {
+  void handleRead(const std::error_code &error, size_t bytes_transferred) {
     if (status == stShutdown) {
       return;
     }
@@ -408,7 +414,7 @@ protected:
    *
    * \param[in] error Current error state.
    */
-  void handleWrite(const boost::system::error_code &error) {
+  void handleWrite(const std::error_code &error) {
     if (status == stShutdown) {
       return;
     }
@@ -433,7 +439,7 @@ protected:
    *
    * \param[in] error Current error state.
    */
-  void handleWriteClose(const boost::system::error_code &error) {
+  void handleWriteClose(const std::error_code &error) {
     if (status == stShutdown) {
       return;
     }
@@ -453,21 +459,22 @@ protected:
     switch (status) {
     case stRequest:
     case stHeader:
-      boost::asio::async_read_until(
+      asio::async_read_until(
           socket, input, "\n",
-          boost::bind(&session::handleRead, this,
-                      boost::asio::placeholders::error,
-                      boost::asio::placeholders::bytes_transferred));
+          [&](const asio::error_code & error, std::size_t bytes_transferred) {
+        handleRead(error, bytes_transferred);
+      });
       break;
     case stContent:
-      boost::asio::async_read(
+      asio::async_read(
           socket, input,
-          boost::bind(&session::contentReadP, this,
-                      boost::asio::placeholders::error,
-                      boost::asio::placeholders::bytes_transferred),
-          boost::bind(&session::handleRead, this,
-                      boost::asio::placeholders::error,
-                      boost::asio::placeholders::bytes_transferred));
+          [&](const asio::error_code & error, std::size_t bytes_transferred)
+              ->bool {
+        return contentReadP(error, bytes_transferred);
+      },
+          [&](const asio::error_code & error, std::size_t bytes_transferred) {
+        handleRead(error, bytes_transferred);
+      });
       break;
     case stProcessing:
     case stErrorContentTooLarge:
@@ -488,7 +495,7 @@ protected:
    * \returns 0 when the request has been fully parsed and the
    *          connection can now be dropped.
    */
-  std::size_t contentReadP(const boost::system::error_code &error,
+  std::size_t contentReadP(const std::error_code &error,
                            std::size_t bytes_transferred) {
     return (bool(error) || (bytes_transferred >= contentLength))
                ? 0
@@ -514,7 +521,7 @@ protected:
    * This is the stream buffer that the object is reading
    * from.
    */
-  boost::asio::streambuf input;
+  asio::streambuf input;
 };
 
 /**\brief HTTP server wrapper
@@ -540,11 +547,9 @@ public:
    * \param[in]  socket     UNIX socket to bind.
    * \param[in]  stateData  Data to pas to the state class.
    */
-  server(boost::asio::io_service &pIOService, const char *socket,
-         void *stateData = 0)
+  server(asio::io_service &pIOService, const char *socket, void *stateData = 0)
       : IOService(pIOService),
-        acceptor(pIOService,
-                 boost::asio::local::stream_protocol::endpoint(socket)),
+        acceptor(pIOService, asio::local::stream_protocol::endpoint(socket)),
         state(stateData) {
     startAccept();
   }
@@ -559,13 +564,14 @@ protected:
     session<requestProcessor, stateClass> *newSession =
         new session<requestProcessor, stateClass, maxContentLength>(IOService);
     acceptor.async_accept(newSession->socket,
-                          boost::bind(&server::handleAccept, this, newSession,
-                                      boost::asio::placeholders::error));
+                          [&](const std::error_code & error) {
+      handleAccept(newSession, error);
+    });
   }
 
   /**\brief Handle next incoming connection
    *
-   * Called by Boost::ASIO when a new inbound connection has
+   * Called by asio.hpp when a new inbound connection has
    * been accepted; this will make the session parse the
    * incoming request and dispatch it to the request processor
    * specified as a template argument.
@@ -577,7 +583,7 @@ protected:
    */
   void handleAccept(
       session<requestProcessor, stateClass, maxContentLength> *newSession,
-      const boost::system::error_code &error) {
+      const std::error_code &error) {
     if (!error) {
       newSession->start(&state);
     } else {
@@ -589,17 +595,17 @@ protected:
 
   /**\brief IO service
    *
-   * Bound in the constructor to a Boost::ASIO IO service
+   * Bound in the constructor to a asio.hpp IO service
    * which handles asynchronous connections.
    */
-  boost::asio::io_service &IOService;
+  asio::io_service &IOService;
 
   /**\brief Socket acceptor
    *
    * This is the acceptor which has been bound to the socket
    * specified in the constructor.
    */
-  boost::asio::local::stream_protocol::acceptor acceptor;
+  asio::local::stream_protocol::acceptor acceptor;
 
   /**\brief Server state instance
    *

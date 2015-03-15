@@ -193,9 +193,7 @@ public:
    * Constructs a session with the given asynchronous I/O service.
    */
   session(asio::io_service &pIOService)
-      : socket(pIOService), status(stRequest), input() {
-    std::cerr << "session created\n";
-  }
+      : socket(pIOService), status(stRequest), input() {}
 
   /**\brief Destructor
    *
@@ -204,10 +202,18 @@ public:
    */
   ~session(void) {
     status = stShutdown;
-    socket.shutdown(base::socket::shutdown_both);
-    socket.cancel();
-    socket.close();
-    std::cerr << "session destroyed\n";
+
+    try {
+      socket.shutdown(base::socket::shutdown_both);
+    } catch (std::system_error &e) {
+      std::cerr << "exception while shutting down socket: " << e.what() << "\n";
+    }
+
+    try {
+      socket.close();
+    } catch (std::system_error &e) {
+      std::cerr << "exception while closing socket: " << e.what() << "\n";
+    }
   }
 
   /**\brief Start processing

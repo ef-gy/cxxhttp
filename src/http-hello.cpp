@@ -62,9 +62,10 @@ int main(int argc, char *argv[]) {
       net::http::server<tcp, processHelloWorld> s(io_service, endpoint);
       io_service.run();
     }
-  }
-  catch (std::exception & e) {
+  } catch (std::exception & e) {
     std::cerr << "Exception: " << e.what() << "\n";
+  } catch (std::system_error & e) {
+    std::cerr << "System Error: " << e.what() << "\n";
   }
 
   return 0;

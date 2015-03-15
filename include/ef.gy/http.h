@@ -537,7 +537,7 @@ protected:
         new session<base, requestProcessor, stateClass, maxContentLength>(
             IOService);
     acceptor.async_accept(newSession->socket,
-                          [&](const std::error_code & error) {
+                          [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
     });
   }

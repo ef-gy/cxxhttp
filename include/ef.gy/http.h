@@ -517,9 +517,11 @@ public:
    *
    * \param[out] pIOService IO service to use.
    * \param[in]  endpoint   Endpoint for the socket to bind.
-   * \param[in]  stateData  Data to pas to the state class.
+   * \param[out] logfile    A stream to write log messages to.
+   * \param[in]  stateData  Data to pass to the state class.
    */
   server(asio::io_service &pIOService, typename base::endpoint &endpoint,
+         std::ostream &logfile = std::cout,
          void *stateData = 0)
       : IOService(pIOService), acceptor(pIOService, endpoint),
         state(stateData) {

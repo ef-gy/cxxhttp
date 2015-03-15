@@ -26,6 +26,7 @@
  * \see Project Source Code: https://github.com/ef-gy/libefgy
  */
 
+#define ASIO_DISABLE_THREADS
 #include <ef.gy/http.h>
 #include <iostream>
 

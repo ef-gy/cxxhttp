@@ -58,6 +58,8 @@ int main(int argc, char *argv[]) {
     tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
     tcp::resolver::iterator end;
 
+    net::http::processor::base<tcp> proc;
+
     if (endpoint_iterator != end) {
       tcp::endpoint endpoint = *endpoint_iterator;
       net::http::server<tcp, processHelloWorld> s(io_service, endpoint, cout);

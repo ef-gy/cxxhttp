@@ -40,6 +40,7 @@
 #include <regex>
 #include <system_error>
 #include <algorithm>
+#include <functional>
 
 #define ASIO_STANDALONE
 #include <asio.hpp>
@@ -570,6 +571,18 @@ protected:
    */
   std::ostream &log;
 };
+
+namespace processor {
+template <class sock>
+class base {
+public:
+  bool operator ()(session<sock,base<sock>> &sess) {
+    return true;
+  }
+
+  std::map<std::regex, std::function<bool(session<sock,base<sock>>&, std::smatch&)>> subprocessor;
+};
+}
 }
 }
 }

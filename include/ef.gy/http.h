@@ -59,8 +59,43 @@ namespace net {
  */
 namespace http {
 
-template <typename base, typename requestProcessor,
-          std::size_t maxContentLength = (1024 * 1024 * 12)>
+template <typename base, typename requestProcessor>
+class session;
+
+namespace processor {
+template <class sock> class base {
+public:
+  bool operator()(session<sock, base<sock> > &sess) {
+    for (auto &proc : subprocessor) {
+      std::regex rx(proc.first);
+      std::smatch matches;
+
+      if (std::regex_match(sess.resource, matches, rx)) {
+        if (proc.second(sess, matches))
+        {
+          return true;
+        }
+      }
+    }
+
+    sess.reply(404, "Sorry, this resource was not found.");
+
+    return true;
+  }
+
+  base &add (const std::string &rx, std::function<bool(session<sock, base<sock> > &, std::smatch &)> handler) {
+    subprocessor[rx] = handler;
+    return *this;
+  }
+
+protected:
+  std::map<std::string,
+           std::function<bool(session<sock, base<sock> > &, std::smatch &)> >
+      subprocessor;
+};
+}
+
+template <typename base, typename requestProcessor = processor::base<base>>
 class server;
 
 /**\brief Session wrapper
@@ -69,10 +104,8 @@ class server;
  * asynchronous client connection.
  *
  * \tparam requestProcessor The functor class to handle requests.
- * \tparam maxContentLength Maximum size of incoming body data.
  */
-template <typename base, typename requestProcessor,
-          std::size_t maxContentLength = (1024 * 1024 * 12)>
+template <typename base, typename requestProcessor>
 class session {
 protected:
   /**\brief HTTP request parser status
@@ -80,12 +113,13 @@ protected:
    * Contains the current status of the request parser for the current session.
    */
   enum {
-    stRequest, /**< Request received. */
-    stHeader, /**< Currently parsing the request header. */
-    stContent, /**< Currently parsing the request body. */
+    stRequest,    /**< Request received. */
+    stHeader,     /**< Currently parsing the request header. */
+    stContent,    /**< Currently parsing the request body. */
     stProcessing, /**< Currently processing the request. */
-    stErrorContentTooLarge, /**< Error: Content-Length is greater than
-                             * maxContentLength */
+    stErrorContentTooLarge,
+        /**< Error: Content-Length is greater than
+         * maxContentLength */
     stShutdown /**< Will shut down the connection now. Set in the destructor. */
   } status;
 
@@ -169,6 +203,13 @@ public:
    */
   requestProcessor &processor;
 
+  /**\brief Maximum request content size
+   *
+   * The maximum number of octets supported for a request body. Requests larger
+   * than this are cancelled with an error.
+   */
+  std::size_t maxContentLength = (1024 * 1024 * 12);
+
   /**\brief Construct with I/O service
    *
    * Constructs a session with the given asynchronous I/O service.
@@ -177,7 +218,8 @@ public:
    */
   session(asio::io_service &pIOService, requestProcessor &pProcessor,
           std::ostream &logfile)
-      : socket(pIOService), processor(pProcessor), log(logfile), status(stRequest), input() {}
+      : socket(pIOService), processor(pProcessor), log(logfile),
+        status(stRequest), input() {}
 
   /**\brief Destructor
    *
@@ -189,13 +231,15 @@ public:
 
     try {
       socket.shutdown(base::socket::shutdown_both);
-    } catch (std::system_error &e) {
+    }
+    catch (std::system_error & e) {
       std::cerr << "exception while shutting down socket: " << e.what() << "\n";
     }
 
     try {
       socket.close();
-    } catch (std::system_error &e) {
+    }
+    catch (std::system_error & e) {
       std::cerr << "exception while closing socket: " << e.what() << "\n";
     }
   }
@@ -205,9 +249,7 @@ public:
    * Starts processing the incoming request. As a side-effect, this method also
    * sets the auxiliary state which is later used by the request processor.
    */
-  void start() {
-    read();
-  }
+  void start() { read(); }
 
   /**\brief Send reply
    *
@@ -232,22 +274,20 @@ public:
           << "Content-Length: " << body.length() << "\r\n";
 
     /* we automatically close connections when an error code is sent. */
-    if (status >= 400)
-    {
+    if (status >= 400) {
       reply << "Connection: close\r\n";
     }
 
-    reply << header
-          << "\r\n" + body;
+    reply << header << "\r\n" + body;
 
     asio::async_write(socket, asio::buffer(reply.str()),
                       [&](std::error_code ec, std::size_t length) {
       handleWrite(status, ec);
     });
 
-    log << socket.remote_endpoint().address().to_string()
-        << " - - [-] \"" << method << " " << resource << " HTTP/1.[01]\" "
-        << status << " " << body.length() << " \"-\" \"-\"\n";
+    log << socket.remote_endpoint().address().to_string() << " - - [-] \""
+        << method << " " << resource << " HTTP/1.[01]\" " << status << " "
+        << body.length() << " \"-\" \"-\"\n";
   }
 
   /**\brief Send reply without custom headers
@@ -484,10 +524,8 @@ protected:
  *
  * \tparam base             The socket class, e.g. asio::ip::tcp
  * \tparam requestProcessor The functor class to handle requests.
- * \tparam maxContentLength Maximum size of incoming body data.
  */
-template <typename base, typename requestProcessor,
-          std::size_t maxContentLength>
+template <typename base, typename requestProcessor>
 class server {
 public:
   /**\brief Initialise with IO service
@@ -501,8 +539,8 @@ public:
    */
   server(asio::io_service &pIOService, typename base::endpoint &endpoint,
          std::ostream &logfile = std::cout)
-      : IOService(pIOService), acceptor(pIOService, endpoint),
-        log(logfile), processor() {
+      : IOService(pIOService), acceptor(pIOService, endpoint), log(logfile),
+        processor() {
     startAccept();
   }
 
@@ -520,8 +558,7 @@ protected:
    */
   void startAccept(void) {
     session<base, requestProcessor> *newSession =
-        new session<base, requestProcessor, maxContentLength>(
-            IOService, processor, log);
+        new session<base, requestProcessor>(IOService, processor, log);
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -538,9 +575,9 @@ protected:
    *                       startAccept().
    * \param[in] error      Describes any error condition that may have occurred.
    */
-  void handleAccept(
-      session<base, requestProcessor, maxContentLength> *newSession,
-      const std::error_code &error) {
+  void
+  handleAccept(session<base, requestProcessor> *newSession,
+               const std::error_code &error) {
     if (!error) {
       newSession->start();
     } else {
@@ -571,18 +608,6 @@ protected:
    */
   std::ostream &log;
 };
-
-namespace processor {
-template <class sock>
-class base {
-public:
-  bool operator ()(session<sock,base<sock>> &sess) {
-    return true;
-  }
-
-  std::map<std::regex, std::function<bool(session<sock,base<sock>>&, std::smatch&)>> subprocessor;
-};
-}
 }
 }
 }

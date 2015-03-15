@@ -36,14 +36,11 @@ using namespace std;
 
 using asio::ip::tcp;
 
-class processHelloWorld {
-public:
-  bool operator()(net::http::session<tcp, processHelloWorld> &a) {
-    a.reply(200, "Hello World!");
+static bool hello (net::http::session<tcp, net::http::processor::base<tcp> > &session, std::smatch &) {
+  session.reply(200, "Hello World!");
 
-    return true;
-  }
-};
+  return true;
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -58,16 +55,19 @@ int main(int argc, char *argv[]) {
     tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
     tcp::resolver::iterator end;
 
-    net::http::processor::base<tcp> proc;
-
     if (endpoint_iterator != end) {
       tcp::endpoint endpoint = *endpoint_iterator;
-      net::http::server<tcp, processHelloWorld> s(io_service, endpoint, cout);
+      net::http::server<tcp> s(io_service, endpoint, cout);
+
+      s.processor.add("^/$", hello);
+
       io_service.run();
     }
-  } catch (std::exception & e) {
+  }
+  catch (std::exception & e) {
     std::cerr << "Exception: " << e.what() << "\n";
-  } catch (std::system_error & e) {
+  }
+  catch (std::system_error & e) {
     std::cerr << "System Error: " << e.what() << "\n";
   }
 

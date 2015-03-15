@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
 
     if (endpoint_iterator != end) {
       tcp::endpoint endpoint = *endpoint_iterator;
-      net::http::server<tcp, processHelloWorld> s(io_service, endpoint);
+      net::http::server<tcp, processHelloWorld> s(io_service, endpoint, cout);
       io_service.run();
     }
   } catch (std::exception & e) {

@@ -77,7 +77,7 @@ public:
    */
   stub(void *) {}
 };
-};
+}
 
 template <typename base, typename requestProcessor,
           typename stateClass = state::stub,
@@ -188,12 +188,21 @@ public:
    */
   stateClass *state;
 
+  /**\brief Log stream
+   *
+   * This is a standard output stream to send log data to. The code will write
+   * stadard HTTP log lines to this stream.
+   */
+  std::ostream &log;
+
   /**\brief Construct with I/O service
    *
    * Constructs a session with the given asynchronous I/O service.
+   *
+   * \param[out] logfile    A stream to write log messages to.
    */
-  session(asio::io_service &pIOService)
-      : socket(pIOService), status(stRequest), input() {}
+  session(asio::io_service &pIOService, std::ostream &logfile)
+      : socket(pIOService), log(logfile), status(stRequest), input() {}
 
   /**\brief Destructor
    *
@@ -263,6 +272,10 @@ public:
                       [&](std::error_code ec, std::size_t length) {
       handleWrite(status, ec);
     });
+
+    log << socket.remote_endpoint().address().to_string()
+        << " - - [-] \"" << method << " " << resource << " HTTP/1.[01]\" "
+        << status << " " << body.length() << " \"-\" \"-\"\n";
   }
 
   /**\brief Send reply without custom headers
@@ -524,7 +537,7 @@ public:
          std::ostream &logfile = std::cout,
          void *stateData = 0)
       : IOService(pIOService), acceptor(pIOService, endpoint),
-        state(stateData) {
+        state(stateData), log(logfile) {
     startAccept();
   }
 
@@ -537,7 +550,7 @@ protected:
   void startAccept(void) {
     session<base, requestProcessor, stateClass> *newSession =
         new session<base, requestProcessor, stateClass, maxContentLength>(
-            IOService);
+            IOService, log);
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -586,6 +599,13 @@ protected:
    * being created.
    */
   stateClass state;
+
+  /**\brief Log stream
+   *
+   * This is a standard output stream to send log data to. The code will write
+   * stadard HTTP log lines to this stream.
+   */
+  std::ostream &log;
 };
 }
 }

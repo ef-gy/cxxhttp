@@ -81,7 +81,8 @@ public:
 };
 };
 
-template <typename requestProcessor, typename stateClass = state::stub,
+template <typename base, typename requestProcessor,
+          typename stateClass = state::stub,
           std::size_t maxContentLength = (1024 * 1024 * 12)>
 class server;
 
@@ -95,7 +96,8 @@ class server;
  *                          resources used by the requestProcessor.
  * \tparam maxContentLength Maximum size of incoming body data.
  */
-template <typename requestProcessor, typename stateClass = state::stub,
+template <typename base, typename requestProcessor,
+          typename stateClass = state::stub,
           std::size_t maxContentLength = (1024 * 1024 * 12)>
 class session {
 protected:
@@ -167,7 +169,7 @@ public:
    * This is the asynchronous I/O socket that is used to
    * communicate with the client.
    */
-  asio::local::stream_protocol::socket socket;
+  typename base::socket socket;
 
   /**\brief The request's HTTP method
    *
@@ -223,7 +225,7 @@ public:
    */
   ~session(void) {
     status = stShutdown;
-    socket.shutdown(asio::local::stream_protocol::socket::shutdown_both);
+    socket.shutdown(base::socket::shutdown_both);
     socket.cancel();
     socket.close();
   }
@@ -348,28 +350,35 @@ protected:
 
       case stHeader:
         if ((s == "\r") || (s == "")) {
-          try {
-            contentLength =
-                std::atoi(std::string(header["Content-Length"]).c_str());
-          }
-          catch (...) {
-            contentLength = 0;
-          }
+          const auto &cli = header.find("Content-Length");
 
-          if (contentLength > maxContentLength) {
-            status = stErrorContentTooLarge;
-            reply(400, "Request body too large");
+          if (cli != header.end()) {
+            try {
+              contentLength = std::atoi(std::string(cli->second).c_str());
+            }
+            catch (...) {
+              contentLength = 0;
+            }
+
+            if (contentLength > maxContentLength) {
+              status = stErrorContentTooLarge;
+              reply(400, "Request body too large");
+            } else {
+              status = stContent;
+            }
+            break;
           } else {
             status = stContent;
+            s = "";
           }
         } else if (std::regex_match(s, matches, mimeContinued)) {
           header[lastHeader] += "," + std::string(matches[1]);
+          break;
         } else if (std::regex_match(s, matches, mime)) {
           lastHeader = matches[1];
           header[matches[1]] = matches[2];
+          break;
         }
-
-        break;
 
       case stContent:
         content = s;
@@ -534,7 +543,7 @@ protected:
  *                          resources used by the requestProcessor.
  * \tparam maxContentLength Maximum size of incoming body data.
  */
-template <typename requestProcessor, typename stateClass,
+template <typename base, typename requestProcessor, typename stateClass,
           std::size_t maxContentLength>
 class server {
 public:
@@ -547,9 +556,9 @@ public:
    * \param[in]  socket     UNIX socket to bind.
    * \param[in]  stateData  Data to pas to the state class.
    */
-  server(asio::io_service &pIOService, const char *socket, void *stateData = 0)
-      : IOService(pIOService),
-        acceptor(pIOService, asio::local::stream_protocol::endpoint(socket)),
+  server(asio::io_service &pIOService, typename base::endpoint &endpoint,
+         void *stateData = 0)
+      : IOService(pIOService), acceptor(pIOService, endpoint),
         state(stateData) {
     startAccept();
   }
@@ -561,8 +570,9 @@ protected:
    * next incoming request.
    */
   void startAccept(void) {
-    session<requestProcessor, stateClass> *newSession =
-        new session<requestProcessor, stateClass, maxContentLength>(IOService);
+    session<base, requestProcessor, stateClass> *newSession =
+        new session<base, requestProcessor, stateClass, maxContentLength>(
+            IOService);
     acceptor.async_accept(newSession->socket,
                           [&](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -582,7 +592,7 @@ protected:
    *                       may have occurred.
    */
   void handleAccept(
-      session<requestProcessor, stateClass, maxContentLength> *newSession,
+      session<base, requestProcessor, stateClass, maxContentLength> *newSession,
       const std::error_code &error) {
     if (!error) {
       newSession->start(&state);
@@ -605,7 +615,7 @@ protected:
    * This is the acceptor which has been bound to the socket
    * specified in the constructor.
    */
-  asio::local::stream_protocol::acceptor acceptor;
+  typename base::acceptor acceptor;
 
   /**\brief Server state instance
    *

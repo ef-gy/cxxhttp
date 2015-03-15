@@ -2,7 +2,7 @@
  * \brief "Hello World" HTTP Server
  *
  * \copyright
- * Copyright (c) 2012-2015, ef.gy Project Members
+ * Copyright (c) 2015, ef.gy Project Members
  * \copyright
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,11 @@ using namespace efgy;
 using namespace asio;
 using namespace std;
 
-class processColourise {
+using asio::ip::tcp;
+
+class processHelloWorld {
 public:
-  bool operator()(net::http::session<processColourise> &a) {
+  bool operator()(net::http::session<tcp, processHelloWorld> &a) {
     a.reply(200, "Hello World!");
 
     return true;
@@ -44,16 +46,22 @@ public:
 
 int main(int argc, char *argv[]) {
   try {
-    if (argc != 2) {
-      std::cerr << "Usage: http-hello <socket>\n";
+    if (argc != 3) {
+      std::cerr << "Usage: http-hello <host> <port>\n";
       return 1;
     }
 
     asio::io_service io_service;
+    tcp::resolver resolver(io_service);
+    tcp::resolver::query query(argv[1], argv[2]);
+    tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+    tcp::resolver::iterator end;
 
-    net::http::server<processColourise> s(io_service, argv[1]);
-
-    io_service.run();
+    if (endpoint_iterator != end) {
+      tcp::endpoint endpoint = *endpoint_iterator;
+      net::http::server<tcp, processHelloWorld> s(io_service, endpoint);
+      io_service.run();
+    }
   }
   catch (std::exception & e) {
     std::cerr << "Exception: " << e.what() << "\n";

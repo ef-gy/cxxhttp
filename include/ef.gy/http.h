@@ -57,30 +57,8 @@ namespace net {
  * processing by user code.
  */
 namespace http {
-/**\brief HTTP state classes
- *
- * Contains state classes which are used to keep track of the data that a
- * request processor functor needs to respond to a client's HTTP request.
- */
-namespace state {
-/**\brief Stub state class
- *
- * This is the default state class, which contains no data at all. Many kinds of
- * requests do not need additional data to process requests, and they'll be
- * perfectly fine with this state class.
- */
-class stub {
-public:
-  /**\brief Constructor
-   *
-   * Discards the argument passed to it and does nothing.
-   */
-  stub(void *) {}
-};
-}
 
 template <typename base, typename requestProcessor,
-          typename stateClass = state::stub,
           std::size_t maxContentLength = (1024 * 1024 * 12)>
 class server;
 
@@ -90,12 +68,9 @@ class server;
  * asynchronous client connection.
  *
  * \tparam requestProcessor The functor class to handle requests.
- * \tparam stateClass       Data class needed to keep track of the resources
- *                          used by the requestProcessor.
  * \tparam maxContentLength Maximum size of incoming body data.
  */
 template <typename base, typename requestProcessor,
-          typename stateClass = state::stub,
           std::size_t maxContentLength = (1024 * 1024 * 12)>
 class session {
 protected:
@@ -180,14 +155,6 @@ public:
    */
   std::string content;
 
-  /**\brief Auxiliary state
-   *
-   * This is a reference to a state object, if one was passed to the
-   * constructor. Only useful for the user code to keep track of programme state
-   * - such as database connections - and completely ignored by the HTTP wrapper.
-   */
-  stateClass *state;
-
   /**\brief Log stream
    *
    * This is a standard output stream to send log data to. The code will write
@@ -195,14 +162,21 @@ public:
    */
   std::ostream &log;
 
+  /**\brief Request processor instance
+   *
+   * Used to generate replies for incoming queries.
+   */
+  requestProcessor &processor;
+
   /**\brief Construct with I/O service
    *
    * Constructs a session with the given asynchronous I/O service.
    *
    * \param[out] logfile    A stream to write log messages to.
    */
-  session(asio::io_service &pIOService, std::ostream &logfile)
-      : socket(pIOService), log(logfile), status(stRequest), input() {}
+  session(asio::io_service &pIOService, requestProcessor &pProcessor,
+          std::ostream &logfile)
+      : socket(pIOService), processor(pProcessor), log(logfile), status(stRequest), input() {}
 
   /**\brief Destructor
    *
@@ -229,11 +203,8 @@ public:
    *
    * Starts processing the incoming request. As a side-effect, this method also
    * sets the auxiliary state which is later used by the request processor.
-   *
-   * \param[in] state The auxiliary state for the request processor.
    */
-  void start(stateClass *state) {
-    this->state = state;
+  void start() {
     read();
   }
 
@@ -380,10 +351,7 @@ protected:
         status = stProcessing;
 
         /* processing the request takes places here */
-        {
-          requestProcessor rp;
-          rp(*this);
-        }
+        processor(*this);
 
         break;
 
@@ -515,11 +483,9 @@ protected:
  *
  * \tparam base             The socket class, e.g. asio::ip::tcp
  * \tparam requestProcessor The functor class to handle requests.
- * \tparam stateClass       Data class needed to keep track of the resources
- *                          used by the requestProcessor.
  * \tparam maxContentLength Maximum size of incoming body data.
  */
-template <typename base, typename requestProcessor, typename stateClass,
+template <typename base, typename requestProcessor,
           std::size_t maxContentLength>
 class server {
 public:
@@ -531,15 +497,19 @@ public:
    * \param[out] pIOService IO service to use.
    * \param[in]  endpoint   Endpoint for the socket to bind.
    * \param[out] logfile    A stream to write log messages to.
-   * \param[in]  stateData  Data to pass to the state class.
    */
   server(asio::io_service &pIOService, typename base::endpoint &endpoint,
-         std::ostream &logfile = std::cout,
-         void *stateData = 0)
+         std::ostream &logfile = std::cout)
       : IOService(pIOService), acceptor(pIOService, endpoint),
-        state(stateData), log(logfile) {
+        log(logfile), processor() {
     startAccept();
   }
+
+  /**\brief Request processor instance
+   *
+   * Used to generate replies for incoming queries.
+   */
+  requestProcessor processor;
 
 protected:
   /**\brief Accept the next incoming connection
@@ -548,9 +518,9 @@ protected:
    * request.
    */
   void startAccept(void) {
-    session<base, requestProcessor, stateClass> *newSession =
-        new session<base, requestProcessor, stateClass, maxContentLength>(
-            IOService, log);
+    session<base, requestProcessor> *newSession =
+        new session<base, requestProcessor, maxContentLength>(
+            IOService, processor, log);
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -568,10 +538,10 @@ protected:
    * \param[in] error      Describes any error condition that may have occurred.
    */
   void handleAccept(
-      session<base, requestProcessor, stateClass, maxContentLength> *newSession,
+      session<base, requestProcessor, maxContentLength> *newSession,
       const std::error_code &error) {
     if (!error) {
-      newSession->start(&state);
+      newSession->start();
     } else {
       delete newSession;
     }
@@ -592,13 +562,6 @@ protected:
    * constructor.
    */
   typename base::acceptor acceptor;
-
-  /**\brief Server state instance
-   *
-   * Contains the global server state, which is passed to each new session upon
-   * being created.
-   */
-  stateClass state;
 
   /**\brief Log stream
    *

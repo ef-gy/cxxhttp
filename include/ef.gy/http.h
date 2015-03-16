@@ -59,20 +59,57 @@ namespace net {
  */
 namespace http {
 
-template <typename base, typename requestProcessor>
-class session;
+template <typename base, typename requestProcessor> class session;
 
+/**\brief HTTP processors
+ *
+ * This namespace is reserved for HTTP "processors", which contain the logic to
+ * actually handle an HTTP request after it has been parsed.
+ */
 namespace processor {
+/**\brief Base processor
+ *
+ * This is the default processor, which fans out incoming requests by means of a
+ * set of regular expressions. If a regex matches, a corresponding function is
+ * called, which gets the session and the regex match results.
+ *
+ * If no regex should match, a 404 response is generated.
+ *
+ * \note If you need to keep track of custom, per-server data, then the best way
+ *       to do so would probably involve extending this object and adding the
+ *       data you need. A reference to the processor is available via the
+ *       the session object, and it is kept around for as long as the server
+ *       object is.
+ *
+ * \tparam sock The socket class for the request, e.g. asio::ip::tcp
+ */
 template <class sock> class base {
 public:
-  bool operator()(session<sock, base<sock> > &sess) {
+  /**\brief Session type
+   *
+   * This is the session type that the processor is intended for. This typedef
+   * is mostly here for convenience.
+   */
+  typedef session<sock, base<sock> > session;
+
+  /**\brief Handle request
+   *
+   * This is the generic inbound request handler. Whenever a new request needs
+   * to be handled, this will go through the registered list of regexen, and for
+   * all that match it will call the registered function, until one of them
+   * returns true.
+   *
+   * \param[out] sess The session object where the request was made.
+   *
+   * \returns true (if successful; but always, really).
+   */
+  bool operator()(session &sess) {
     for (auto &proc : subprocessor) {
       std::regex rx(proc.first);
       std::smatch matches;
 
       if (std::regex_match(sess.resource, matches, rx)) {
-        if (proc.second(sess, matches))
-        {
+        if (proc.second(sess, matches)) {
           return true;
         }
       }
@@ -83,19 +120,35 @@ public:
     return true;
   }
 
-  base &add (const std::string &rx, std::function<bool(session<sock, base<sock> > &, std::smatch &)> handler) {
+  /**\brief Add handler
+   *
+   * This function adds a handler for a specific regex. Currently this is stored
+   * in a map, so the order is probably unpredictable - but also probably just
+   * alphabetic.
+   *
+   * \param[in]  rx      The regex that should trigger a given handler.
+   * \param[out] handler The function to call.
+   *
+   * \returns A reference to *this, so you can chain calls.
+   */
+  base &add(const std::string &rx,
+            std::function<bool(session &, std::smatch &)> handler) {
     subprocessor[rx] = handler;
     return *this;
   }
 
 protected:
-  std::map<std::string,
-           std::function<bool(session<sock, base<sock> > &, std::smatch &)> >
+  /**\brief Map of request handlers
+   *
+   * This is the map that holds the request handlers. It maps regex strings to
+   * handler functions, which is fairly straightforward.
+   */
+  std::map<std::string, std::function<bool(session &, std::smatch &)> >
       subprocessor;
 };
 }
 
-template <typename base, typename requestProcessor = processor::base<base>>
+template <typename base, typename requestProcessor = processor::base<base> >
 class server;
 
 /**\brief Session wrapper
@@ -105,8 +158,7 @@ class server;
  *
  * \tparam requestProcessor The functor class to handle requests.
  */
-template <typename base, typename requestProcessor>
-class session {
+template <typename base, typename requestProcessor> class session {
 protected:
   /**\brief HTTP request parser status
    *
@@ -118,8 +170,8 @@ protected:
     stContent,    /**< Currently parsing the request body. */
     stProcessing, /**< Currently processing the request. */
     stErrorContentTooLarge,
-        /**< Error: Content-Length is greater than
-         * maxContentLength */
+    /**< Error: Content-Length is greater than
+     * maxContentLength */
     stShutdown /**< Will shut down the connection now. Set in the destructor. */
   } status;
 
@@ -131,12 +183,6 @@ protected:
   class caseInsensitiveLT
       : private std::binary_function<std::string, std::string, bool> {
   public:
-    struct nocase_compare
-        : public std::binary_function<unsigned char, unsigned char, bool> {
-      bool operator()(const unsigned char &c1, const unsigned char &c2) const {
-        return tolower(c1) < tolower(c2);
-      }
-    };
     /**\brief Case-insensitive string comparison
      *
      * Compares two strings case-insensitively.
@@ -144,11 +190,14 @@ protected:
      * \param[in] a The first of the two strings to compare.
      * \param[in] b The second of the two strings to compare.
      *
-     * \returns 'true' if the first string is less than the second.
+     * \returns 'true' if the first string is "less than" the second.
      */
     bool operator()(const std::string &a, const std::string &b) const {
-      return std::lexicographical_compare(a.begin(), a.end(), b.begin(),
-                                          b.end(), nocase_compare());
+      return std::lexicographical_compare(
+          a.begin(), a.end(), b.begin(), b.end(),
+          [](const unsigned char & c1, const unsigned char & c2)->bool {
+        return tolower(c1) < tolower(c2);
+      });
     }
 
   };
@@ -525,9 +574,22 @@ protected:
  * \tparam base             The socket class, e.g. asio::ip::tcp
  * \tparam requestProcessor The functor class to handle requests.
  */
-template <typename base, typename requestProcessor>
-class server {
+template <typename base, typename requestProcessor> class server {
 public:
+  /**\brief Request processor type
+   *
+   * Convenient typedef for the processor used as the template argument for this
+   * server. The default is processor::base<base>.
+   */
+  typedef requestProcessor process;
+
+  /**\brief Request session type
+   *
+   * Convenient typedef for a session as used by this server. Can come in handy
+   * when writing functions for processor::base.
+   */
+  typedef session<base, requestProcessor> session;
+
   /**\brief Initialise with IO service
    *
    * Default constructor which binds an IOService to a socket endpoint that was
@@ -557,8 +619,7 @@ protected:
    * request.
    */
   void startAccept(void) {
-    session<base, requestProcessor> *newSession =
-        new session<base, requestProcessor>(IOService, processor, log);
+    session *newSession = new session(IOService, processor, log);
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -575,9 +636,7 @@ protected:
    *                       startAccept().
    * \param[in] error      Describes any error condition that may have occurred.
    */
-  void
-  handleAccept(session<base, requestProcessor> *newSession,
-               const std::error_code &error) {
+  void handleAccept(session *newSession, const std::error_code &error) {
     if (!error) {
       newSession->start();
     } else {

@@ -36,7 +36,8 @@ using namespace std;
 
 using asio::ip::tcp;
 
-static bool hello (net::http::session<tcp, net::http::processor::base<tcp> > &session, std::smatch &) {
+static bool hello(typename net::http::server<tcp>::session &session,
+                  std::smatch &) {
   session.reply(200, "Hello World!");
 
   return true;

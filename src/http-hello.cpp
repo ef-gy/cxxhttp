@@ -1,6 +1,18 @@
 /**\file
  * \brief "Hello World" HTTP Server
  *
+ * This is an example HTTP server that serves a simple "Hello World!" on /, and
+ * a 404 on all other resources.
+ *
+ * Call it like this:
+ * \code
+ * $ ./http-hello localhost 8080
+ * \endcode
+ *
+ * With localhost and 8080 being a host name and port of your choosing. Then,
+ * while the programme is running, open a browser and go to
+ * http://localhost:8080/ and you should see the familiar greeting.
+ *
  * \copyright
  * Copyright (c) 2015, ef.gy Project Members
  * \copyright
@@ -31,11 +43,16 @@
 #include <iostream>
 
 using namespace efgy;
-using namespace asio;
-using namespace std;
-
 using asio::ip::tcp;
 
+/**\brief Hello World request handler
+ *
+ * This function serves the familiar "Hello World!" when called.
+ *
+ * \param[out] session The HTTP session to answer on.
+ *
+ * \returns true (always, as we always reply).
+ */
 static bool hello(typename net::http::server<tcp>::session &session,
                   std::smatch &) {
   session.reply(200, "Hello World!");
@@ -43,6 +60,15 @@ static bool hello(typename net::http::server<tcp>::session &session,
   return true;
 }
 
+/**\brief Main function for the HTTP demo
+ *
+ * This is the main function for the HTTP Hello World demo.
+ *
+ * \param[in] argc Process argument count.
+ * \param[in] argv Process argument vector.
+ *
+ * \returns 0 when nothing bad happened, 1 otherwise.
+ */
 int main(int argc, char *argv[]) {
   try {
     if (argc != 3) {
@@ -58,12 +84,14 @@ int main(int argc, char *argv[]) {
 
     if (endpoint_iterator != end) {
       tcp::endpoint endpoint = *endpoint_iterator;
-      net::http::server<tcp> s(io_service, endpoint, cout);
+      net::http::server<tcp> s(io_service, endpoint, std::cout);
 
       s.processor.add("^/$", hello);
 
       io_service.run();
     }
+
+    return 0;
   }
   catch (std::exception & e) {
     std::cerr << "Exception: " << e.what() << "\n";
@@ -72,5 +100,5 @@ int main(int argc, char *argv[]) {
     std::cerr << "System Error: " << e.what() << "\n";
   }
 
-  return 0;
+  return 1;
 }

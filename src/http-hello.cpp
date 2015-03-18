@@ -60,12 +60,34 @@ static bool hello(typename net::http::server<tcp>::session &session,
   return true;
 }
 
+/**\brief Hello World request handler for /quit
+ *
+ * When this handler is invoked, it stops the ASIO IO handler (after replying,
+ * maybe...).
+ *
+ * \note Having this on your production server in this exact way is PROBABLY a
+ *       really bad idea, unless you gate it in an upstream forward proxy. Or
+ *       you have some way of automatically respawning your server. Or both.
+ *
+ * \param[out] session The HTTP session to answer on.
+ *
+ * \returns true (always, as we always reply).
+ */
+static bool quit(typename net::http::server<tcp>::session &session,
+                 std::smatch &) {
+  session.reply(200, "Good Bye, Cruel World!");
+
+  session.server.io.stop();
+
+  return true;
+}
+
 /**\brief Main function for the HTTP demo
  *
  * This is the main function for the HTTP Hello World demo.
  *
  * \param[in] argc Process argument count.
- * \param[in] argv Process argument vector.
+ * \param[in] argv Process argument vector
  *
  * \returns 0 when nothing bad happened, 1 otherwise.
  */
@@ -87,6 +109,7 @@ int main(int argc, char *argv[]) {
       net::http::server<tcp> s(io_service, endpoint, std::cout);
 
       s.processor.add("^/$", hello);
+      s.processor.add("^/quit$", quit);
 
       io_service.run();
     }

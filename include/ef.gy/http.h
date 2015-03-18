@@ -160,6 +160,14 @@ class server;
  */
 template <typename base, typename requestProcessor> class session {
 protected:
+  /**\brief Server type
+   *
+   * This is the type of the server that the session is being served by; used
+   * when instantiating a session, as we need to use some of the data the server
+   * has to offer.
+   */
+  typedef server<base, requestProcessor> serverType;
+
   /**\brief HTTP request parser status
    *
    * Contains the current status of the request parser for the current session.
@@ -199,7 +207,6 @@ protected:
         return tolower(c1) < tolower(c2);
       });
     }
-
   };
 
 public:
@@ -239,18 +246,12 @@ public:
    */
   std::string content;
 
-  /**\brief Log stream
+  /**\brief Server instance
    *
-   * This is a standard output stream to send log data to. The code will write
-   * stadard HTTP log lines to this stream.
+   * A reference to the server that this session belongs to and was spawned
+   * from. Used to process requests and potentially for general maintenance.
    */
-  std::ostream &log;
-
-  /**\brief Request processor instance
-   *
-   * Used to generate replies for incoming queries.
-   */
-  requestProcessor &processor;
+  serverType &server;
 
   /**\brief Maximum request content size
    *
@@ -263,12 +264,10 @@ public:
    *
    * Constructs a session with the given asynchronous I/O service.
    *
-   * \param[out] logfile    A stream to write log messages to.
+   * \param[in]  pServer The server instance this session belongs to.
    */
-  session(asio::io_service &pIOService, requestProcessor &pProcessor,
-          std::ostream &logfile)
-      : socket(pIOService), processor(pProcessor), log(logfile),
-        status(stRequest), input() {}
+  session(serverType &pServer)
+      : server(pServer), socket(pServer.io), status(stRequest), input() {}
 
   /**\brief Destructor
    *
@@ -295,8 +294,7 @@ public:
 
   /**\brief Start processing
    *
-   * Starts processing the incoming request. As a side-effect, this method also
-   * sets the auxiliary state which is later used by the request processor.
+   * Starts processing the incoming request.
    */
   void start() { read(); }
 
@@ -334,9 +332,10 @@ public:
       handleWrite(status, ec);
     });
 
-    log << socket.remote_endpoint().address().to_string() << " - - [-] \""
-        << method << " " << resource << " HTTP/1.[01]\" " << status << " "
-        << body.length() << " \"-\" \"-\"\n";
+    server.log << socket.remote_endpoint().address().to_string()
+               << " - - [-] \"" << method << " " << resource
+               << " HTTP/1.[01]\" " << status << " " << body.length()
+               << " \"-\" \"-\"\n";
   }
 
   /**\brief Send reply without custom headers
@@ -441,7 +440,7 @@ protected:
         status = stProcessing;
 
         /* processing the request takes places here */
-        processor(*this);
+        server.processor(*this);
 
         break;
 
@@ -576,13 +575,6 @@ protected:
  */
 template <typename base, typename requestProcessor> class server {
 public:
-  /**\brief Request processor type
-   *
-   * Convenient typedef for the processor used as the template argument for this
-   * server. The default is processor::base<base>.
-   */
-  typedef requestProcessor process;
-
   /**\brief Request session type
    *
    * Convenient typedef for a session as used by this server. Can come in handy
@@ -592,17 +584,16 @@ public:
 
   /**\brief Initialise with IO service
    *
-   * Default constructor which binds an IOService to a socket endpoint that was
+   * Default constructor which binds an io to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    *
-   * \param[out] pIOService IO service to use.
+   * \param[out] pio IO service to use.
    * \param[in]  endpoint   Endpoint for the socket to bind.
    * \param[out] logfile    A stream to write log messages to.
    */
-  server(asio::io_service &pIOService, typename base::endpoint &endpoint,
+  server(asio::io_service &pio, typename base::endpoint &endpoint,
          std::ostream &logfile = std::cout)
-      : IOService(pIOService), acceptor(pIOService, endpoint), log(logfile),
-        processor() {
+      : io(pio), acceptor(pio, endpoint), log(logfile), processor() {
     startAccept();
   }
 
@@ -612,6 +603,20 @@ public:
    */
   requestProcessor processor;
 
+  /**\brief IO service
+   *
+   * Bound in the constructor to an asio.hpp IO service which handles
+   * asynchronous connections.
+   */
+  asio::io_service &io;
+
+  /**\brief Log stream
+   *
+   * This is a standard output stream to send log data to. The code will write
+   * stadard HTTP log lines to this stream.
+   */
+  std::ostream &log;
+
 protected:
   /**\brief Accept the next incoming connection
    *
@@ -619,7 +624,7 @@ protected:
    * request.
    */
   void startAccept(void) {
-    session *newSession = new session(IOService, processor, log);
+    session *newSession = new session(*this);
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -646,26 +651,12 @@ protected:
     startAccept();
   }
 
-  /**\brief IO service
-   *
-   * Bound in the constructor to an asio.hpp IO service which handles
-   * asynchronous connections.
-   */
-  asio::io_service &IOService;
-
   /**\brief Socket acceptor
    *
    * This is the acceptor which has been bound to the socket specified in the
    * constructor.
    */
   typename base::acceptor acceptor;
-
-  /**\brief Log stream
-   *
-   * This is a standard output stream to send log data to. The code will write
-   * stadard HTTP log lines to this stream.
-   */
-  std::ostream &log;
 };
 }
 }

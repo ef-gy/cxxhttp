@@ -465,7 +465,8 @@ protected:
    * Automatically deletes the object on errors - which also closes the
    * connection automagically.
    *
-   * \param[in] error Current error state.
+   * \param[in] statusCode The HTTP status code of the reply.
+   * \param[in] error      Current error state.
    */
   void handleWrite(int statusCode, const std::error_code &error) {
     if (status == stShutdown) {

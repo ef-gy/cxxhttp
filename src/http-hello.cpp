@@ -41,7 +41,6 @@
 
 #define ASIO_DISABLE_THREADS
 #include <ef.gy/http.h>
-#include <iostream>
 
 using namespace efgy;
 using asio::ip::tcp;
@@ -107,7 +106,7 @@ int main(int argc, char *argv[]) {
 
     if (endpoint_iterator != end) {
       tcp::endpoint endpoint = *endpoint_iterator;
-      net::http::server<tcp> s(io_service, endpoint, std::cout);
+      net::http::server<tcp> s(io_service, endpoint);
 
       s.processor.add("^/$", hello);
       s.processor.add("^/quit$", quit);

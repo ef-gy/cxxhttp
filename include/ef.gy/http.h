@@ -35,22 +35,14 @@
 #include <string>
 #include <sstream>
 
-#include <iostream>
-
 #include <regex>
 #include <system_error>
 #include <algorithm>
 #include <functional>
 
-#define ASIO_STANDALONE
-#include <asio.hpp>
+#include <ef.gy/server.h>
 
 namespace efgy {
-/**\brief Networking code
- *
- * Contains templates that deal with networking in one way or another.
- * Currently only contains an HTTP server.
- */
 namespace net {
 /**\brief HTTP handling
  *
@@ -149,7 +141,7 @@ protected:
 }
 
 template <typename base, typename requestProcessor = processor::base<base> >
-class server;
+using server = net::server<base, requestProcessor, session>;
 
 /**\brief Session wrapper
  *
@@ -563,100 +555,6 @@ protected:
    * This is the stream buffer that the object is reading from.
    */
   asio::streambuf input;
-};
-
-/**\brief HTTP server wrapper
- *
- * Contains the code that accepts incoming HTTP requests and dispatches
- * asynchronous processing.
- *
- * \tparam base             The socket class, e.g. asio::ip::tcp
- * \tparam requestProcessor The functor class to handle requests.
- */
-template <typename base, typename requestProcessor> class server {
-public:
-  /**\brief Request session type
-   *
-   * Convenient typedef for a session as used by this server. Can come in handy
-   * when writing functions for processor::base.
-   */
-  typedef session<base, requestProcessor> session;
-
-  /**\brief Initialise with IO service
-   *
-   * Default constructor which binds an io to a socket endpoint that was
-   * passed in. The socket is bound asynchronously.
-   *
-   * \param[out] pio IO service to use.
-   * \param[in]  endpoint   Endpoint for the socket to bind.
-   * \param[out] logfile    A stream to write log messages to.
-   */
-  server(asio::io_service &pio, typename base::endpoint &endpoint,
-         std::ostream &logfile = std::cout)
-      : io(pio), acceptor(pio, endpoint), log(logfile), processor() {
-    startAccept();
-  }
-
-  /**\brief Request processor instance
-   *
-   * Used to generate replies for incoming queries.
-   */
-  requestProcessor processor;
-
-  /**\brief IO service
-   *
-   * Bound in the constructor to an asio.hpp IO service which handles
-   * asynchronous connections.
-   */
-  asio::io_service &io;
-
-  /**\brief Log stream
-   *
-   * This is a standard output stream to send log data to. The code will write
-   * stadard HTTP log lines to this stream.
-   */
-  std::ostream &log;
-
-protected:
-  /**\brief Accept the next incoming connection
-   *
-   * This function creates a new, blank session to handle the next incoming
-   * request.
-   */
-  void startAccept(void) {
-    session *newSession = new session(*this);
-    acceptor.async_accept(newSession->socket,
-                          [newSession, this](const std::error_code & error) {
-      handleAccept(newSession, error);
-    });
-  }
-
-  /**\brief Handle next incoming connection
-   *
-   * Called by asio.hpp when a new inbound connection has been accepted; this
-   * will make the session parse the incoming request and dispatch it to the
-   * request processor specified as a template argument.
-   *
-   * \param[in] newSession The blank session object that was created by
-   *                       startAccept().
-   * \param[in] error      Describes any error condition that may have occurred.
-   */
-  void handleAccept(session *newSession, const std::error_code &error) {
-    if (!error) {
-      newSession->start();
-    } else {
-      delete newSession;
-    }
-
-    startAccept();
-  }
-
-  /**\brief Socket acceptor
-   *
-   * This is the acceptor which has been bound to the socket specified in the
-   * constructor.
-   */
-  typename base::acceptor acceptor;
 };
 }
 }

@@ -75,7 +75,7 @@ static bool hello(typename net::http::server<tcp>::session &session,
  */
 static bool quit(typename net::http::server<tcp>::session &session,
                  std::smatch &) {
-  session.reply(200, "Good Bye, Cruel World!");
+  session.reply(200, "Good-Bye, Cruel World!");
 
   session.server.io.stop();
 

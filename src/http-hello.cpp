@@ -1,4 +1,5 @@
 /**\file
+ * \ingroup example-programmes
  * \brief "Hello World" HTTP Server
  *
  * This is an example HTTP server that serves a simple "Hello World!" on /, and

@@ -31,10 +31,14 @@
 #if !defined(EF_GY_SERVER_H)
 #define EF_GY_SERVER_H
 
+#include <string>
+#include <sstream>
 #include <iostream>
 
 #define ASIO_STANDALONE
 #include <asio.hpp>
+
+#include <ef.gy/version.h>
 
 namespace efgy {
 /**\brief Networking code
@@ -75,7 +79,12 @@ public:
    */
   server(asio::io_service &pio, typename base::endpoint &endpoint,
          std::ostream &logfile = std::cout)
-      : io(pio), acceptor(pio, endpoint), log(logfile), processor() {
+      : io(pio), acceptor(pio, endpoint), log(logfile), processor(),
+        name("server"), version("libefgy/") {
+    std::ostringstream ver("");
+    ver << efgy::version;
+    version = version + ver.str();
+
     startAccept();
   }
 
@@ -98,6 +107,21 @@ public:
    * by the session code, so that code determines the format of log lines.
    */
   std::ostream &log;
+
+  /**\brief Node name
+   *
+   * A name for the endpoint; some server protocols may need this. By default
+   * this is populated with "server" in the constructor, so you have to set this
+   * yourself if the kind of server you have needs this.
+   */
+  std::string name;
+
+  /**\brief Software version
+   *
+   * A "software version" string, which is used by some server protocols.
+   * Defaults to "libefgy/<version>".
+   */
+  std::string version;
 
 protected:
   /**\brief Accept the next incoming connection

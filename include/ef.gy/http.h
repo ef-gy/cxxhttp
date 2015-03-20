@@ -32,8 +32,6 @@
 #define EF_GY_HTTP_H
 
 #include <map>
-#include <string>
-#include <sstream>
 
 #include <regex>
 #include <system_error>

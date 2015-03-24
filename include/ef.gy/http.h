@@ -200,6 +200,8 @@ protected:
   };
 
 public:
+  std::shared_ptr<session> self;
+
   /**\brief Stream socket
    *
    * This is the asynchronous I/O socket that is used to communicate with the
@@ -257,7 +259,8 @@ public:
    * \param[in]  pServer The server instance this session belongs to.
    */
   session(serverType &pServer)
-      : server(pServer), socket(pServer.io), status(stRequest), input() {}
+      : self(this), server(pServer), socket(pServer.io), status(stRequest),
+        input() {}
 
   /**\brief Destructor
    *
@@ -451,7 +454,7 @@ protected:
         break;
       }
     } else {
-      delete this;
+      self.reset();
     }
   }
 
@@ -477,7 +480,7 @@ protected:
         read();
       }
     } else {
-      delete this;
+      self.reset();
     }
   }
 

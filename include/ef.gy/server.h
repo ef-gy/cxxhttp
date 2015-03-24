@@ -34,6 +34,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <memory>
 
 #define ASIO_STANDALONE
 #include <asio.hpp>
@@ -130,7 +131,7 @@ protected:
    * request.
    */
   void startAccept(void) {
-    session *newSession = new session(*this);
+    std::shared_ptr<session> newSession = (new session(*this))->self;
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
@@ -147,11 +148,12 @@ protected:
    *                       startAccept().
    * \param[in] error      Describes any error condition that may have occurred.
    */
-  void handleAccept(session *newSession, const std::error_code &error) {
+  void handleAccept(std::shared_ptr<session> newSession,
+                    const std::error_code &error) {
     if (!error) {
       newSession->start();
     } else {
-      delete newSession;
+      newSession->self.reset();
     }
 
     startAccept();

@@ -325,7 +325,12 @@ public:
       handleWrite(status, ec);
     });
 
-    server.log << socket.remote_endpoint().address().to_string()
+    //TODO: this doesn't work with UNIX sockets, so is disabled for now. I'd
+    // probably have to overload something here, but not sure if it would be
+    // worth it.
+    //server.log << socket.remote_endpoint().address().to_string()
+
+    server.log << "-"
                << " - - [-] \"" << method << " " << resource
                << " HTTP/1.[01]\" " << status << " " << body.length()
                << " \"-\" \"-\"\n";

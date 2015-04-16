@@ -51,8 +51,6 @@ using namespace efgy;
 using asio::ip::tcp;
 using asio::local::stream_protocol;
 
-namespace handle {
-namespace tcp {
 /**\brief Hello World request handler
  *
  * This function serves the familiar "Hello World!" when called.
@@ -61,7 +59,8 @@ namespace tcp {
  *
  * \returns true (always, as we always reply).
  */
-static bool hello(typename net::http::server<asio::ip::tcp>::session &session,
+template <class transport>
+static bool hello(typename net::http::server<transport>::session &session,
                   std::smatch &) {
   session.reply(200, "Hello World!");
 
@@ -81,54 +80,14 @@ static bool hello(typename net::http::server<asio::ip::tcp>::session &session,
  *
  * \returns true (always, as we always reply).
  */
-static bool quit(typename net::http::server<asio::ip::tcp>::session &session,
+template <class transport>
+static bool quit(typename net::http::server<transport>::session &session,
                  std::smatch &) {
   session.reply(200, "Good-Bye, Cruel World!");
 
   session.server.io.stop();
 
   return true;
-}
-}
-
-namespace unix {
-/**\brief Hello World request handler
- *
- * This function serves the familiar "Hello World!" when called.
- *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
- */
-static bool hello(typename net::http::server<stream_protocol>::session &session,
-                  std::smatch &) {
-  session.reply(200, "Hello World!");
-
-  return true;
-}
-
-/**\brief Hello World request handler for /quit
- *
- * When this handler is invoked, it stops the ASIO IO handler (after replying,
- * maybe...).
- *
- * \note Having this on your production server in this exact way is PROBABLY a
- *       really bad idea, unless you gate it in an upstream forward proxy. Or
- *       you have some way of automatically respawning your server. Or both.
- *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
- */
-static bool quit(typename net::http::server<stream_protocol>::session &session,
-                 std::smatch &) {
-  session.reply(200, "Good-Bye, Cruel World!");
-
-  session.server.io.stop();
-
-  return true;
-}
-}
 }
 
 /**\brief Main function for the HTTP/IRC demo
@@ -170,8 +129,8 @@ int main(int argc, char *argv[]) {
         net::http::server<stream_protocol> *s =
             new net::http::server<stream_protocol>(io_service, endpoint);
 
-        s->processor.add("^/$", handle::unix::hello);
-        s->processor.add("^/quit$", handle::unix::quit);
+        s->processor.add("^/$", hello<stream_protocol>);
+        s->processor.add("^/quit$", quit<stream_protocol>);
 
         targets++;
       } else if (std::regex_match(std::string(argv[i]), matches, http)) {
@@ -187,8 +146,8 @@ int main(int argc, char *argv[]) {
           net::http::server<tcp> *s =
               new net::http::server<tcp>(io_service, endpoint);
 
-          s->processor.add("^/$", handle::tcp::hello);
-          s->processor.add("^/quit$", handle::tcp::quit);
+          s->processor.add("^/$", hello<tcp>);
+          s->processor.add("^/quit$", quit<tcp>);
 
           targets++;
         }

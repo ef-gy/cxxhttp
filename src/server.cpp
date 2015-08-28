@@ -85,7 +85,7 @@ static bool quit(typename net::http::server<transport>::session &session,
                  std::smatch &) {
   session.reply(200, "Good-Bye, Cruel World!");
 
-  session.server.io.stop();
+  session.server.io.get().stop();
 
   return true;
 }
@@ -112,8 +112,7 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    asio::io_service io_service;
-    tcp::resolver resolver(io_service);
+    tcp::resolver resolver(io::service::common().get());
 
     for (unsigned int i = 1; i < argc; i++) {
       static const std::regex http("http:(.+):([0-9]+)");
@@ -127,7 +126,7 @@ int main(int argc, char *argv[]) {
 
         stream_protocol::endpoint endpoint(socket);
         net::http::server<stream_protocol> *s =
-            new net::http::server<stream_protocol>(io_service, endpoint);
+            new net::http::server<stream_protocol>(endpoint);
 
         s->processor.add("^/$", hello<stream_protocol>);
         s->processor.add("^/quit$", quit<stream_protocol>);
@@ -143,8 +142,7 @@ int main(int argc, char *argv[]) {
 
         if (endpoint_iterator != end) {
           tcp::endpoint endpoint = *endpoint_iterator;
-          net::http::server<tcp> *s =
-              new net::http::server<tcp>(io_service, endpoint);
+          net::http::server<tcp> *s = new net::http::server<tcp>(endpoint);
 
           s->processor.add("^/$", hello<tcp>);
           s->processor.add("^/quit$", quit<tcp>);
@@ -156,7 +154,7 @@ int main(int argc, char *argv[]) {
 
         stream_protocol::endpoint endpoint(socket);
         net::irc::server<stream_protocol> *s =
-            new net::irc::server<stream_protocol>(io_service, endpoint);
+            new net::irc::server<stream_protocol>(endpoint);
 
         s->name = socket;
 
@@ -171,8 +169,7 @@ int main(int argc, char *argv[]) {
 
         if (endpoint_iterator != end) {
           tcp::endpoint endpoint = *endpoint_iterator;
-          net::irc::server<tcp> *s =
-              new net::irc::server<tcp>(io_service, endpoint);
+          net::irc::server<tcp> *s = new net::irc::server<tcp>(endpoint);
 
           s->name = host;
 
@@ -184,7 +181,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (targets > 0) {
-      io_service.run();
+      io::service::common().run();
     }
 
     return 0;

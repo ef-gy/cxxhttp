@@ -42,6 +42,29 @@
 #include <ef.gy/version.h>
 
 namespace efgy {
+namespace io {
+/**\brief asio::io_service wrapper
+ *
+ * The main purpose of this object is to be able to have a 'default' IO service
+ * object for server code to use. This is provided by the service::common()
+ * function.
+ */
+class service {
+public:
+  static service &common(void) {
+    static service serv;
+    return serv;
+  }
+
+  asio::io_service &get(void) { return io_service; }
+
+  std::size_t run(void) { return io_service.run(); }
+
+protected:
+  asio::io_service io_service;
+};
+}
+
 /**\brief Networking code
  *
  * Contains templates that deal with networking in one way or another. This code
@@ -74,13 +97,14 @@ public:
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    *
-   * \param[out] pio IO service to use.
-   * \param[in]  endpoint   Endpoint for the socket to bind.
-   * \param[out] logfile    A stream to write log messages to.
+   * \param[in]  endpoint Endpoint for the socket to bind.
+   * \param[out] pio      IO service to use.
+   * \param[out] logfile  A stream to write log messages to.
    */
-  server(asio::io_service &pio, typename base::endpoint &endpoint,
+  server(typename base::endpoint &endpoint,
+         io::service &pio = io::service::common(),
          std::ostream &logfile = std::cout)
-      : io(pio), acceptor(pio, endpoint), log(logfile), processor(),
+      : io(pio), acceptor(pio.get(), endpoint), log(logfile), processor(),
         name("server"), version("libefgy/") {
     std::ostringstream ver("");
     ver << efgy::version;
@@ -100,7 +124,7 @@ public:
    * Bound in the constructor to an asio.hpp IO service which handles
    * asynchronous connections.
    */
-  asio::io_service &io;
+  io::service &io;
 
   /**\brief Log stream
    *

@@ -259,8 +259,8 @@ public:
    * \param[in]  pServer The server instance this session belongs to.
    */
   session(serverType &pServer)
-      : self(this), server(pServer), socket(pServer.io), status(stRequest),
-        input() {}
+      : self(this), server(pServer), socket(pServer.io.get()),
+        status(stRequest), input() {}
 
   /**\brief Destructor
    *

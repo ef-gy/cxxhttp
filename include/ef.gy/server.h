@@ -193,15 +193,12 @@ protected:
   typename base::acceptor acceptor;
 };
 
-template <typename base> class endpoint {};
-
-template <> class endpoint<asio::local::stream_protocol> {
+template <typename base = asio::local::stream_protocol> class endpoint {
 public:
   endpoint(const std::string &pSocket) : socket(pSocket) {}
 
-  std::size_t
-  with(std::function<bool(asio::local::stream_protocol::endpoint &)> f) {
-    asio::local::stream_protocol::endpoint endpoint(socket);
+  std::size_t with(std::function<bool(typename base::endpoint &)> f) {
+    typename base::endpoint endpoint(socket);
     if (f(endpoint)) {
       return 1;
     }

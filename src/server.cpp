@@ -185,11 +185,9 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
-  }
-  catch (std::exception & e) {
+  } catch (std::exception &e) {
     std::cerr << "Exception: " << e.what() << "\n";
-  }
-  catch (std::system_error & e) {
+  } catch (std::system_error &e) {
     std::cerr << "System Error: " << e.what() << "\n";
   }
 

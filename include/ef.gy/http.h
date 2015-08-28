@@ -80,7 +80,7 @@ public:
    * This is the session type that the processor is intended for. This typedef
    * is mostly here for convenience.
    */
-  typedef session<sock, base<sock> > session;
+  typedef session<sock, base<sock>> session;
 
   /**\brief Handle request
    *
@@ -133,12 +133,12 @@ protected:
    * This is the map that holds the request handlers. It maps regex strings to
    * handler functions, which is fairly straightforward.
    */
-  std::map<std::string, std::function<bool(session &, std::smatch &)> >
+  std::map<std::string, std::function<bool(session &, std::smatch &)>>
       subprocessor;
 };
 }
 
-template <typename base, typename requestProcessor = processor::base<base> >
+template <typename base, typename requestProcessor = processor::base<base>>
 using server = net::server<base, requestProcessor, session>;
 
 /**\brief Session wrapper
@@ -193,9 +193,8 @@ protected:
     bool operator()(const std::string &a, const std::string &b) const {
       return std::lexicographical_compare(
           a.begin(), a.end(), b.begin(), b.end(),
-          [](const unsigned char & c1, const unsigned char & c2)->bool {
-        return tolower(c1) < tolower(c2);
-      });
+          [](const unsigned char &c1, const unsigned char &c2)
+              -> bool { return tolower(c1) < tolower(c2); });
     }
   };
 
@@ -272,15 +271,13 @@ public:
 
     try {
       socket.shutdown(base::socket::shutdown_both);
-    }
-    catch (std::system_error & e) {
+    } catch (std::system_error &e) {
       std::cerr << "exception while shutting down socket: " << e.what() << "\n";
     }
 
     try {
       socket.close();
-    }
-    catch (std::system_error & e) {
+    } catch (std::system_error &e) {
       std::cerr << "exception while closing socket: " << e.what() << "\n";
     }
   }
@@ -321,14 +318,13 @@ public:
     reply << header << "\r\n" + body;
 
     asio::async_write(socket, asio::buffer(reply.str()),
-                      [&](std::error_code ec, std::size_t length) {
-      handleWrite(status, ec);
-    });
+                      [&](std::error_code ec,
+                          std::size_t length) { handleWrite(status, ec); });
 
-    //TODO: this doesn't work with UNIX sockets, so is disabled for now. I'd
+    // TODO: this doesn't work with UNIX sockets, so is disabled for now. I'd
     // probably have to overload something here, but not sure if it would be
     // worth it.
-    //server.log << socket.remote_endpoint().address().to_string()
+    // server.log << socket.remote_endpoint().address().to_string()
 
     server.log << "-"
                << " - - [-] \"" << method << " " << resource
@@ -408,8 +404,7 @@ protected:
           if (cli != header.end()) {
             try {
               contentLength = std::atoi(std::string(cli->second).c_str());
-            }
-            catch (...) {
+            } catch (...) {
               contentLength = 0;
             }
 
@@ -502,20 +497,18 @@ protected:
     case stHeader:
       asio::async_read_until(
           socket, input, "\n",
-          [&](const asio::error_code & error, std::size_t bytes_transferred) {
-        handleRead(error, bytes_transferred);
-      });
+          [&](const asio::error_code &error, std::size_t bytes_transferred) {
+            handleRead(error, bytes_transferred);
+          });
       break;
     case stContent:
       asio::async_read(
           socket, input,
-          [&](const asio::error_code & error, std::size_t bytes_transferred)
-              ->bool {
-        return contentReadP(error, bytes_transferred);
-      },
-          [&](const asio::error_code & error, std::size_t bytes_transferred) {
-        handleRead(error, bytes_transferred);
-      });
+          [&](const asio::error_code &error, std::size_t bytes_transferred)
+              -> bool { return contentReadP(error, bytes_transferred); },
+          [&](const asio::error_code &error, std::size_t bytes_transferred) {
+            handleRead(error, bytes_transferred);
+          });
       break;
     case stProcessing:
     case stErrorContentTooLarge:

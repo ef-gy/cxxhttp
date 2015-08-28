@@ -31,6 +31,7 @@
 #if !defined(EF_GY_SERVER_H)
 #define EF_GY_SERVER_H
 
+#include <functional>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -40,6 +41,7 @@
 #include <asio.hpp>
 
 #include <ef.gy/version.h>
+#include <ef.gy/maybe.h>
 
 namespace efgy {
 namespace io {
@@ -157,7 +159,7 @@ protected:
   void startAccept(void) {
     std::shared_ptr<session> newSession = (new session(*this))->self;
     acceptor.async_accept(newSession->socket,
-                          [newSession, this](const std::error_code & error) {
+                          [newSession, this](const std::error_code &error) {
       handleAccept(newSession, error);
     });
   }
@@ -189,6 +191,57 @@ protected:
    * constructor.
    */
   typename base::acceptor acceptor;
+};
+
+template <typename base> class endpoint {};
+
+template <> class endpoint<asio::local::stream_protocol> {
+public:
+  endpoint(const std::string &pSocket) : socket(pSocket) {}
+
+  std::size_t
+  with(std::function<bool(asio::local::stream_protocol::endpoint &)> f) {
+    asio::local::stream_protocol::endpoint endpoint(socket);
+    if (f(endpoint)) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+protected:
+  const std::string socket;
+};
+
+template <> class endpoint<asio::ip::tcp> {
+public:
+  endpoint(const std::string &pHost, const std::string &pPort,
+           io::service &pService = io::service::common())
+      : host(pHost), port(pPort), service(pService) {}
+
+  std::size_t with(std::function<bool(asio::ip::tcp::endpoint &)> f) {
+    std::size_t res = 0;
+
+    asio::ip::tcp::resolver resolver(service.get());
+    asio::ip::tcp::resolver::query query(host, port);
+    asio::ip::tcp::resolver::iterator endpoint_iterator =
+        resolver.resolve(query);
+    asio::ip::tcp::resolver::iterator end;
+
+    if (endpoint_iterator != end) {
+      asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
+      if (f(endpoint)) {
+        res++;
+      }
+    }
+
+    return res;
+  }
+
+protected:
+  const std::string host;
+  const std::string port;
+  io::service &service;
 };
 }
 }

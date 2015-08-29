@@ -75,6 +75,10 @@ public:
 protected:
   asio::io_service io_service;
 };
+
+static int main(int argc, char *argv[]) {
+  return service::common().main(argc, argv);
+}
 }
 
 /**\brief Networking code

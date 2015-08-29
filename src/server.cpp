@@ -125,15 +125,5 @@ static cli::option oHTTP("http:(.+):([0-9]+)", [](std::smatch &m)->bool {
  * \returns 0 when nothing bad happened, 1 otherwise.
  */
 int main(int argc, char *argv[]) {
-  try {
-    return io::service::common().main(argc, argv);
-  }
-  catch (std::exception & e) {
-    std::cerr << "Exception: " << e.what() << "\n";
-  }
-  catch (std::system_error & e) {
-    std::cerr << "System Error: " << e.what() << "\n";
-  }
-
-  return 1;
+  return io::main(argc, argv);
 }

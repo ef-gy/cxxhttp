@@ -42,6 +42,7 @@
 
 #include <ef.gy/version.h>
 #include <ef.gy/maybe.h>
+#include <ef.gy/cli.h>
 
 namespace efgy {
 namespace io {
@@ -61,6 +62,15 @@ public:
   asio::io_service &get(void) { return io_service; }
 
   std::size_t run(void) { return io_service.run(); }
+
+  int main(int argc, char *argv[],
+           cli::options<> &opts = cli::options<>::common()) {
+    int rv = opts.apply(argc, argv) == 0;
+
+    run();
+
+    return rv;
+  }
 
 protected:
   asio::io_service io_service;
@@ -159,7 +169,7 @@ protected:
   void startAccept(void) {
     std::shared_ptr<session> newSession = (new session(*this))->self;
     acceptor.async_accept(newSession->socket,
-                          [newSession, this](const std::error_code &error) {
+                          [newSession, this](const std::error_code & error) {
       handleAccept(newSession, error);
     });
   }
@@ -206,9 +216,7 @@ public:
     return 0;
   }
 
-  const std::string &name(void) const {
-    return socket;
-  }
+  const std::string &name(void) const { return socket; }
 
 protected:
   const std::string socket;
@@ -239,9 +247,7 @@ public:
     return res;
   }
 
-  const std::string &name(void) const {
-    return host;
-  }
+  const std::string &name(void) const { return host; }
 
 protected:
   const std::string host;

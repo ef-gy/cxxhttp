@@ -147,11 +147,7 @@ static cli::option oIRC("irc:(.+):([0-9]+)", [](std::smatch &m)->bool {
  */
 int main(int argc, char *argv[]) {
   try {
-    int rv = cli::options<>::common().apply(argc, argv) == 0;
-
-    io::service::common().run();
-
-    return rv;
+    return io::service::common().main(argc, argv);
   }
   catch (std::exception & e) {
     std::cerr << "Exception: " << e.what() << "\n";

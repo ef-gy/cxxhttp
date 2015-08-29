@@ -206,6 +206,10 @@ public:
     return 0;
   }
 
+  const std::string &name(void) const {
+    return socket;
+  }
+
 protected:
   const std::string socket;
 };
@@ -233,6 +237,10 @@ public:
     }
 
     return res;
+  }
+
+  const std::string &name(void) const {
+    return host;
   }
 
 protected:

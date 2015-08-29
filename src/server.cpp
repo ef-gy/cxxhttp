@@ -45,8 +45,7 @@
 
 #define ASIO_DISABLE_THREADS
 #include <ef.gy/http.h>
-#include <ef.gy/irc.h>
-#include <ef.gy/cli.h>
+#include <ef.gy/ircd.h>
 
 using namespace efgy;
 using asio::ip::tcp;
@@ -104,18 +103,6 @@ static std::size_t setup(net::endpoint<sock> lookup,
   });
 }
 
-template <class sock>
-static std::size_t setupIRC(net::endpoint<sock> lookup,
-                            io::service &service = io::service::common()) {
-  return lookup.with([&service, &lookup](typename sock::endpoint & endpoint)
-                         ->bool {
-    net::irc::server<sock> *s = new net::irc::server<sock>(endpoint, service);
-
-    s->name = lookup.name();
-
-    return true;
-  });
-}
 
 static cli::option oHTTPSocket("http:unix:(.+)", [](std::smatch &m)->bool {
   return setup(net::endpoint<stream_protocol>(m[1])) > 0;
@@ -123,14 +110,6 @@ static cli::option oHTTPSocket("http:unix:(.+)", [](std::smatch &m)->bool {
 
 static cli::option oHTTP("http:(.+):([0-9]+)", [](std::smatch &m)->bool {
   return setup(net::endpoint<tcp>(m[1], m[2])) > 0;
-});
-
-static cli::option oIRCSocket("irc:unix:(.+)", [](std::smatch &m)->bool {
-  return setupIRC(net::endpoint<stream_protocol>(m[1])) > 0;
-});
-
-static cli::option oIRC("irc:(.+):([0-9]+)", [](std::smatch &m)->bool {
-  return setupIRC(net::endpoint<tcp>(m[1], m[2])) > 0;
 });
 
 /**\brief Main function for the HTTP/IRC demo

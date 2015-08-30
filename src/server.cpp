@@ -44,73 +44,24 @@
  */
 
 #define ASIO_DISABLE_THREADS
-#include <ef.gy/http.h>
+#include <ef.gy/httpd.h>
 #include <ef.gy/ircd.h>
 
 using namespace efgy;
+
+namespace tcp {
 using asio::ip::tcp;
+static httpd::servlet<tcp> hello("^/$", httpd::hello<tcp>);
+static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);
+}
+
+namespace unix {
 using asio::local::stream_protocol;
-
-/**\brief Hello World request handler
- *
- * This function serves the familiar "Hello World!" when called.
- *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
- */
-template <class transport>
-static bool hello(typename net::http::server<transport>::session &session,
-                  std::smatch &) {
-  session.reply(200, "Hello World!");
-
-  return true;
+static httpd::servlet<stream_protocol> hello("^/$",
+                                             httpd::hello<stream_protocol>);
+static httpd::servlet<stream_protocol> quit("^/quit$",
+                                            httpd::quit<stream_protocol>);
 }
-
-/**\brief Hello World request handler for /quit
- *
- * When this handler is invoked, it stops the ASIO IO handler (after replying,
- * maybe...).
- *
- * \note Having this on your production server in this exact way is PROBABLY a
- *       really bad idea, unless you gate it in an upstream forward proxy. Or
- *       you have some way of automatically respawning your server. Or both.
- *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
- */
-template <class transport>
-static bool quit(typename net::http::server<transport>::session &session,
-                 std::smatch &) {
-  session.reply(200, "Good-Bye, Cruel World!");
-
-  session.server.io.get().stop();
-
-  return true;
-}
-
-template <class sock>
-static std::size_t setup(net::endpoint<sock> lookup,
-                         io::service &service = io::service::common()) {
-  return lookup.with([&service](typename sock::endpoint & endpoint)->bool {
-    net::http::server<sock> *s = new net::http::server<sock>(endpoint, service);
-
-    s->processor.add("^/$", hello<sock>);
-    s->processor.add("^/quit$", quit<sock>);
-
-    return true;
-  });
-}
-
-
-static cli::option oHTTPSocket("http:unix:(.+)", [](std::smatch &m)->bool {
-  return setup(net::endpoint<stream_protocol>(m[1])) > 0;
-});
-
-static cli::option oHTTP("http:(.+):([0-9]+)", [](std::smatch &m)->bool {
-  return setup(net::endpoint<tcp>(m[1], m[2])) > 0;
-});
 
 /**\brief Main function for the HTTP/IRC demo
  *
@@ -124,6 +75,4 @@ static cli::option oHTTP("http:(.+):([0-9]+)", [](std::smatch &m)->bool {
  *
  * \returns 0 when nothing bad happened, 1 otherwise.
  */
-int main(int argc, char *argv[]) {
-  return io::main(argc, argv);
-}
+int main(int argc, char *argv[]) { return io::main(argc, argv); }

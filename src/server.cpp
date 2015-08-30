@@ -8,7 +8,7 @@
  *
  * Call it like this:
  * \code
- * $ ./hello http:localhost:8080
+ * $ ./server http:localhost:8080
  * \endcode
  *
  * With localhost and 8080 being a host name and port of your choosing. Then,
@@ -49,16 +49,31 @@
 
 using namespace efgy;
 
+/**\brief Hello World request handler
+ *
+ * This function serves the familiar "Hello World!" when called.
+ *
+ * \param[out] session The HTTP session to answer on.
+ *
+ * \returns true (always, as we always reply).
+ */
+template <class transport>
+static bool hello(typename net::http::server<transport>::session &session,
+                  std::smatch &) {
+  session.reply(200, "Hello World!");
+
+  return true;
+}
 namespace tcp {
+
 using asio::ip::tcp;
-static httpd::servlet<tcp> hello("^/$", httpd::hello<tcp>);
+static httpd::servlet<tcp> hello("^/$", ::hello<tcp>);
 static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);
 }
 
 namespace unix {
 using asio::local::stream_protocol;
-static httpd::servlet<stream_protocol> hello("^/$",
-                                             httpd::hello<stream_protocol>);
+static httpd::servlet<stream_protocol> hello("^/$", ::hello<stream_protocol>);
 static httpd::servlet<stream_protocol> quit("^/quit$",
                                             httpd::quit<stream_protocol>);
 }

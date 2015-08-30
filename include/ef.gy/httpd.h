@@ -33,23 +33,7 @@
 namespace efgy {
 namespace httpd {
 
-/**\brief Hello World request handler
- *
- * This function serves the familiar "Hello World!" when called.
- *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
- */
-template <class transport>
-static bool hello(typename net::http::server<transport>::session &session,
-                  std::smatch &) {
-  session.reply(200, "Hello World!");
-
-  return true;
-}
-
-/**\brief Hello World request handler for /quit
+/**\brief Sample request handler for /quit
  *
  * When this handler is invoked, it stops the ASIO IO handler (after replying,
  * maybe...).
@@ -57,6 +41,9 @@ static bool hello(typename net::http::server<transport>::session &session,
  * \note Having this on your production server in this exact way is PROBABLY a
  *       really bad idea, unless you gate it in an upstream forward proxy. Or
  *       you have some way of automatically respawning your server. Or both.
+ *
+ * \note It would probably be OK to have this on by default on unix sockets,
+ *       seeing as you need to be logged onto the system to access those...
  *
  * \param[out] session The HTTP session to answer on.
  *

@@ -145,9 +145,9 @@ template <typename transport> static std::string print(void) {
   return rv;
 }
 
-static cli::hint tcpEndpoints("HTTP endpoints (TCP)", print<asio::ip::tcp>);
-static cli::hint unixEndpoints("HTTP endpoints (UNIX)",
-                               print<asio::local::stream_protocol>);
+static cli::hint tcp("HTTP Endpoints (TCP)", print<asio::ip::tcp>);
+static cli::hint unix("HTTP Endpoints (UNIX)",
+                      print<asio::local::stream_protocol>);
 }
 }
 }

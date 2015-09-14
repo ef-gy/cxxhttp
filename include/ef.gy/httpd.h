@@ -85,7 +85,6 @@ public:
     return *this;
   }
 
-protected:
   std::set<servlet *> servlets;
 };
 
@@ -135,6 +134,21 @@ static cli::option
           return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
         },
         "Listen for HTTP connections on the given host[1] and port[2].");
+
+namespace usage {
+template <typename transport> static std::string print(void) {
+  std::string rv = "";
+  for (const auto &servlet :
+       set<transport, servlet<transport>>::common().servlets) {
+    rv += " " + servlet->regex + "\n";
+  }
+  return rv;
+}
+
+static cli::hint tcpEndpoints("HTTP endpoints (TCP)", print<asio::ip::tcp>);
+static cli::hint unixEndpoints("HTTP endpoints (UNIX)",
+                               print<asio::local::stream_protocol>);
+}
 }
 }
 

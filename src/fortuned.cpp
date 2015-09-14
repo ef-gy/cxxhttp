@@ -44,175 +44,197 @@
 #include <fstream>
 
 using namespace efgy;
-using namespace std;
 
-map<string, string> fortuneData;
-
-class cookie {
+class fortune {
 public:
-  enum encoding { ePlain, eROT13 } encoding;
-  string file;
-  size_t offset;
-  size_t length;
+  fortune(void) : cookies(), data() {}
 
-  cookie(enum encoding pE, const string &pFile, size_t pOffset, size_t pLength)
-      : encoding(pE), file(pFile), offset(pOffset), length(pLength) {}
+  static fortune &common(void) {
+    static fortune f;
+    return f;
+  }
 
-  operator string(void) const {
-    string r(fortuneData[file].data() + offset, length);
+protected:
+  class cookie {
+  public:
+    const std::string file;
 
-    if (encoding == eROT13) {
-      for (size_t i = 0; i < r.size(); i++) {
-        char c = r[i];
+    cookie(bool pROT13, const std::string &pData, const std::string &pFile)
+        : rot13(pROT13), data(pData), file(pFile) {}
 
-        switch (c) {
-        case 'a':
-        case 'b':
-        case 'c':
-        case 'd':
-        case 'e':
-        case 'f':
-        case 'g':
-        case 'h':
-        case 'i':
-        case 'j':
-        case 'k':
-        case 'l':
-        case 'm':
-        case 'A':
-        case 'B':
-        case 'C':
-        case 'D':
-        case 'E':
-        case 'F':
-        case 'G':
-        case 'H':
-        case 'I':
-        case 'J':
-        case 'K':
-        case 'L':
-        case 'M':
-          r[i] = c + 13;
-          break;
-        case 'n':
-        case 'o':
-        case 'p':
-        case 'q':
-        case 'r':
-        case 's':
-        case 't':
-        case 'u':
-        case 'v':
-        case 'w':
-        case 'x':
-        case 'y':
-        case 'z':
-        case 'N':
-        case 'O':
-        case 'P':
-        case 'Q':
-        case 'R':
-        case 'S':
-        case 'T':
-        case 'U':
-        case 'V':
-        case 'W':
-        case 'X':
-        case 'Y':
-        case 'Z':
-          r[i] = c - 13;
-          break;
-        default:
-          break;
+    operator std::string(void) const {
+      std::string r = data;
+
+      if (rot13) {
+        for (size_t i = 0; i < r.size(); i++) {
+          char c = r[i];
+
+          switch (c) {
+          case 'a':
+          case 'b':
+          case 'c':
+          case 'd':
+          case 'e':
+          case 'f':
+          case 'g':
+          case 'h':
+          case 'i':
+          case 'j':
+          case 'k':
+          case 'l':
+          case 'm':
+          case 'A':
+          case 'B':
+          case 'C':
+          case 'D':
+          case 'E':
+          case 'F':
+          case 'G':
+          case 'H':
+          case 'I':
+          case 'J':
+          case 'K':
+          case 'L':
+          case 'M':
+            r[i] = c + 13;
+            break;
+          case 'n':
+          case 'o':
+          case 'p':
+          case 'q':
+          case 'r':
+          case 's':
+          case 't':
+          case 'u':
+          case 'v':
+          case 'w':
+          case 'x':
+          case 'y':
+          case 'z':
+          case 'N':
+          case 'O':
+          case 'P':
+          case 'Q':
+          case 'R':
+          case 'S':
+          case 'T':
+          case 'U':
+          case 'V':
+          case 'W':
+          case 'X':
+          case 'Y':
+          case 'Z':
+            r[i] = c - 13;
+            break;
+          default:
+            break;
+          }
+        }
+      }
+
+      return r;
+    }
+
+  protected:
+    bool rot13;
+    const std::string data;
+  };
+
+  std::vector<cookie> cookies;
+  std::map<std::string, std::string> data;
+
+public:
+  bool prepare(const std::string &dir, const bool doROT13 = false) {
+    static const std::regex dataFile(".*/[a-zA-Z-]+");
+    std::smatch matches;
+    DIR *d = opendir(dir.c_str());
+
+    if (!d) {
+      return false;
+    }
+
+    struct dirent *en;
+
+    while ((en = readdir(d)) != 0) {
+      std::string e = dir + en->d_name;
+
+      if (regex_match(e, matches, dataFile)) {
+        std::ifstream t(e);
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+
+        data[e] = buffer.str();
+
+        const std::string &p = data[e];
+        const char *data = p.c_str();
+        size_t start = 0;
+        enum { stN, stNL, stNLP } state = stN;
+
+        for (size_t c = 0; c < p.size(); c++) {
+          switch (data[c]) {
+          case '\n':
+            switch (state) {
+            case stN:
+              state = stNL;
+              break;
+            case stNLP:
+              cookies.push_back(cookie(
+                  doROT13, std::string(p.data() + start, c - start - 1), e));
+              start = c + 1;
+            default:
+              state = stN;
+              break;
+            }
+            break;
+
+          case '%':
+            switch (state) {
+            case stNL:
+              state = stNLP;
+              break;
+            default:
+              state = stN;
+              break;
+            }
+            break;
+
+          case '\r':
+            break;
+
+          default:
+            state = stN;
+            break;
+          }
         }
       }
     }
+    closedir(d);
 
-    return r;
+    return true;
   }
+
+  const std::size_t size(void) const { return cookies.size(); }
+
+  const cookie &get(std::size_t i) const {
+    if (i < cookies.size()) {
+      return cookies[i];
+    }
+
+    return get();
+  }
+
+  const cookie &get(void) const { return get((rand() % size())); }
 };
-
-vector<cookie> cookies;
-
-static bool prepareFortunes(const string &dir, const bool doROT13 = false) {
-  static const regex dataFile(".*/[a-zA-Z-]+");
-  smatch matches;
-
-  DIR *d = opendir(dir.c_str());
-  if (!d) {
-    return false;
-  }
-  struct dirent *en;
-  while ((en = readdir(d)) != 0) {
-    string e = dir + en->d_name;
-
-    if (regex_match(e, matches, dataFile)) {
-      std::ifstream t(e);
-      std::stringstream buffer;
-      buffer << t.rdbuf();
-
-      fortuneData[e] = buffer.str();
-
-      const string &p = fortuneData[e];
-      const char *data = p.c_str();
-      size_t start = 0;
-      enum { stN, stNL, stNLP } state = stN;
-
-      for (size_t c = 0; c < p.size(); c++) {
-        switch (data[c]) {
-        case '\n':
-          switch (state) {
-          case stN:
-            state = stNL;
-            break;
-          case stNLP:
-            cookies.push_back(
-                cookie((doROT13 ? cookie::eROT13 : cookie::ePlain), e, start,
-                       c - start - 1));
-            start = c + 1;
-          default:
-            state = stN;
-            break;
-          }
-          break;
-
-        case '%':
-          switch (state) {
-          case stNL:
-            state = stNLP;
-            break;
-          default:
-            state = stN;
-            break;
-          }
-          break;
-
-        case '\r':
-          break;
-
-        default:
-          state = stN;
-          break;
-        }
-      }
-    }
-  }
-  closedir(d);
-
-  return true;
-}
 
 template <class transport>
 static bool fortune(typename net::http::server<transport>::session &session,
                     std::smatch &) {
-  const int id = rand() % cookies.size();
-  const cookie &c = cookies[id];
-  char nbuf[20];
-  snprintf(nbuf, 20, "%i", id);
-  string sc = string(c);
+  const auto &c = fortune::common().get();
+  std::string sc = std::string(c);
 
   /* note: this escaping is not exactly efficient, but it's fairly simple
-     and the strings are fairly short, so it shouldn't be much of an issue. */
+     and the std::strings are fairly short, so it shouldn't be much of an issue.
+     */
   for (char i = 0; i < 0x20; i++) {
     if ((i == '\n') || (i == '\t')) {
       continue;
@@ -228,11 +250,11 @@ static bool fortune(typename net::http::server<transport>::session &session,
 
   sc = "<![CDATA[" + sc + "]]>";
 
-  session.reply(200, "Content-Type: text/xml; charset=utf-8\r\n",
-                string("<?xml version='1.0' encoding='utf-8'?>"
-                       "<fortune xmlns='http://ef.gy/2012/fortune' quoteID='") +
-                    nbuf + "' sourceFile='" + c.file + "'>" + sc +
-                    "</fortune>");
+  session.reply(
+      200, "Content-Type: text/xml; charset=utf-8\r\n",
+      std::string("<?xml version='1.0' encoding='utf-8'?>"
+                  "<fortune xmlns='http://ef.gy/2012/fortune' sourceFile='" +
+                  c.file + "'>" + sc + "</fortune>"));
 
   return true;
 }
@@ -253,7 +275,8 @@ static httpd::servlet<stream_protocol> quit("^/quit$",
 
 static cli::option
     count("count", [](std::smatch &m) -> bool {
-                     std::cout << cookies.size() << " cookie(s) loaded\n";
+                     std::cout << fortune::common().size()
+                               << " cookie(s) loaded\n";
 
                      return true;
                    },
@@ -265,14 +288,9 @@ static cli::option print("print(:([0-9]+))?",
                              std::stringstream s(m[2]);
                              std::size_t n;
                              s >> n;
-                             if (n < cookies.size()) {
-                               std::cout << std::string(cookies[n]);
-                             } else {
-                               return false;
-                             }
+                             std::cout << std::string(fortune::common().get(n));
                            } else {
-                             std::cout << std::string(
-                                 cookies[(rand() % cookies.size())]);
+                             std::cout << std::string(fortune::common().get());
                            }
 
                            return true;
@@ -281,8 +299,8 @@ static cli::option print("print(:([0-9]+))?",
                          "selects a specific cookie.");
 
 int main(int argc, char *argv[]) {
-  prepareFortunes("/usr/share/games/fortunes/");
-  prepareFortunes("/usr/share/games/fortunes/off/", true);
+  fortune::common().prepare("/usr/share/games/fortunes/");
+  fortune::common().prepare("/usr/share/games/fortunes/off/", true);
 
   srand(time(0));
 

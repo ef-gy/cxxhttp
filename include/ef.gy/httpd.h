@@ -61,7 +61,7 @@ static bool quit(typename net::http::server<transport>::session &session,
 
 template <class transport> class servlet;
 
-template <class transport, class servlet = servlet<transport> > class set {
+template <class transport, class servlet = servlet<transport>> class set {
 public:
   static set &common(void) {
     static set s;
@@ -112,7 +112,7 @@ protected:
 template <class sock>
 static std::size_t setup(net::endpoint<sock> lookup,
                          io::service &service = io::service::common()) {
-  return lookup.with([&service](typename sock::endpoint & endpoint)->bool {
+  return lookup.with([&service](typename sock::endpoint &endpoint) -> bool {
     net::http::server<sock> *s = new net::http::server<sock>(endpoint, service);
 
     set<sock>::common().apply(s->processor);
@@ -121,14 +121,13 @@ static std::size_t setup(net::endpoint<sock> lookup,
   });
 }
 
-static cli::option socket("http:unix:(.+)", [](std::smatch &m)->bool {
+static cli::option socket("http:unix:(.+)", [](std::smatch &m) -> bool {
   return setup(net::endpoint<asio::local::stream_protocol>(m[1])) > 0;
 });
 
-static cli::option tcp("http:(.+):([0-9]+)", [](std::smatch &m)->bool {
+static cli::option tcp("http:(.+):([0-9]+)", [](std::smatch &m) -> bool {
   return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
 });
-
 }
 }
 

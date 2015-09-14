@@ -64,8 +64,8 @@ static bool hello(typename net::http::server<transport>::session &session,
 
   return true;
 }
-namespace tcp {
 
+namespace tcp {
 using asio::ip::tcp;
 static httpd::servlet<tcp> hello("^/$", ::hello<tcp>);
 static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);

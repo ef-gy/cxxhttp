@@ -173,7 +173,7 @@ protected:
   void startAccept(void) {
     std::shared_ptr<session> newSession = (new session(*this))->self;
     acceptor.async_accept(newSession->socket,
-                          [newSession, this](const std::error_code & error) {
+                          [newSession, this](const std::error_code &error) {
       handleAccept(newSession, error);
     });
   }

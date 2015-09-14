@@ -48,16 +48,6 @@ using namespace std;
 
 map<string, string> fortuneData;
 
-std::string replace(std::string subject, const std::string &search,
-                    const std::string &replace) {
-  size_t pos = 0;
-  while ((pos = subject.find(search, pos)) != std::string::npos) {
-    subject.replace(pos, search.length(), replace);
-    pos += replace.length();
-  }
-  return subject;
-}
-
 class cookie {
 public:
   enum encoding { ePlain, eROT13 } encoding;
@@ -144,77 +134,70 @@ public:
 
 vector<cookie> cookies;
 
-static bool
-prepareFortunes(const string &pInoffensive = "/usr/share/games/fortunes/",
-                const string &pOffensive = "/usr/share/games/fortunes/off/") {
+static bool prepareFortunes(const string &dir, const bool doROT13 = false) {
   static const regex dataFile(".*/[a-zA-Z-]+");
   smatch matches;
 
-  for (unsigned int q = 0; q < 2; q++) {
-    string dir = (q == 0) ? pInoffensive : pOffensive;
-    bool doROT13 = (q == 1);
+  DIR *d = opendir(dir.c_str());
+  if (!d) {
+    return false;
+  }
+  struct dirent *en;
+  while ((en = readdir(d)) != 0) {
+    string e = dir + en->d_name;
 
-    DIR *d = opendir(dir.c_str());
-    if (!d) {
-      continue;
-    }
-    struct dirent *en;
-    while ((en = readdir(d)) != 0) {
-      string e = dir + en->d_name;
+    if (regex_match(e, matches, dataFile)) {
+      std::ifstream t(e);
+      std::stringstream buffer;
+      buffer << t.rdbuf();
 
-      if (regex_match(e, matches, dataFile)) {
-        std::ifstream t(e);
-        std::stringstream buffer;
-        buffer << t.rdbuf();
+      fortuneData[e] = buffer.str();
 
-        fortuneData[e] = buffer.str();
+      const string &p = fortuneData[e];
+      const char *data = p.c_str();
+      size_t start = 0;
+      enum { stN, stNL, stNLP } state = stN;
 
-        const string &p = fortuneData[e];
-        const char *data = p.c_str();
-        size_t start = 0;
-        enum { stN, stNL, stNLP } state = stN;
-
-        for (size_t c = 0; c < p.size(); c++) {
-          switch (data[c]) {
-          case '\n':
-            switch (state) {
-            case stN:
-              state = stNL;
-              break;
-            case stNLP:
-              cookies.push_back(
-                  cookie((doROT13 ? cookie::eROT13 : cookie::ePlain), e, start,
-                         c - start - 1));
-              start = c + 1;
-            default:
-              state = stN;
-              break;
-            }
+      for (size_t c = 0; c < p.size(); c++) {
+        switch (data[c]) {
+        case '\n':
+          switch (state) {
+          case stN:
+            state = stNL;
             break;
-
-          case '%':
-            switch (state) {
-            case stNL:
-              state = stNLP;
-              break;
-            default:
-              state = stN;
-              break;
-            }
-            break;
-
-          case '\r':
-            break;
-
+          case stNLP:
+            cookies.push_back(
+                cookie((doROT13 ? cookie::eROT13 : cookie::ePlain), e, start,
+                       c - start - 1));
+            start = c + 1;
           default:
             state = stN;
             break;
           }
+          break;
+
+        case '%':
+          switch (state) {
+          case stNL:
+            state = stNLP;
+            break;
+          default:
+            state = stN;
+            break;
+          }
+          break;
+
+        case '\r':
+          break;
+
+        default:
+          state = stN;
+          break;
         }
       }
     }
-    closedir(d);
   }
+  closedir(d);
 
   return true;
 }
@@ -236,7 +219,11 @@ static bool fortune(typename net::http::server<transport>::session &session,
     }
     const char org[2] = {i, 0};
     const char rep[3] = {'^', (char)(('A' - 1) + i), 0};
-    replace(sc, org, rep);
+    for (size_t pos = sc.find(org, pos); pos != std::string::npos;
+         pos = sc.find(org, pos)) {
+      sc.replace(pos, 2, rep);
+      pos += 3;
+    }
   }
 
   sc = "<![CDATA[" + sc + "]]>";
@@ -290,11 +277,12 @@ static cli::option print("print(:([0-9]+))?",
 
                            return true;
                          },
-                         "print a fortune to stdout"
-                         " - a numerical parameter selects a specific cookie.");
+                         "print a fortune to stdout - a numerical parameter "
+                         "selects a specific cookie.");
 
 int main(int argc, char *argv[]) {
-  prepareFortunes();
+  prepareFortunes("/usr/share/games/fortunes/");
+  prepareFortunes("/usr/share/games/fortunes/off/", true);
 
   srand(time(0));
 

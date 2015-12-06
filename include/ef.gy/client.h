@@ -1,7 +1,7 @@
 /**\file
- * \brief asio.hpp Generic Server
+ * \brief asio.hpp Generic Client
  *
- * A generic asynchronous server template using asio.hpp.
+ * A generic asynchronous client template using asio.hpp.
  *
  * \copyright
  * Copyright (c) 2012-2015, ef.gy Project Members
@@ -28,8 +28,8 @@
  * \see Project Source Code: https://github.com/ef-gy/libefgy
  */
 
-#if !defined(EF_GY_SERVER_H)
-#define EF_GY_SERVER_H
+#if !defined(EF_GY_CLIENT_H)
+#define EF_GY_CLIENT_H
 
 #include <memory>
 
@@ -37,17 +37,17 @@
 
 namespace efgy {
 namespace net {
-/**\brief Basic asynchronous server wrapper
+/**\brief Basic asynchronous client wrapper
  *
- * Contains the code that accepts incoming requests and dispatches sessions to
- * process these requests asynchronously.
+ * Contains code that connects to a given endpoint and establishes a session for
+ * the duration of that connection.
  *
  * \tparam base             The socket class, e.g. asio::ip::tcp
  * \tparam requestProcessor The functor class to handle requests.
  */
 template <typename base, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
-class server : public connection<requestProcessor> {
+class client : public connection<requestProcessor> {
 public:
   using connection = connection<requestProcessor>;
   using session = sessionTemplate<base, requestProcessor>;
@@ -61,54 +61,46 @@ public:
    * \param[out] pio      IO service to use.
    * \param[out] logfile  A stream to write log messages to.
    */
-  server(typename base::endpoint &endpoint,
+  client(typename base::endpoint &endpoint,
          io::service &pio = io::service::common(),
          std::ostream &logfile = std::cout)
-      : connection(pio, logfile), acceptor(pio.get(), endpoint) {
-    startAccept();
+      : connection(pio, logfile), target(endpoint) {
+    startConnect();
   }
 
 protected:
-  /**\brief Accept the next incoming connection
+  /**\brief Connect to the socket.
    *
-   * This function creates a new, blank session to handle the next incoming
-   * request.
+   * This function creates a new, blank session and attempts to connect to the
+   * given socket.
    */
-  void startAccept(void) {
+  void startConnect(void) {
     std::shared_ptr<session> newSession = (new session(*this))->self;
-    acceptor.async_accept(newSession->socket,
-                          [newSession, this](const std::error_code &error) {
-                            handleAccept(newSession, error);
-                          });
+    newSession->socket.async_connect(
+        target, [newSession, this](const std::error_code &error) {
+          handleConnect(newSession, error);
+        });
   }
 
-  /**\brief Handle next incoming connection
+  /**\brief Handle new connection
    *
-   * Called by asio.hpp when a new inbound connection has been accepted; this
-   * will make the session parse the incoming request and dispatch it to the
-   * request processor specified as a template argument.
+   * Called by asio.hpp when a new outbound connection has been accepted; this
+   * allows the session object to begin interacting with the new session.
    *
    * \param[in] newSession The blank session object that was created by
-   *                       startAccept().
+   *                       startConnect().
    * \param[in] error      Describes any error condition that may have occurred.
    */
-  void handleAccept(std::shared_ptr<session> newSession,
-                    const std::error_code &error) {
+  void handleConnect(std::shared_ptr<session> newSession,
+                     const std::error_code &error) {
     if (!error) {
       newSession->start();
     } else {
       newSession->self.reset();
     }
-
-    startAccept();
   }
 
-  /**\brief Socket acceptor
-   *
-   * This is the acceptor which has been bound to the socket specified in the
-   * constructor.
-   */
-  typename base::acceptor acceptor;
+  typename base::endpoint target;
 };
 }
 }

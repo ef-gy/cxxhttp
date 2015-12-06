@@ -32,13 +32,14 @@
 #define EF_GY_HTTP_H
 
 #include <map>
-
 #include <regex>
 #include <system_error>
 #include <algorithm>
 #include <functional>
+#include <deque>
 
 #include <ef.gy/server.h>
+#include <ef.gy/client.h>
 
 namespace efgy {
 namespace net {
@@ -93,7 +94,7 @@ public:
    *
    * \returns true (if successful; but always, really).
    */
-  bool operator()(session &sess) {
+  bool operator()(session &sess) const {
     for (auto &proc : subprocessor) {
       std::regex rx(proc.first);
       std::smatch matches;
@@ -127,6 +128,14 @@ public:
     return *this;
   }
 
+  /**\brief Begin handling requests
+   *
+   * Called by a specific session object to indicate that a session and
+   * connection have now been established. Doesn't do anything in the server
+   * case.
+   */
+  void start(session &) const {}
+
 protected:
   /**\brief Map of request handlers
    *
@@ -136,10 +145,65 @@ protected:
   std::map<std::string, std::function<bool(session &, std::smatch &)>>
       subprocessor;
 };
+
+template <class sock> class client {
+public:
+  /**\brief Session type
+   *
+   * This is the session type that the processor is intended for. This typedef
+   * is mostly here for convenience.
+   */
+  typedef session<sock, client<sock>> session;
+
+  bool operator()(session &sess) const {
+    if (onSuccess) {
+      return onSuccess(sess);
+    }
+
+    return true;
+  }
+
+  void start(session &sess) {
+    auto req = requests.front();
+    requests.pop_front();
+
+    sess.request(req.method, req.resource, req.headers, req.body);
+  }
+
+protected:
+  class request {
+  public:
+    std::string method;
+    std::string resource;
+    std::string headers;
+    std::string body;
+
+    request(const std::string &pMethod, const std::string &pResource,
+            const std::string &pHeaders, const std::string &pBody)
+        : method(pMethod), resource(pResource), headers(pHeaders),
+          body(pBody){};
+  };
+
+public:
+  client &query(const std::string &method, const std::string &resource,
+                const std::string &headers, const std::string &body) {
+    requests.push_back(request(method, resource, headers, body));
+    return *this;
+  }
+
+  client &then(std::function<bool(session &)> callback) {
+    onSuccess = callback;
+    return *this;
+  }
+
+protected:
+  std::deque<request> requests;
+  std::function<bool(session &)> onSuccess;
+};
 }
 
 template <typename base, typename requestProcessor = processor::base<base>>
-using server = net::server<base, requestProcessor, session>;
+using connection = net::connection<requestProcessor>;
 
 /**\brief Session wrapper
  *
@@ -150,26 +214,26 @@ using server = net::server<base, requestProcessor, session>;
  */
 template <typename base, typename requestProcessor> class session {
 protected:
-  /**\brief Server type
+  /**\brief Connection type
    *
-   * This is the type of the server that the session is being served by; used
-   * when instantiating a session, as we need to use some of the data the server
-   * has to offer.
+   * This is the type of the server or client that the session is being served
+   * on; used when instantiating a session, as we need to use some of the data
+   * the server or client may have to offer.
    */
-  typedef server<base, requestProcessor> serverType;
+  using connectionType = connection<base, requestProcessor>;
 
   /**\brief HTTP request parser status
    *
    * Contains the current status of the request parser for the current session.
    */
   enum {
-    stRequest,    /**< Request received. */
+    stRequest,    /**< Waiting for a request line. */
+    stStatus,     /**< Waiting for a status line. */
     stHeader,     /**< Currently parsing the request header. */
     stContent,    /**< Currently parsing the request body. */
     stProcessing, /**< Currently processing the request. */
     stErrorContentTooLarge,
-    /**< Error: Content-Length is greater than
-     * maxContentLength */
+    /**< Error: Content-Length is greater than maxContentLength */
     stShutdown /**< Will shut down the connection now. Set in the destructor. */
   } status;
 
@@ -193,8 +257,9 @@ protected:
     bool operator()(const std::string &a, const std::string &b) const {
       return std::lexicographical_compare(
           a.begin(), a.end(), b.begin(), b.end(),
-          [](const unsigned char &c1, const unsigned char &c2)
-              -> bool { return tolower(c1) < tolower(c2); });
+          [](const unsigned char &c1, const unsigned char &c2) -> bool {
+            return tolower(c1) < tolower(c2);
+          });
     }
   };
 
@@ -222,6 +287,27 @@ public:
    */
   std::string resource;
 
+  /**\brief Request protocol and version identifier
+   *
+   * The HTTP request line contains the protocol to use for communication, which
+   * is stored in this string.
+   */
+  std::string protocol;
+
+  /**\brief Status code
+   *
+   * HTTP replies send a status code to indicate errors and the like. For client
+   * request replies, this code is set based on what the client sent.
+   */
+  int code;
+
+  /**\brief Status description
+   *
+   * HTTP replies have a textual description of the status code that was sent;
+   * this member variable holds that description.
+   */
+  std::string description;
+
   /**\brief HTTP request headers
    *
    * Contains all the headers that were sent along with the request. Things
@@ -237,12 +323,13 @@ public:
    */
   std::string content;
 
-  /**\brief Server instance
+  /**\brief Connection instance
    *
-   * A reference to the server that this session belongs to and was spawned
-   * from. Used to process requests and potentially for general maintenance.
+   * A reference to the server or client that this session belongs to and was
+   * spawned from. Used to process requests and potentially for general
+   * maintenance.
    */
-  serverType &server;
+  connectionType &connection;
 
   /**\brief Maximum request content size
    *
@@ -251,14 +338,14 @@ public:
    */
   std::size_t maxContentLength = (1024 * 1024 * 12);
 
-  /**\brief Construct with I/O service
+  /**\brief Construct with I/O connection
    *
-   * Constructs a session with the given asynchronous I/O service.
+   * Constructs a session with the given asynchronous connection.
    *
-   * \param[in]  pServer The server instance this session belongs to.
+   * \param[in] pConnection The connection instance this session belongs to.
    */
-  session(serverType &pServer)
-      : self(this), server(pServer), socket(pServer.io.get()),
+  session(connectionType &pConnection)
+      : self(this), connection(pConnection), socket(pConnection.io.get()),
         status(stRequest), input() {}
 
   /**\brief Destructor
@@ -286,7 +373,10 @@ public:
    *
    * Starts processing the incoming request.
    */
-  void start() { read(); }
+  void start() {
+    connection.processor.start(*this);
+    read();
+  }
 
   /**\brief Send reply
    *
@@ -297,7 +387,7 @@ public:
    *
    * \note The code will always reply with an HTTP/1.1 reply, regardless of the
    *       version in the request. If this is a concern for you, put the server
-   *       behind an an nginx instance, which should fix up the output as
+   *       behind an nginx instance, which should fix up the output as
    *       necessary.
    *
    * \param[in] status The status to return.
@@ -318,18 +408,27 @@ public:
     reply << header << "\r\n" + body;
 
     asio::async_write(socket, asio::buffer(reply.str()),
-                      [&](std::error_code ec,
-                          std::size_t length) { handleWrite(status, ec); });
+                      [&](std::error_code ec, std::size_t length) {
+                        handleWrite(status, ec);
+                      });
 
-    // TODO: this doesn't work with UNIX sockets, so is disabled for now. I'd
-    // probably have to overload something here, but not sure if it would be
-    // worth it.
-    // server.log << socket.remote_endpoint().address().to_string()
+    connection.log << net::address(socket) << " - - [-] \"" << method << " "
+                   << resource << " " << protocol << "\" " << status << " "
+                   << body.length() << " \"-\" \"-\"\n";
+  }
 
-    server.log << "-"
-               << " - - [-] \"" << method << " " << resource
-               << " HTTP/1.[01]\" " << status << " " << body.length()
-               << " \"-\" \"-\"\n";
+  void request(const std::string &method, const std::string &resource,
+               const std::string &header, const std::string &body) {
+    std::string req =
+        method + " " + resource + " HTTP/1.1\r\n" + header + "\r\n" + body;
+
+    if (status == stRequest) {
+      status = stStatus;
+    }
+
+    asio::async_write(
+        socket, asio::buffer(req),
+        [&](std::error_code ec, std::size_t length) { handleWrite(0, ec); });
   }
 
   /**\brief Send reply without custom headers
@@ -360,101 +459,134 @@ protected:
       return;
     }
 
-    if (!error) {
-      static const std::regex req(
-          "(\\w+)\\s+([\\w\\d%/.:;()+-]+)\\s+HTTP/1.[01]\\s*");
-      static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
-      static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");
+    if (error) {
+      self.reset();
+    }
 
-      std::istream is(&input);
-      std::string s;
+    static const std::regex req(
+        "(\\w+)\\s+([\\w\\d%/.:;()+-]+)\\s+(HTTP/1.[01])\\s*");
+    static const std::regex stat("(HTTP/1.[01])\\s+([0-9]{3})\\s+(.*)\\s*");
+    static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
+    static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");
 
-      std::smatch matches;
+    std::istream is(&input);
+    std::string s;
 
-      switch (status) {
-      case stRequest:
-      case stHeader:
-        std::getline(is, s);
-        break;
-      case stContent:
-        s = std::string(contentLength, '\0');
-        is.read(&s[0], contentLength);
-        break;
-      case stProcessing:
-      case stErrorContentTooLarge:
-      case stShutdown:
-        break;
+    std::smatch matches;
+
+    switch (status) {
+    case stRequest:
+    case stStatus:
+    case stHeader:
+      std::getline(is, s);
+      break;
+    case stContent:
+      s = std::string(input.size(), '\0');
+      is.read(&s[0], input.size());
+      break;
+    case stProcessing:
+    case stErrorContentTooLarge:
+    case stShutdown:
+      break;
+    }
+
+    switch (status) {
+    case stRequest:
+      if (std::regex_match(s, matches, req)) {
+        method = matches[1];
+        resource = matches[2];
+        protocol = matches[3];
+
+        header = std::map<std::string, std::string, caseInsensitiveLT>();
+        status = stHeader;
       }
+      break;
 
-      switch (status) {
-      case stRequest:
-        if (std::regex_match(s, matches, req)) {
-          method = matches[1];
-          resource = matches[2];
-
-          header = std::map<std::string, std::string, caseInsensitiveLT>();
-          status = stHeader;
+    case stStatus:
+      if (std::regex_match(s, matches, stat)) {
+        protocol = matches[1];
+        try {
+          code = std::stoi(matches[2]);
+        } catch (...) {
+          code = 500;
         }
-        break;
+        description = matches[3];
 
-      case stHeader:
-        if ((s == "\r") || (s == "")) {
-          const auto &cli = header.find("Content-Length");
+        header = std::map<std::string, std::string, caseInsensitiveLT>();
+        status = stHeader;
+      }
+      break;
 
-          if (cli != header.end()) {
-            try {
-              contentLength = std::atoi(std::string(cli->second).c_str());
-            } catch (...) {
-              contentLength = 0;
-            }
+    case stHeader:
+      if ((s == "\r") || (s == "")) {
+        const auto &cli = header.find("Content-Length");
 
-            if (contentLength > maxContentLength) {
-              status = stErrorContentTooLarge;
-              reply(400, "Request body too large");
-            } else {
-              status = stContent;
-            }
-            break;
+        // everything we already read before we got here that is left in the
+        // buffer is part of the content.
+        content = std::string(input.size(), '\0');
+        is.read(&content[0], input.size());
+
+        if (cli != header.end()) {
+          try {
+            contentLength = std::stoi(cli->second);
+          } catch (...) {
+            contentLength = 0;
+          }
+
+          if (contentLength > maxContentLength) {
+            status = stErrorContentTooLarge;
+            reply(400, "Request body too large");
           } else {
             status = stContent;
-            s = "";
           }
-        } else if (std::regex_match(s, matches, mimeContinued)) {
-          header[lastHeader] += "," + std::string(matches[1]);
           break;
-        } else if (std::regex_match(s, matches, mime)) {
-          lastHeader = matches[1];
-          header[matches[1]] = matches[2];
-          break;
+        } else {
+          status = stContent;
+          s = "";
         }
-
-      case stContent:
-        content = s;
-        status = stProcessing;
-
-        /* processing the request takes places here */
-        server.processor(*this);
-
+      } else if (std::regex_match(s, matches, mimeContinued)) {
+        header[lastHeader] += "," + std::string(matches[1]);
         break;
+      } else if (std::regex_match(s, matches, mime)) {
+        lastHeader = matches[1];
 
-      case stProcessing:
-      case stErrorContentTooLarge:
-      case stShutdown:
-        break;
-      }
-
-      switch (status) {
-      case stRequest:
-      case stHeader:
-      case stContent:
-        read();
-      case stProcessing:
-      case stErrorContentTooLarge:
-      case stShutdown:
+        // RFC 2616, section 4.2:
+        // Header fields that occur multiple times must combinable into a single
+        // value by appending the fields in the order they occur, using commas
+        // to separate the individual values.
+        if (header[matches[1]] == "") {
+          header[matches[1]] = matches[2];
+        } else {
+          header[matches[1]] += "," + std::string(matches[2]);
+        }
         break;
       }
-    } else {
-      self.reset();
+
+    case stContent:
+      content += s;
+      status = stProcessing;
+
+      /* processing the request takes places here */
+      connection.processor(*this);
+
+      break;
+
+    case stProcessing:
+    case stErrorContentTooLarge:
+    case stShutdown:
+      break;
+    }
+
+    switch (status) {
+    case stRequest:
+    case stStatus:
+    case stHeader:
+    case stContent:
+      read();
+    case stProcessing:
+    case stErrorContentTooLarge:
+    case stShutdown:
+      break;
     }
   }
 
@@ -474,13 +606,13 @@ protected:
       return;
     }
 
-    if (!error && (statusCode < 400)) {
-      if (status == stProcessing) {
-        status = stRequest;
-        read();
-      }
-    } else {
+    if (error || (statusCode >= 400)) {
       self.reset();
+    }
+
+    if (status == stProcessing) {
+      status = stRequest;
+      read();
     }
   }
 
@@ -494,6 +626,7 @@ protected:
   void read(void) {
     switch (status) {
     case stRequest:
+    case stStatus:
     case stHeader:
       asio::async_read_until(
           socket, input, "\n",
@@ -504,8 +637,7 @@ protected:
     case stContent:
       asio::async_read(
           socket, input,
-          [&](const asio::error_code &error, std::size_t bytes_transferred)
-              -> bool { return contentReadP(error, bytes_transferred); },
+          asio::transfer_at_least(contentLength - content.size()),
           [&](const asio::error_code &error, std::size_t bytes_transferred) {
             handleRead(error, bytes_transferred);
           });
@@ -515,25 +647,6 @@ protected:
     case stShutdown:
       break;
     }
-  }
-
-  /**\brief Predicate: has the request been fully parsed?
-   *
-   * Determines whether a request has fully been parsed and if the connection
-   * can safely be severed. Will be nonzero if an error occurred or if there is
-   * still data to be read.
-   *
-   * \param[in] error             Current error context.
-   * \param[in] bytes_transferred How much data has been read.
-   *
-   * \returns 0 when the request has been fully parsed and the connection can
-   *          now be dropped.
-   */
-  std::size_t contentReadP(const std::error_code &error,
-                           std::size_t bytes_transferred) {
-    return (bool(error) || (bytes_transferred >= contentLength))
-               ? 0
-               : (contentLength - bytes_transferred);
   }
 
   /**\brief Name of the last parsed header
@@ -556,6 +669,12 @@ protected:
    */
   asio::streambuf input;
 };
+
+template <typename base, typename requestProcessor = processor::base<base>>
+using server = net::server<base, requestProcessor, session>;
+
+template <typename base, typename requestProcessor = processor::client<base>>
+using client = net::client<base, requestProcessor, session>;
 }
 }
 }

@@ -54,7 +54,7 @@ static bool quit(typename net::http::server<transport>::session &session,
                  std::smatch &) {
   session.reply(200, "Good-Bye, Cruel World!");
 
-  session.server.io.get().stop();
+  session.connection.io.get().stop();
 
   return true;
 }
@@ -120,20 +120,13 @@ static std::size_t setup(net::endpoint<sock> lookup,
   });
 }
 
-static cli::option
-    socket("-{0,2}http:unix:(.+)",
-           [](std::smatch &m) -> bool {
-             return setup(net::endpoint<asio::local::stream_protocol>(m[1])) >
-                    0;
-           },
-           "Listen for HTTP connections on the given unix socket[1].");
+static cli::option socket("-{0,2}http:unix:(.+)", [](std::smatch &m) -> bool {
+  return setup(net::endpoint<asio::local::stream_protocol>(m[1])) > 0;
+}, "Listen for HTTP connections on the given unix socket[1].");
 
-static cli::option
-    tcp("-{0,2}http:(.+):([0-9]+)",
-        [](std::smatch &m) -> bool {
-          return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
-        },
-        "Listen for HTTP connections on the given host[1] and port[2].");
+static cli::option tcp("-{0,2}http:(.+):([0-9]+)", [](std::smatch &m) -> bool {
+  return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
+}, "Listen for HTTP connections on the given host[1] and port[2].");
 
 namespace usage {
 template <typename transport> static std::string print(void) {

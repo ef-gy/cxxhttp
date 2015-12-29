@@ -115,6 +115,15 @@ public:
     }
 
     if (badMethod) {
+      /**\todo Add Allow: header.
+       *
+       * The HTTP/1.1 spec mandates that code 405 is accompanied by a list of
+       * valid methods. However, since we use a regex to verify that, that means
+       * we'll need a list of methods we expect to be valid in the first place.
+       *
+       * We'd also need to add some way of registering new methods as the list
+       * of methods is extensible in principle.
+       */
       sess.reply(405, "Sorry, this resource is not available via this method.");
     } else {
       sess.reply(404, "Sorry, this resource was not found.");

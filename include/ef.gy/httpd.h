@@ -70,7 +70,7 @@ public:
 
   template <class processor> set &apply(processor &proc) {
     for (const auto &s : servlets) {
-      proc.add(s->regex, s->handler);
+      proc.add(s->regex, s->handler, s->methods);
     }
     return *this;
   }
@@ -93,14 +93,16 @@ public:
   servlet(const std::string pRegex,
           std::function<bool(typename net::http::server<transport>::session &,
                              std::smatch &)> pHandler,
+          const std::string pMethods = "GET",
           set<transport, servlet> &pSet = set<transport, servlet>::common())
-      : regex(pRegex), handler(pHandler), servlets(pSet) {
+      : regex(pRegex), methods(pMethods), handler(pHandler), servlets(pSet) {
     servlets.add(*this);
   }
 
   ~servlet(void) { servlets.remove(*this); }
 
   const std::string regex;
+  const std::string methods;
   const std::function<bool(typename net::http::server<transport>::session &,
                            std::smatch &)> handler;
 

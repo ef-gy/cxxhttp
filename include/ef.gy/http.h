@@ -95,18 +95,30 @@ public:
    * \returns true (if successful; but always, really).
    */
   bool operator()(session &sess) const {
+    bool badMethod = false;
+
     for (auto &proc : subprocessor) {
       std::regex rx(proc.first);
       std::smatch matches;
 
       if (std::regex_match(sess.resource, matches, rx)) {
-        if (proc.second(sess, matches)) {
-          return true;
+        std::regex mx(proc.second.first);
+
+        if (std::regex_match(sess.method, mx)) {
+          if (proc.second.second(sess, matches)) {
+            return true;
+          }
+        } else if (!badMethod) {
+          badMethod = true;
         }
       }
     }
 
-    sess.reply(404, "Sorry, this resource was not found.");
+    if (badMethod) {
+      sess.reply(405, "Sorry, this resource is not available via this method.");
+    } else {
+      sess.reply(404, "Sorry, this resource was not found.");
+    }
 
     return true;
   }
@@ -119,12 +131,14 @@ public:
    *
    * \param[in]  rx      The regex that should trigger a given handler.
    * \param[out] handler The function to call.
+   * \param[in]  methodx Regex for allowed methods.
    *
    * \returns A reference to *this, so you can chain calls.
    */
   base &add(const std::string &rx,
-            std::function<bool(session &, std::smatch &)> handler) {
-    subprocessor[rx] = handler;
+            std::function<bool(session &, std::smatch &)> handler,
+            const std::string &methodx = "GET") {
+    subprocessor[rx] = {methodx, handler};
     return *this;
   }
 
@@ -142,7 +156,9 @@ protected:
    * This is the map that holds the request handlers. It maps regex strings to
    * handler functions, which is fairly straightforward.
    */
-  std::map<std::string, std::function<bool(session &, std::smatch &)>>
+  std::map<
+      std::string,
+      std::pair<std::string, std::function<bool(session &, std::smatch &)>>>
       subprocessor;
 };
 

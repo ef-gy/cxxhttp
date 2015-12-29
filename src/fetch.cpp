@@ -58,9 +58,11 @@ static cli::option
     }, "Fetch resource[2] via HTTP from unix socket[1].");
 
 static cli::option
-    tcp("-{0,2}http:(.+):([0-9]+):(.+)", [](std::smatch &m) -> bool {
-      return setup(net::endpoint<asio::ip::tcp>(m[1], m[2]), m[1], m[3]) > 0;
-    }, "Fetch resource[3] via HTTP from host[1] and port[2].");
+    tcp("http://([^@:/]+)(:([0-9]+))?(/.*)", [](std::smatch &m) -> bool {
+      const std::string port =
+          m[2] != "" ? std::string(m[3]) : std::string("80");
+      return setup(net::endpoint<asio::ip::tcp>(m[1], port), m[1], m[4]) > 0;
+    }, "Fetch the given HTTP URL.");
 }
 
 /**\brief Main function for the HTTP client demo.

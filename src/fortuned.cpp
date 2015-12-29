@@ -42,15 +42,15 @@ using namespace efgy;
 
 namespace tcp {
 using asio::ip::tcp;
-static httpd::servlet<tcp> fortune("^/fortune$", fortuned::fortune<tcp>);
-static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);
+static httpd::servlet<tcp> fortune(fortuned::regex, fortuned::fortune<tcp>);
+static httpd::servlet<tcp> quit("/quit", httpd::quit<tcp>);
 }
 
 namespace unix {
 using asio::local::stream_protocol;
 static httpd::servlet<stream_protocol>
-    fortune("^/fortune$", fortuned::fortune<stream_protocol>);
-static httpd::servlet<stream_protocol> quit("^/quit$",
+    fortune(fortuned::regex, fortuned::fortune<stream_protocol>);
+static httpd::servlet<stream_protocol> quit("/quit",
                                             httpd::quit<stream_protocol>);
 }
 

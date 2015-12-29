@@ -67,14 +67,14 @@ static bool hello(typename net::http::server<transport>::session &session,
 
 namespace tcp {
 using asio::ip::tcp;
-static httpd::servlet<tcp> hello("^/$", ::hello<tcp>);
-static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);
+static httpd::servlet<tcp> hello("/", ::hello<tcp>);
+static httpd::servlet<tcp> quit("/quit", httpd::quit<tcp>);
 }
 
 namespace unix {
 using asio::local::stream_protocol;
-static httpd::servlet<stream_protocol> hello("^/$", ::hello<stream_protocol>);
-static httpd::servlet<stream_protocol> quit("^/quit$",
+static httpd::servlet<stream_protocol> hello("/", ::hello<stream_protocol>);
+static httpd::servlet<stream_protocol> quit("/quit",
                                             httpd::quit<stream_protocol>);
 }
 

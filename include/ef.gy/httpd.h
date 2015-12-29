@@ -135,7 +135,7 @@ template <typename transport> static std::string print(void) {
   std::string rv = "";
   for (const auto &servlet :
        set<transport, servlet<transport>>::common().servlets) {
-    rv += " " + servlet->regex + "\n";
+    rv += " " + servlet->methods + " " + servlet->regex + "\n";
   }
   return rv;
 }

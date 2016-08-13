@@ -1,4 +1,4 @@
-[submodule ".third-party/asio"]
-	path = .third-party/asio
+[submodule "dependencies/asio"]
+	path = dependencies/asio
 	url = https://github.com/chriskohlhoff/asio.git
 	branch = master

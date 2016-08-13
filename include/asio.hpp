@@ -1,1 +1,1 @@
-../.third-party/asio/asio/include/asio.hpp
+../dependencies/asio/asio/include/asio.hpp

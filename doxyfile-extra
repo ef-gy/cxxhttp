@@ -1,2 +1,1 @@
-PROJECT_BRIEF = "header-only C++ maths and utility library"
-ENABLED_SECTIONS = LIBEFGYMAIN
+PROJECT_BRIEF = "Asynchronous C++ HTTP Library"

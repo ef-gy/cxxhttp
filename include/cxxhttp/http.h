@@ -4,16 +4,16 @@
  * An asynchronous HTTP server implementation using asio.hpp and std::regex.
  *
  * \copyright
- * This file is part of the libefgy project, which is released as open source
+ * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  *
- * \see Project Documentation: https://ef.gy/documentation/libefgy
- * \see Project Source Code: https://github.com/ef-gy/libefgy
- * \see Licence Terms: https://github.com/ef-gy/libefgy/blob/master/COPYING
+ * \see Project Documentation: https://ef.gy/documentation/cxxhttp
+ * \see Project Source Code: https://github.com/ef-gy/cxxhttp
+ * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
 
-#if !defined(EF_GY_HTTP_H)
-#define EF_GY_HTTP_H
+#if !defined(CXXHTTP_HTTP_H)
+#define CXXHTTP_HTTP_H
 
 #include <map>
 #include <regex>
@@ -22,10 +22,10 @@
 #include <functional>
 #include <deque>
 
-#include <ef.gy/server.h>
-#include <ef.gy/client.h>
+#include <cxxhttp/server.h>
+#include <cxxhttp/client.h>
 
-namespace efgy {
+namespace cxxhttp {
 namespace net {
 /**\brief HTTP handling
  *

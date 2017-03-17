@@ -1,20 +1,20 @@
 /**\file
  *
  * \copyright
- * This file is part of the libefgy project, which is released as open source
+ * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  *
- * \see Project Documentation: https://ef.gy/documentation/libefgy
- * \see Project Source Code: https://github.com/ef-gy/libefgy
- * \see Licence Terms: https://github.com/ef-gy/libefgy/blob/master/COPYING
+ * \see Project Documentation: https://ef.gy/documentation/cxxhttp
+ * \see Project Source Code: https://github.com/ef-gy/cxxhttp
+ * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
 
-#if !defined(EF_GY_HTTPD_H)
-#define EF_GY_HTTPD_H
+#if !defined(CXXHTTP_HTTPD_H)
+#define CXXHTTP_HTTPD_H
 
-#include <ef.gy/http.h>
+#include <cxxhttp/http.h>
 
-namespace efgy {
+namespace cxxhttp {
 namespace httpd {
 
 /**\brief Sample request handler for /quit
@@ -106,11 +106,11 @@ static std::size_t setup(net::endpoint<sock> lookup,
   });
 }
 
-static cli::option socket("-{0,2}http:unix:(.+)", [](std::smatch &m) -> bool {
+static efgy::cli::option socket("-{0,2}http:unix:(.+)", [](std::smatch &m) -> bool {
   return setup(net::endpoint<asio::local::stream_protocol>(m[1])) > 0;
 }, "Listen for HTTP connections on the given unix socket[1].");
 
-static cli::option tcp("-{0,2}http:(.+):([0-9]+)", [](std::smatch &m) -> bool {
+static efgy::cli::option tcp("-{0,2}http:(.+):([0-9]+)", [](std::smatch &m) -> bool {
   return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
 }, "Listen for HTTP connections on the given host[1] and port[2].");
 
@@ -124,8 +124,8 @@ template <typename transport> static std::string print(void) {
   return rv;
 }
 
-static cli::hint tcp("HTTP Endpoints (TCP)", print<asio::ip::tcp>);
-static cli::hint unix("HTTP Endpoints (UNIX)",
+static efgy::cli::hint tcp("HTTP Endpoints (TCP)", print<asio::ip::tcp>);
+static efgy::cli::hint unix("HTTP Endpoints (UNIX)",
                       print<asio::local::stream_protocol>);
 }
 }

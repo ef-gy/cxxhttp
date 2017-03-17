@@ -19,19 +19,19 @@
  * which you can connect to and use with your favourite IRC client.
  *
  * \copyright
- * This file is part of the libefgy project, which is released as open source
+ * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  *
- * \see Project Documentation: https://ef.gy/documentation/libefgy
- * \see Project Source Code: https://github.com/ef-gy/libefgy
- * \see Licence Terms: https://github.com/ef-gy/libefgy/blob/master/COPYING
+ * \see Project Documentation: https://ef.gy/documentation/cxxhttp
+ * \see Project Source Code: https://github.com/ef-gy/cxxhttp
+ * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
 
 #define ASIO_DISABLE_THREADS
-#include <ef.gy/httpd.h>
-#include <ef.gy/ircd.h>
+#include <cxxhttp/httpd.h>
+#include <cxxhttp/ircd.h>
 
-using namespace efgy;
+using namespace cxxhttp;
 
 /**\brief Hello World request handler
  *

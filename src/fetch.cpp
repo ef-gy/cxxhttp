@@ -2,18 +2,18 @@
  * \ingroup example-programmes
  *
  * \copyright
- * This file is part of the libefgy project, which is released as open source
+ * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  *
- * \see Project Documentation: https://ef.gy/documentation/libefgy
- * \see Project Source Code: https://github.com/ef-gy/libefgy
- * \see Licence Terms: https://github.com/ef-gy/libefgy/blob/master/COPYING
+ * \see Project Documentation: https://ef.gy/documentation/cxxhttp
+ * \see Project Source Code: https://github.com/ef-gy/cxxhttp
+ * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
 
 #define ASIO_DISABLE_THREADS
-#include <ef.gy/http.h>
+#include <cxxhttp/http.h>
 
-using namespace efgy;
+using namespace cxxhttp;
 
 namespace client {
 template <class sock>
@@ -35,13 +35,13 @@ static std::size_t setup(net::endpoint<sock> lookup, std::string host,
   });
 }
 
-static cli::option
+static efgy::cli::option
     socket("-{0,2}http:unix:(.+):(.+)", [](std::smatch &m) -> bool {
       return setup(net::endpoint<asio::local::stream_protocol>(m[1]), m[1],
                    m[2]) > 0;
     }, "Fetch resource[2] via HTTP from unix socket[1].");
 
-static cli::option
+static efgy::cli::option
     tcp("http://([^@:/]+)(:([0-9]+))?(/.*)", [](std::smatch &m) -> bool {
       const std::string port =
           m[2] != "" ? std::string(m[3]) : std::string("80");

@@ -1,16 +1,16 @@
 /**\file
  *
  * \copyright
- * This file is part of the libefgy project, which is released as open source
+ * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  *
- * \see Project Documentation: https://ef.gy/documentation/libefgy
- * \see Project Source Code: https://github.com/ef-gy/libefgy
- * \see Licence Terms: https://github.com/ef-gy/libefgy/blob/master/COPYING
+ * \see Project Documentation: https://ef.gy/documentation/cxxhttp
+ * \see Project Source Code: https://github.com/ef-gy/cxxhttp
+ * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
 
-#if !defined(EF_GY_NETWORK_H)
-#define EF_GY_NETWORK_H
+#if !defined(CXXHTTP_NETWORK_H)
+#define CXXHTTP_NETWORK_H
 
 #include <functional>
 #include <iostream>
@@ -23,7 +23,7 @@
 #include <ef.gy/cli.h>
 #include <ef.gy/version.h>
 
-namespace efgy {
+namespace cxxhttp {
 namespace io {
 /**\brief asio::io_service wrapper
  *
@@ -43,7 +43,7 @@ public:
   std::size_t run(void) { return io_service.run(); }
 
   int main(int argc, char *argv[],
-           cli::options<> &opts = cli::options<>::common()) {
+           efgy::cli::options<> &opts = efgy::cli::options<>::common()) {
     int rv = opts.apply(argc, argv) == 0;
 
     run();
@@ -150,7 +150,7 @@ public:
    */
   connection(io::service &pio, std::ostream &logfile)
       : io(pio), log(logfile), processor(), name("connection"),
-        version("libefgy/") {
+        version("cxxhttp/") {
     std::ostringstream ver("");
     ver << efgy::version;
     version = version + ver.str();
@@ -187,7 +187,7 @@ public:
   /**\brief Software version
    *
    * A "software version" string, which is used by some protocols.
-   * Defaults to "libefgy/<version>".
+   * Defaults to "cxxhttp/<version>".
    */
   std::string version;
 };

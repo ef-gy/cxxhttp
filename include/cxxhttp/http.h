@@ -440,6 +440,15 @@ public:
         [&](std::error_code ec, std::size_t length) { handleWrite(0, ec); });
   }
 
+  void reply(int status, const std::map<std::string, std::string> &headers,
+             const std::string &body) {
+    std::string head = "";
+    for (const auto &h : headers) {
+      head += h.first + ": " + h.second + "\r\n";
+    }
+    reply (status, head, body);
+  }
+
   /**\brief Send reply without custom headers
    *
    * Wraps around the 3-parameter reply() function, so that you don't have to

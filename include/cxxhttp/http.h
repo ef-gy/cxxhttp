@@ -35,6 +35,14 @@ namespace net {
 namespace http {
 
 template <typename base, typename requestProcessor> class session;
+static std::map<unsigned, const char*> status {
+  {200, "OK"},
+  {400, "Client Error"},
+  {403, "Not Authorised"},
+  {404, "Not Found"},
+  {405, "Method Not Allowed"},
+  {500, "Server Error"},
+};
 
 /**\brief HTTP processors
  *
@@ -405,8 +413,13 @@ public:
    */
   void reply(int status, const std::string &header, const std::string &body) {
     std::stringstream reply;
+    std::string statusDescr = "Other Status";
+    auto it = http::status.find(status);
+    if (it != http::status.end()) {
+      statusDescr = it->second;
+    }
 
-    reply << "HTTP/1.1 " << status << " NA\r\n"
+    reply << "HTTP/1.1 " << status << " " + statusDescr + "\r\n"
           << "Content-Length: " << body.length() << "\r\n";
 
     /* we automatically close connections when an error code is sent. */

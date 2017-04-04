@@ -519,7 +519,7 @@ protected:
     }
 
     static const std::regex req(
-        "(\\w+)\\s+([\\w\\d%/.:;()+-]+)\\s+(HTTP/1.[01])\\s*");
+        "(\\w+)\\s+([\\w\\d%/.:;()+-]+|\\*)\\s+(HTTP/1.[01])\\s*");
     static const std::regex stat("(HTTP/1.[01])\\s+([0-9]{3})\\s+(.*)\\s*");
     static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
     static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");

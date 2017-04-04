@@ -1,10 +1,9 @@
 /**\file
  * \ingroup example-programmes
- * \brief "Hello World" HTTP/IRC Server
+ * \brief "Hello World" HTTP Server
  *
  * An example HTTP server that serves a simple "Hello World!" on /, and a 404 on
- * all other resources. The programme also contains a sample IRC server that can
- * run in parallel, or instead of, the HTTP server.
+ * all other resources.
  *
  * Call it like this:
  * \code
@@ -14,9 +13,6 @@
  * With localhost and 8080 being a host name and port of your choosing. Then,
  * while the programme is running, open a browser and go to
  * http://localhost:8080/ and you should see the familiar greeting.
- *
- * You can also use 'irc' in place of 'http'. This would spawn an IRC server,
- * which you can connect to and use with your favourite IRC client.
  *
  * \copyright
  * This file is part of the cxxhttp project, which is released as open source
@@ -29,7 +25,6 @@
 
 #define ASIO_DISABLE_THREADS
 #include <cxxhttp/httpd.h>
-#include <cxxhttp/ircd.h>
 
 using namespace cxxhttp;
 
@@ -62,7 +57,7 @@ static httpd::servlet<stream_protocol> quit("/quit",
                                             httpd::quit<stream_protocol>);
 }
 
-/**\brief Main function for the HTTP/IRC demo
+/**\brief Main function for the HTTP demo
  *
  * Main function for the network server hello world programme.
  *

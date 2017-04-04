@@ -15,6 +15,7 @@
 #if !defined(CXXHTTP_HTTP_H)
 #define CXXHTTP_HTTP_H
 
+#include <array>
 #include <map>
 #include <regex>
 #include <system_error>
@@ -35,13 +36,28 @@ namespace net {
 namespace http {
 
 template <typename base, typename requestProcessor> class session;
-static std::map<unsigned, const char*> status {
+static const std::map<unsigned, const char*> status {
+  {100, "Continue"},
+  {101, "Switching Protocols"},
   {200, "OK"},
+  {300, "Redirection"},
   {400, "Client Error"},
-  {403, "Not Authorised"},
+  {403, "Forbidden"},
   {404, "Not Found"},
   {405, "Method Not Allowed"},
-  {500, "Server Error"},
+  {411, "Length Required"},
+  {500, "Internal Server Error"},
+};
+
+static const std::array<const char*, 8> method {
+  "OPTIONS",
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "DELETE",
+  "TRACE",
+  "CONNECT",
 };
 
 /**\brief HTTP processors
@@ -87,7 +103,7 @@ public:
    * \returns true (if successful; but always, really).
    */
   bool operator()(session &sess) const {
-    bool badMethod = false;
+    std::set<std::string> methods {};
 
     for (auto &proc : subprocessor) {
       std::regex rx(proc.first);
@@ -100,23 +116,31 @@ public:
           if (proc.second.second(sess, matches)) {
             return true;
           }
-        } else if (!badMethod) {
-          badMethod = true;
+          methods.insert(sess.method);
+        } else for (const auto &m : http::method) {
+          if (std::regex_match(m, mx)) {
+            methods.insert(m);
+          }
         }
       }
     }
 
-    if (badMethod) {
-      /**\todo Add Allow: header.
-       *
-       * The HTTP/1.1 spec mandates that code 405 is accompanied by a list of
-       * valid methods. However, since we use a regex to verify that, that means
-       * we'll need a list of methods we expect to be valid in the first place.
-       *
-       * We'd also need to add some way of registering new methods as the list
-       * of methods is extensible in principle.
-       */
-      sess.reply(405, "Sorry, this resource is not available via this method.");
+    // To trigger the 405 response, we want the list of allowed methods to
+    // be non-empty, but also not a list that only contains "OPTIONS". This is
+    // to circumvent the case where we have a default handler for OPTIONS for
+    // everything, which would otherwise prevent us from sending a 404, ever.
+    // (Though this would technically be correct as well, it would be unexpected
+    // of an HTTP server since everyone else seems to be ignoring the OPTIONS
+    // method.)
+    if ((methods.size() > 0) &&
+        ((methods.size() > 1) || (methods.find("OPTIONS") == methods.end()))) {
+      std::string allow = "";
+      for (const auto &m : methods) {
+        allow += (allow == "" ? "" : ",") + m;
+      }
+
+      sess.reply(405, {{"Allow", allow}},
+                 "Sorry, this resource is not available via this method.");
     } else {
       sess.reply(404, "Sorry, this resource was not found.");
     }

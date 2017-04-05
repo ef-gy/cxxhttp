@@ -9,8 +9,8 @@
  * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
 
-#if !defined(CXXHTTP_HTTPD_H)
-#define CXXHTTP_HTTPD_H
+#if !defined(CXXHTTP_HTTPD_OPTIONS_H)
+#define CXXHTTP_HTTPD_OPTIONS_H
 
 #include <cxxhttp/httpd.h>
 

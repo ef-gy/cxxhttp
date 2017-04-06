@@ -15,7 +15,6 @@
 #if !defined(CXXHTTP_HTTP_H)
 #define CXXHTTP_HTTP_H
 
-#include <array>
 #include <map>
 #include <regex>
 #include <system_error>
@@ -49,7 +48,7 @@ static const std::map<unsigned, const char*> status {
   {500, "Internal Server Error"},
 };
 
-static const std::array<const char*, 8> method {
+static const std::set<std::string> method {
   "OPTIONS",
   "GET",
   "HEAD",
@@ -58,6 +57,11 @@ static const std::array<const char*, 8> method {
   "DELETE",
   "TRACE",
   "CONNECT",
+};
+
+static const std::set<std::string> non405method {
+  "OPTIONS",
+  "TRACE",
 };
 
 /**\brief HTTP processors
@@ -104,6 +108,7 @@ public:
    */
   bool operator()(session &sess) const {
     std::set<std::string> methods {};
+    bool trigger405 = false;
 
     for (auto &proc : subprocessor) {
       std::regex rx(proc.first);
@@ -126,14 +131,19 @@ public:
     }
 
     // To trigger the 405 response, we want the list of allowed methods to
-    // be non-empty, but also not a list that only contains "OPTIONS". This is
-    // to circumvent the case where we have a default handler for OPTIONS for
-    // everything, which would otherwise prevent us from sending a 404, ever.
+    // be non-empty, but we also don't want the list to only consist of methods
+    // which are expected to be valid for every resource in the first place.
     // (Though this would technically be correct as well, it would be unexpected
     // of an HTTP server since everyone else seems to be ignoring the OPTIONS
-    // method.)
-    if ((methods.size() > 0) &&
-        ((methods.size() > 1) || (methods.find("OPTIONS") == methods.end()))) {
+    // method and people don't commonly allow TRACE.)
+    for (const auto &m : methods) {
+      if (non405method.find(m) == non405method.end()) {
+        trigger405 = true;
+        break;
+      }
+    }
+
+    if (trigger405 && (methods.size() > 0)) {
       std::string allow = "";
       for (const auto &m : methods) {
         allow += (allow == "" ? "" : ",") + m;

@@ -535,6 +535,7 @@ protected:
 
     if (error) {
       self.reset();
+      return;
     }
 
     static const std::regex req(
@@ -682,9 +683,7 @@ protected:
 
     if (error || (statusCode >= 400)) {
       self.reset();
-    }
-
-    if (status == stProcessing) {
+    } else if (status == stProcessing) {
       status = stRequest;
       read();
     }

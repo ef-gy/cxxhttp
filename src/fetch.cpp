@@ -20,12 +20,13 @@ template <class sock>
 static std::size_t setup(net::endpoint<sock> lookup, std::string host,
                          std::string resource,
                          io::service &service = io::service::common()) {
-  return lookup.with([&service, host, resource](
-                         typename sock::endpoint &endpoint) -> bool {
+  return lookup.with([&service, host,
+                      resource](typename sock::endpoint &endpoint) -> bool {
     net::http::client<sock> *s = new net::http::client<sock>(endpoint, service);
 
-    s->processor.query("GET", resource,
-                       "Host: " + host + "\r\nKeep-Alive: none\r\n", "")
+    s->processor
+        .query("GET", resource, "Host: " + host + "\r\nKeep-Alive: none\r\n",
+               "")
         .then([](typename net::http::client<sock>::session &session) -> bool {
           std::cout << session.content;
           return true;
@@ -36,17 +37,22 @@ static std::size_t setup(net::endpoint<sock> lookup, std::string host,
 }
 
 static efgy::cli::option
-    socket("-{0,2}http:unix:(.+):(.+)", [](std::smatch &m) -> bool {
-      return setup(net::endpoint<asio::local::stream_protocol>(m[1]), m[1],
-                   m[2]) > 0;
-    }, "Fetch resource[2] via HTTP from unix socket[1].");
+    socket("-{0,2}http:unix:(.+):(.+)",
+           [](std::smatch &m) -> bool {
+             return setup(net::endpoint<asio::local::stream_protocol>(m[1]),
+                          m[1], m[2]) > 0;
+           },
+           "Fetch resource[2] via HTTP from unix socket[1].");
 
 static efgy::cli::option
-    tcp("http://([^@:/]+)(:([0-9]+))?(/.*)", [](std::smatch &m) -> bool {
-      const std::string port =
-          m[2] != "" ? std::string(m[3]) : std::string("80");
-      return setup(net::endpoint<asio::ip::tcp>(m[1], port), m[1], m[4]) > 0;
-    }, "Fetch the given HTTP URL.");
+    tcp("http://([^@:/]+)(:([0-9]+))?(/.*)",
+        [](std::smatch &m) -> bool {
+          const std::string port =
+              m[2] != "" ? std::string(m[3]) : std::string("80");
+          return setup(net::endpoint<asio::ip::tcp>(m[1], port), m[1], m[4]) >
+                 0;
+        },
+        "Fetch the given HTTP URL.");
 }
 
 /**\brief Main function for the HTTP client demo.

@@ -76,7 +76,8 @@ template <class transport> class servlet {
 public:
   servlet(const std::string pRegex,
           std::function<bool(typename net::http::server<transport>::session &,
-                             std::smatch &)> pHandler,
+                             std::smatch &)>
+              pHandler,
           const std::string pMethods = "GET",
           set<transport, servlet> &pSet = set<transport, servlet>::common())
       : regex(pRegex), methods(pMethods), handler(pHandler), servlets(pSet) {
@@ -88,7 +89,8 @@ public:
   const std::string regex;
   const std::string methods;
   const std::function<bool(typename net::http::server<transport>::session &,
-                           std::smatch &)> handler;
+                           std::smatch &)>
+      handler;
 
 protected:
   set<transport, servlet> &servlets;
@@ -106,13 +108,20 @@ static std::size_t setup(net::endpoint<sock> lookup,
   });
 }
 
-static efgy::cli::option socket("-{0,2}http:unix:(.+)", [](std::smatch &m) -> bool {
-  return setup(net::endpoint<asio::local::stream_protocol>(m[1])) > 0;
-}, "Listen for HTTP connections on the given unix socket[1].");
+static efgy::cli::option
+    socket("-{0,2}http:unix:(.+)",
+           [](std::smatch &m) -> bool {
+             return setup(net::endpoint<asio::local::stream_protocol>(m[1])) >
+                    0;
+           },
+           "Listen for HTTP connections on the given unix socket[1].");
 
-static efgy::cli::option tcp("-{0,2}http:(.+):([0-9]+)", [](std::smatch &m) -> bool {
-  return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
-}, "Listen for HTTP connections on the given host[1] and port[2].");
+static efgy::cli::option
+    tcp("-{0,2}http:(.+):([0-9]+)",
+        [](std::smatch &m) -> bool {
+          return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
+        },
+        "Listen for HTTP connections on the given host[1] and port[2].");
 
 namespace usage {
 template <typename transport> static std::string print(void) {

@@ -24,8 +24,8 @@
  */
 
 #define ASIO_DISABLE_THREADS
-#include <cxxhttp/httpd.h>
 #include <cxxhttp/httpd-options.h>
+#include <cxxhttp/httpd.h>
 
 using namespace cxxhttp;
 

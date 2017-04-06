@@ -21,7 +21,7 @@ template <class transport>
 static bool options(typename net::http::server<transport>::session &session,
                     std::smatch &re) {
   std::string text = "# Applicable Resource Options\n\n";
-  std::set<std::string> methods {};
+  std::set<std::string> methods{};
   std::string allow = "";
   const std::string full = re[0];
 
@@ -44,20 +44,21 @@ static bool options(typename net::http::server<transport>::session &session,
     allow += (allow == "" ? "" : ",") + m;
   }
 
-  session.reply(200, {
-    {"Content-Type", "text/markdown; charset=UTF-8"},
-    {"Allow", allow},
-  }, text);
+  session.reply(
+      200,
+      {
+          {"Content-Type", "text/markdown; charset=UTF-8"}, {"Allow", allow},
+      },
+      text);
 
   return true;
 }
 
 #if !defined(NO_DEFAULT_OPTIONS)
-static httpd::servlet<asio::ip::tcp> TCP(
-    ".*", options<asio::ip::tcp>, "OPTIONS");
+static httpd::servlet<asio::ip::tcp> TCP(".*", options<asio::ip::tcp>,
+                                         "OPTIONS");
 static httpd::servlet<asio::local::stream_protocol>
-    UNIX(".*", options<asio::local::stream_protocol>,
-    "OPTIONS");
+    UNIX(".*", options<asio::local::stream_protocol>, "OPTIONS");
 #endif
 }
 }

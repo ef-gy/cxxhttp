@@ -15,15 +15,15 @@
 #if !defined(CXXHTTP_HTTP_H)
 #define CXXHTTP_HTTP_H
 
+#include <algorithm>
+#include <deque>
+#include <functional>
 #include <map>
 #include <regex>
 #include <system_error>
-#include <algorithm>
-#include <functional>
-#include <deque>
 
-#include <cxxhttp/server.h>
 #include <cxxhttp/client.h>
+#include <cxxhttp/server.h>
 
 namespace cxxhttp {
 namespace net {
@@ -35,34 +35,26 @@ namespace net {
 namespace http {
 
 template <typename base, typename requestProcessor> class session;
-static const std::map<unsigned, const char*> status {
-  {100, "Continue"},
-  {101, "Switching Protocols"},
-  {200, "OK"},
-  {300, "Redirection"},
-  {400, "Client Error"},
-  {403, "Forbidden"},
-  {404, "Not Found"},
-  {405, "Method Not Allowed"},
-  {411, "Length Required"},
-  {500, "Internal Server Error"},
-  {501, "Not Implemented"},
+static const std::map<unsigned, const char *> status{
+    {100, "Continue"},
+    {101, "Switching Protocols"},
+    {200, "OK"},
+    {300, "Redirection"},
+    {400, "Client Error"},
+    {403, "Forbidden"},
+    {404, "Not Found"},
+    {405, "Method Not Allowed"},
+    {411, "Length Required"},
+    {500, "Internal Server Error"},
+    {501, "Not Implemented"},
 };
 
-static const std::set<std::string> method {
-  "OPTIONS",
-  "GET",
-  "HEAD",
-  "POST",
-  "PUT",
-  "DELETE",
-  "TRACE",
-  "CONNECT",
+static const std::set<std::string> method{
+    "OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT",
 };
 
-static const std::set<std::string> non405method {
-  "OPTIONS",
-  "TRACE",
+static const std::set<std::string> non405method{
+    "OPTIONS", "TRACE",
 };
 
 /**\brief HTTP processors
@@ -106,7 +98,7 @@ public:
    * \param[out] sess The session object where the request was made.
    */
   void operator()(session &sess) const {
-    std::set<std::string> methods {};
+    std::set<std::string> methods{};
     bool trigger405 = false;
     bool methodSupported = false;
 
@@ -122,11 +114,12 @@ public:
           }
           methods.insert(sess.method);
           methodSupported = true;
-        } else for (const auto &m : http::method) {
-          if (std::regex_match(m, mx)) {
-            methods.insert(m);
+        } else
+          for (const auto &m : http::method) {
+            if (std::regex_match(m, mx)) {
+              methods.insert(m);
+            }
           }
-        }
       } else if (!methodSupported) {
         if (std::regex_match(sess.method, mx)) {
           methodSupported = true;
@@ -135,8 +128,7 @@ public:
     }
 
     if (!methodSupported) {
-      sess.reply(501,
-          "Sorry, this method is not supported by this server.");
+      sess.reply(501, "Sorry, this method is not supported by this server.");
       return;
     }
 
@@ -160,7 +152,7 @@ public:
       }
 
       sess.reply(405, {{"Allow", allow}},
-          "Sorry, this resource is not available via this method.");
+                 "Sorry, this resource is not available via this method.");
       return;
     }
 
@@ -200,9 +192,8 @@ protected:
    * This is the map that holds the request handlers. It maps regex strings to
    * handler functions, which is fairly straightforward.
    */
-  std::map<
-      std::string,
-      std::pair<std::regex, std::function<bool(session &, std::smatch &)>>>
+  std::map<std::string,
+           std::pair<std::regex, std::function<bool(session &, std::smatch &)>>>
       subprocessor;
 };
 
@@ -502,7 +493,7 @@ public:
     for (const auto &h : headers) {
       head += h.first + ": " + h.second + "\r\n";
     }
-    reply (status, head, body);
+    reply(status, head, body);
   }
 
   /**\brief Send reply without custom headers

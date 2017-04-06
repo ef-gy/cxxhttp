@@ -46,6 +46,7 @@ static const std::map<unsigned, const char*> status {
   {405, "Method Not Allowed"},
   {411, "Length Required"},
   {500, "Internal Server Error"},
+  {501, "Not Implemented"},
 };
 
 static const std::set<std::string> method {
@@ -103,31 +104,40 @@ public:
    * returns true.
    *
    * \param[out] sess The session object where the request was made.
-   *
-   * \returns true (if successful; but always, really).
    */
-  bool operator()(session &sess) const {
+  void operator()(session &sess) const {
     std::set<std::string> methods {};
     bool trigger405 = false;
+    bool methodSupported = false;
 
     for (auto &proc : subprocessor) {
       std::regex rx(proc.first);
+      std::regex mx(proc.second.first);
       std::smatch matches;
 
       if (std::regex_match(sess.resource, matches, rx)) {
-        std::regex mx(proc.second.first);
-
         if (std::regex_match(sess.method, mx)) {
           if (proc.second.second(sess, matches)) {
-            return true;
+            return;
           }
           methods.insert(sess.method);
+          methodSupported = true;
         } else for (const auto &m : http::method) {
           if (std::regex_match(m, mx)) {
             methods.insert(m);
           }
         }
+      } else if (!methodSupported) {
+        if (std::regex_match(sess.method, mx)) {
+          methodSupported = true;
+        }
       }
+    }
+
+    if (!methodSupported) {
+      sess.reply(501,
+          "Sorry, this method is not supported by this server.");
+      return;
     }
 
     // To trigger the 405 response, we want the list of allowed methods to
@@ -150,12 +160,11 @@ public:
       }
 
       sess.reply(405, {{"Allow", allow}},
-                 "Sorry, this resource is not available via this method.");
-    } else {
-      sess.reply(404, "Sorry, this resource was not found.");
+          "Sorry, this resource is not available via this method.");
+      return;
     }
 
-    return true;
+    sess.reply(404, "Sorry, this resource was not found.");
   }
 
   /**\brief Add handler
@@ -173,7 +182,7 @@ public:
   base &add(const std::string &rx,
             std::function<bool(session &, std::smatch &)> handler,
             const std::string &methodx = "GET") {
-    subprocessor[rx] = {methodx, handler};
+    subprocessor[rx] = {std::regex(methodx), handler};
     return *this;
   }
 
@@ -193,7 +202,7 @@ protected:
    */
   std::map<
       std::string,
-      std::pair<std::string, std::function<bool(session &, std::smatch &)>>>
+      std::pair<std::regex, std::function<bool(session &, std::smatch &)>>>
       subprocessor;
 };
 

@@ -16,8 +16,16 @@
 #if !defined(CXXHTTP_VERSION_H)
 #define CXXHTTP_VERSION_H
 
+#include <asio/version.hpp>
+#include <ef.gy/version.h>
+#include <string>
+
 namespace cxxhttp {
 static const unsigned int version = 1;
+
+static const std::string identifier =
+    "cxxhttp/" + std::to_string(version) + " asio/" +
+    std::to_string(ASIO_VERSION) + " libefgy/" + std::to_string(efgy::version);
 }
 
 #endif

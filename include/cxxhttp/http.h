@@ -24,6 +24,7 @@
 
 #include <cxxhttp/client.h>
 #include <cxxhttp/server.h>
+#include <cxxhttp/version.h>
 
 namespace cxxhttp {
 namespace net {
@@ -345,6 +346,13 @@ public:
    */
   std::string protocol;
 
+  /**\brief The string to idenfity this server or client
+   *
+   * Used either as the Server or the User-Agent header field, depending on
+   * whether this is a reply or request.
+   */
+  std::string agent;
+
   /**\brief Status code
    *
    * HTTP replies send a status code to indicate errors and the like. For client
@@ -397,7 +405,7 @@ public:
    */
   session(connectionType &pConnection)
       : self(this), connection(pConnection), socket(pConnection.io.get()),
-        status(stRequest), input() {}
+        status(stRequest), input(), agent(cxxhttp::identifier) {}
 
   /**\brief Destructor
    *
@@ -454,6 +462,7 @@ public:
     }
 
     reply << "HTTP/1.1 " << status << " " + statusDescr + "\r\n"
+          << "Server: " << agent << "\r\n"
           << "Content-Length: " << body.length() << "\r\n";
 
     /* we automatically close connections when an error code is sent. */
@@ -464,7 +473,7 @@ public:
     reply << header << "\r\n" + body;
 
     asio::async_write(socket, asio::buffer(reply.str()),
-                      [&](std::error_code ec, std::size_t length) {
+                      [status, this](std::error_code ec, std::size_t length) {
                         handleWrite(status, ec);
                       });
 
@@ -475,8 +484,8 @@ public:
 
   void request(const std::string &method, const std::string &resource,
                const std::string &header, const std::string &body) {
-    std::string req =
-        method + " " + resource + " HTTP/1.1\r\n" + header + "\r\n" + body;
+    std::string req = method + " " + resource + " HTTP/1.1\r\n" +
+                      "User-Agent: " + agent + "\r\n" + header + "\r\n" + body;
 
     if (status == stRequest) {
       status = stStatus;
@@ -667,7 +676,7 @@ protected:
    * \param[in] statusCode The HTTP status code of the reply.
    * \param[in] error      Current error state.
    */
-  void handleWrite(int statusCode, const std::error_code &error) {
+  void handleWrite(int statusCode, const std::error_code error) {
     if (status == stShutdown) {
       return;
     }

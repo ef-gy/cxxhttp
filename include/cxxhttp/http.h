@@ -350,6 +350,8 @@ public:
    *
    * Used either as the Server or the User-Agent header field, depending on
    * whether this is a reply or request.
+   *
+   * If this is an empty string, then generating these fields is dropped.
    */
   std::string agent;
 
@@ -462,7 +464,7 @@ public:
     }
 
     reply << "HTTP/1.1 " << status << " " + statusDescr + "\r\n"
-          << "Server: " << agent << "\r\n"
+          << (agent != "" ? "Server: " + agent + "\r\n" : agent)
           << "Content-Length: " << body.length() << "\r\n";
 
     /* we automatically close connections when an error code is sent. */
@@ -485,7 +487,8 @@ public:
   void request(const std::string &method, const std::string &resource,
                const std::string &header, const std::string &body) {
     std::string req = method + " " + resource + " HTTP/1.1\r\n" +
-                      "User-Agent: " + agent + "\r\n" + header + "\r\n" + body;
+                      (agent != "" ? "User-Agent: " + agent + "\r\n" : agent) +
+                      header + "\r\n" + body;
 
     if (status == stRequest) {
       status = stStatus;

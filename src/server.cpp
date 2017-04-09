@@ -24,9 +24,12 @@
  */
 
 #define ASIO_DISABLE_THREADS
-#include <cxxhttp/httpd-options.h>
-#include <cxxhttp/httpd-trace.h>
 #include <cxxhttp/httpd.h>
+
+// Optional server features.
+#include <cxxhttp/httpd-options.h>
+#include <cxxhttp/httpd-quit.h>
+#include <cxxhttp/httpd-trace.h>
 
 using namespace cxxhttp;
 
@@ -49,14 +52,11 @@ static bool hello(typename net::http::server<transport>::session &session,
 namespace tcp {
 using asio::ip::tcp;
 static httpd::servlet<tcp> hello("/", ::hello<tcp>);
-static httpd::servlet<tcp> quit("/quit", httpd::quit<tcp>);
 }
 
 namespace unix {
 using asio::local::stream_protocol;
 static httpd::servlet<stream_protocol> hello("/", ::hello<stream_protocol>);
-static httpd::servlet<stream_protocol> quit("/quit",
-                                            httpd::quit<stream_protocol>);
 }
 
 /**\brief Main function for the HTTP demo

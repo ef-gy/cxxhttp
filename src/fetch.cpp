@@ -25,8 +25,7 @@ static std::size_t setup(net::endpoint<sock> lookup, std::string host,
     net::http::client<sock> *s = new net::http::client<sock>(endpoint, service);
 
     s->processor
-        .query("GET", resource, "Host: " + host + "\r\nKeep-Alive: none\r\n",
-               "")
+        .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}}, "")
         .then([](typename net::http::client<sock>::session &session) -> bool {
           std::cout << session.content;
           return true;

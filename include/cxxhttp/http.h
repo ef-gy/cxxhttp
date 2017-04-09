@@ -128,6 +128,15 @@ public:
 
 using headers = std::map<std::string, std::string, comparator::headerNameLT>;
 
+/**\brief Flatten a header map.
+ *
+ * This function takes a header map and converts it into the form used in the
+ * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".
+ *
+ * \param[in] header The header map to turn into a string.
+ *
+ * \returns A string, with all of the elements in the header parameter.
+ */
 static inline std::string flatten(const headers &header) {
   std::string r = "";
   for (const auto &h : header) {
@@ -294,7 +303,7 @@ public:
     auto req = requests.front();
     requests.pop_front();
 
-    sess.request(req.method, req.resource, req.headers, req.body);
+    sess.request(req.method, req.resource, req.header, req.body);
   }
 
 protected:
@@ -302,19 +311,18 @@ protected:
   public:
     std::string method;
     std::string resource;
-    std::string headers;
+    headers header;
     std::string body;
 
     request(const std::string &pMethod, const std::string &pResource,
-            const std::string &pHeaders, const std::string &pBody)
-        : method(pMethod), resource(pResource), headers(pHeaders),
-          body(pBody){};
+            const headers &pHeader, const std::string &pBody)
+        : method(pMethod), resource(pResource), header(pHeader), body(pBody){};
   };
 
 public:
   client &query(const std::string &method, const std::string &resource,
-                const std::string &headers, const std::string &body) {
-    requests.push_back(request(method, resource, headers, body));
+                const headers &header, const std::string &body) {
+    requests.push_back(request(method, resource, header, body));
     return *this;
   }
 
@@ -491,9 +499,9 @@ public:
   /**\brief Send reply
    *
    * Used by the processing code once it is known how to answer the request
-   * contained in this object. The code will automatically add a correct
-   * Content-Length header, but further headers may be added using the free-form
-   * header parameter. Headers are not checked for validity.
+   * contained in this object. Headers are not checked for validity.
+   * This function does not add a Content-Length, so the free-form header field
+   * will need to include this.
    *
    * \note The code will always reply with an HTTP/1.1 reply, regardless of the
    *       version in the request. If this is a concern for you, put the server
@@ -504,7 +512,8 @@ public:
    * \param[in] header Any additional headers to be sent.
    * \param[in] body   The response body to send back to the client.
    */
-  void reply(int status, const std::string &header, const std::string &body) {
+  void replyFlat(int status, const std::string &header,
+                 const std::string &body) {
     std::stringstream reply;
     std::string statusDescr = "Other Status";
     auto it = http::status.find(status);
@@ -513,15 +522,7 @@ public:
     }
 
     reply << "HTTP/1.1 " << status << " " + statusDescr + "\r\n"
-          << (agent != "" ? "Server: " + agent + "\r\n" : agent)
-          << "Content-Length: " << body.length() << "\r\n";
-
-    /* we automatically close connections when an error code is sent. */
-    if (status >= 400) {
-      reply << "Connection: close\r\n";
-    }
-
-    reply << header << "\r\n" + body;
+          << header << "\r\n" + body;
 
     asio::async_write(socket, asio::buffer(reply.str()),
                       [status, this](std::error_code ec, std::size_t length) {
@@ -534,10 +535,13 @@ public:
   }
 
   void request(const std::string &method, const std::string &resource,
-               const std::string &header, const std::string &body) {
+               headers header, const std::string &body) {
+    if (agent != "") {
+      header["User-Agent"] = agent;
+    }
+
     std::string req = method + " " + resource + " HTTP/1.1\r\n" +
-                      (agent != "" ? "User-Agent: " + agent + "\r\n" : agent) +
-                      header + "\r\n" + body;
+                      flatten(header) + "\r\n" + body;
 
     if (status == stRequest) {
       status = stStatus;
@@ -548,8 +552,37 @@ public:
         [&](std::error_code ec, std::size_t length) { handleWrite(0, ec); });
   }
 
-  void reply(int status, const headers &header, const std::string &body) {
-    reply(status, flatten(header), body);
+  /**\brief Send reply with custom header map.
+   *
+   * This function will automatically add a Content-Length header for the body,
+   * and will also append to the Server header, if the agent string is set.
+   *
+   * Further headers may be added using the header parameter. Headers are not
+   * checked for validity.
+   *
+   * Actually sending the relpy is done via the flat-header form of this
+   * function.
+   *
+   * \param[in] status The status to return.
+   * \param[in] header The headers to send.
+   * \param[in] body   The response body to send back to the client.
+   */
+  void reply(int status, headers header, const std::string &body) {
+    header["Content-Length"] = std::to_string(body.size());
+
+    if (agent != "") {
+      if (header["Server"] != "") {
+        header["Server"] += " ";
+      }
+      header["Server"] += agent;
+    }
+
+    /* we automatically close connections when an error code is sent. */
+    if (status >= 400) {
+      header["Connection"] = "close";
+    }
+
+    replyFlat(status, flatten(header), body);
   }
 
   /**\brief Send reply without custom headers
@@ -561,7 +594,7 @@ public:
    * \param[in] status The status to return.
    * \param[in] body   The response body to send back to the client.
    */
-  void reply(int status, const std::string &body) { reply(status, "", body); }
+  void reply(int status, const std::string &body) { reply(status, {}, body); }
 
 protected:
   /**\brief Read more data

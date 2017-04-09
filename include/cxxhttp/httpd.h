@@ -16,33 +16,6 @@
 
 namespace cxxhttp {
 namespace httpd {
-
-/**\brief Sample request handler for /quit
- *
- * When this handler is invoked, it stops the ASIO IO handler (after replying,
- * maybe...).
- *
- * \note Having this on your production server in this exact way is PROBABLY a
- *       really bad idea, unless you gate it in an upstream forward proxy. Or
- *       you have some way of automatically respawning your server. Or both.
- *
- * \note It would probably be OK to have this on by default on unix sockets,
- *       seeing as you need to be logged onto the system to access those...
- *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
- */
-template <class transport>
-static bool quit(typename net::http::server<transport>::session &session,
-                 std::smatch &) {
-  session.reply(200, "Good-Bye, Cruel World!");
-
-  session.connection.io.get().stop();
-
-  return true;
-}
-
 template <class transport> class servlet;
 
 template <class transport, class servlet = servlet<transport>> class set {

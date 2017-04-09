@@ -690,7 +690,7 @@ protected:
 
           if (contentLength > maxContentLength) {
             status = stErrorContentTooLarge;
-            reply(400, "Request body too large");
+            reply(413, "Request Entity Too Large");
           } else {
             status = stContent;
           }

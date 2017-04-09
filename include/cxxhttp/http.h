@@ -35,19 +35,59 @@ namespace net {
  */
 namespace http {
 
+/**\brief Known HTTP Status codes.
+ *
+ * \see https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10
+ * \see https://tools.ietf.org/html/rfc7725
+ */
 template <typename base, typename requestProcessor> class session;
 static const std::map<unsigned, const char *> status{
+    // 1xx - Informational
     {100, "Continue"},
     {101, "Switching Protocols"},
+    // 2xx - Successful
     {200, "OK"},
-    {300, "Redirection"},
+    {201, "Created"},
+    {202, "Accepted"},
+    {203, "Non-Authoritative Information"},
+    {204, "No Content"},
+    {205, "Reset Content"},
+    {206, "Partial Content"},
+    // 3xx - Redirection
+    {300, "Multiple Choices"},
+    {301, "Moved Permanently"},
+    {302, "Found"},
+    {303, "See Other"},
+    {304, "Not Modified"},
+    {305, "Use Proxy"},
+    {307, "Temporary Redirect"},
+    // 4xx - Client Error
     {400, "Client Error"},
+    {401, "Unauthorised"},
+    {402, "Payment Required"},
     {403, "Forbidden"},
     {404, "Not Found"},
     {405, "Method Not Allowed"},
+    {406, "Not Acceptable"},
+    {407, "Proxy Authentication Required"},
+    {408, "Request Timeout"},
+    {409, "Conflict"},
+    {410, "Gone"},
     {411, "Length Required"},
+    {412, "Precondition Failed"},
+    {413, "Request Entity Too Large"},
+    {414, "Request-URI Too Long"},
+    {415, "Unsupported Media Type"},
+    {416, "Requested Range Not Satisfiable"},
+    {417, "Expectation Failed"},
+    {451, "Unavailable For Legal Reasons"},
+    // 5xx - Server Error
     {500, "Internal Server Error"},
     {501, "Not Implemented"},
+    {502, "Bad Gateway"},
+    {503, "Service Unavailable"},
+    {504, "Gateway Timeout"},
+    {505, "HTTP Version Not Supported"},
 };
 
 static const std::set<std::string> method{
@@ -57,6 +97,44 @@ static const std::set<std::string> method{
 static const std::set<std::string> non405method{
     "OPTIONS", "TRACE",
 };
+
+namespace comparator {
+/**\brief Case-insensitive comparison functor
+ *
+ * A simple functor used by the attribute map to compare strings without
+ * caring for the letter case.
+ */
+class headerNameLT
+    : private std::binary_function<std::string, std::string, bool> {
+public:
+  /**\brief Case-insensitive string comparison
+   *
+   * Compares two strings case-insensitively.
+   *
+   * \param[in] a The first of the two strings to compare.
+   * \param[in] b The second of the two strings to compare.
+   *
+   * \returns 'true' if the first string is "less than" the second.
+   */
+  bool operator()(const std::string &a, const std::string &b) const {
+    return std::lexicographical_compare(
+        a.begin(), a.end(), b.begin(), b.end(),
+        [](const unsigned char &c1, const unsigned char &c2) -> bool {
+          return tolower(c1) < tolower(c2);
+        });
+  }
+};
+}
+
+using headers = std::map<std::string, std::string, comparator::headerNameLT>;
+
+static inline std::string flatten(const headers &header) {
+  std::string r = "";
+  for (const auto &h : header) {
+    r += h.first + ": " + h.second + "\r\n";
+  }
+  return r;
+}
 
 /**\brief HTTP processors
  *
@@ -286,32 +364,6 @@ protected:
     stShutdown /**< Will shut down the connection now. Set in the destructor. */
   } status;
 
-  /**\brief Case-insensitive comparison functor
-   *
-   * A simple functor used by the attribute map to compare strings without
-   * caring for the letter case.
-   */
-  class caseInsensitiveLT
-      : private std::binary_function<std::string, std::string, bool> {
-  public:
-    /**\brief Case-insensitive string comparison
-     *
-     * Compares two strings case-insensitively.
-     *
-     * \param[in] a The first of the two strings to compare.
-     * \param[in] b The second of the two strings to compare.
-     *
-     * \returns 'true' if the first string is "less than" the second.
-     */
-    bool operator()(const std::string &a, const std::string &b) const {
-      return std::lexicographical_compare(
-          a.begin(), a.end(), b.begin(), b.end(),
-          [](const unsigned char &c1, const unsigned char &c2) -> bool {
-            return tolower(c1) < tolower(c2);
-          });
-    }
-  };
-
 public:
   std::shared_ptr<session> self;
 
@@ -373,7 +425,7 @@ public:
    * the map, so that you can query the contents without having to know the case
    * of the headers as they were sent.
    */
-  std::map<std::string, std::string, caseInsensitiveLT> header;
+  headers header;
 
   /**\brief HTTP request body
    *
@@ -496,13 +548,8 @@ public:
         [&](std::error_code ec, std::size_t length) { handleWrite(0, ec); });
   }
 
-  void reply(int status, const std::map<std::string, std::string> &headers,
-             const std::string &body) {
-    std::string head = "";
-    for (const auto &h : headers) {
-      head += h.first + ": " + h.second + "\r\n";
-    }
-    reply(status, head, body);
+  void reply(int status, const headers &header, const std::string &body) {
+    reply(status, flatten(header), body);
   }
 
   /**\brief Send reply without custom headers
@@ -572,7 +619,7 @@ protected:
         resource = matches[2];
         protocol = matches[3];
 
-        header = std::map<std::string, std::string, caseInsensitiveLT>();
+        header = {};
         status = stHeader;
       }
       break;
@@ -587,7 +634,7 @@ protected:
         }
         description = matches[3];
 
-        header = std::map<std::string, std::string, caseInsensitiveLT>();
+        header = {};
         status = stHeader;
       }
       break;

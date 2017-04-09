@@ -108,23 +108,23 @@ public:
       std::regex mx(proc.second.first);
       std::smatch matches;
 
-      if (std::regex_match(sess.resource, matches, rx)) {
-        if (std::regex_match(sess.method, mx)) {
+      bool resourceMatch = std::regex_match(sess.resource, matches, rx);
+      bool methodMatch = std::regex_match(sess.method, mx);
+
+      methodSupported = methodSupported || methodMatch;
+
+      if (resourceMatch) {
+        if (methodMatch) {
           if (proc.second.second(sess, matches)) {
             return;
           }
           methods.insert(sess.method);
-          methodSupported = true;
         } else
           for (const auto &m : http::method) {
             if (std::regex_match(m, mx)) {
               methods.insert(m);
             }
           }
-      } else if (!methodSupported) {
-        if (std::regex_match(sess.method, mx)) {
-          methodSupported = true;
-        }
       }
     }
 
@@ -169,14 +169,11 @@ public:
    * \param[in]  rx      The regex that should trigger a given handler.
    * \param[out] handler The function to call.
    * \param[in]  methodx Regex for allowed methods.
-   *
-   * \returns A reference to *this, so you can chain calls.
    */
-  base &add(const std::string &rx,
-            std::function<bool(session &, std::smatch &)> handler,
-            const std::string &methodx = "GET") {
+  void add(const std::string &rx,
+           std::function<bool(session &, std::smatch &)> handler,
+           const std::string &methodx = "GET") {
     subprocessor[rx] = {std::regex(methodx), handler};
-    return *this;
   }
 
   /**\brief Begin handling requests

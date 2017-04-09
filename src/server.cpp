@@ -25,6 +25,7 @@
 
 #define ASIO_DISABLE_THREADS
 #include <cxxhttp/httpd-options.h>
+#include <cxxhttp/httpd-trace.h>
 #include <cxxhttp/httpd.h>
 
 using namespace cxxhttp;

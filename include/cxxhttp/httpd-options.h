@@ -20,7 +20,7 @@ namespace options {
 template <class transport>
 static bool options(typename net::http::server<transport>::session &session,
                     std::smatch &re) {
-  std::string text = "# Applicable Resource Options\n\n";
+  std::string text = "# Applicable Resource Processors\n\n";
   std::set<std::string> methods{};
   std::string allow = "";
   const std::string full = re[0];
@@ -54,11 +54,13 @@ static bool options(typename net::http::server<transport>::session &session,
   return true;
 }
 
+static std::string regex = "^\\*|/.*";
+
 #if !defined(NO_DEFAULT_OPTIONS)
-static httpd::servlet<asio::ip::tcp> TCP(".*", options<asio::ip::tcp>,
+static httpd::servlet<asio::ip::tcp> TCP(regex, options<asio::ip::tcp>,
                                          "OPTIONS");
 static httpd::servlet<asio::local::stream_protocol>
-    UNIX(".*", options<asio::local::stream_protocol>, "OPTIONS");
+    UNIX(regex, options<asio::local::stream_protocol>, "OPTIONS");
 #endif
 }
 }

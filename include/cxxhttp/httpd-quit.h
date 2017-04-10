@@ -43,7 +43,7 @@ static bool quit(typename net::http::server<transport>::session &session,
   return true;
 }
 
-static std::string regex = "/quit";
+static const char *regex = "/quit";
 
 #if !defined(NO_DEFAULT_QUIT)
 static httpd::servlet<asio::local::stream_protocol>

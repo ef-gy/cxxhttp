@@ -54,7 +54,7 @@ static bool options(typename net::http::server<transport>::session &session,
   return true;
 }
 
-static std::string regex = "^\\*|/.*";
+static const char *regex = "^\\*|/.*";
 
 #if !defined(NO_DEFAULT_OPTIONS)
 static httpd::servlet<asio::ip::tcp> TCP(regex, options<asio::ip::tcp>,

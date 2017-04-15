@@ -16,16 +16,19 @@
 
 namespace cxxhttp {
 namespace httpd {
-template <class transport> class servlet;
+template <class transport>
+class servlet;
 
-template <class transport, class servlet = servlet<transport>> class set {
-public:
+template <class transport, class servlet = servlet<transport>>
+class set {
+ public:
   static set &common(void) {
     static set s;
     return s;
   }
 
-  template <class processor> set &apply(processor &proc) {
+  template <class processor>
+  set &apply(processor &proc) {
     for (const auto &s : servlets) {
       proc.add(s->regex, s->handler, s->methods);
     }
@@ -45,8 +48,9 @@ public:
   std::set<servlet *> servlets;
 };
 
-template <class transport> class servlet {
-public:
+template <class transport>
+class servlet {
+ public:
   servlet(const std::string pRegex,
           std::function<bool(typename net::http::server<transport>::session &,
                              std::smatch &)>
@@ -65,7 +69,7 @@ public:
                            std::smatch &)>
       handler;
 
-protected:
+ protected:
   set<transport, servlet> &servlets;
 };
 
@@ -81,23 +85,23 @@ static std::size_t setup(net::endpoint<sock> lookup,
   });
 }
 
-static efgy::cli::option
-    socket("-{0,2}http:unix:(.+)",
-           [](std::smatch &m) -> bool {
-             return setup(net::endpoint<asio::local::stream_protocol>(m[1])) >
-                    0;
-           },
-           "Listen for HTTP connections on the given unix socket[1].");
+static efgy::cli::option socket(
+    "-{0,2}http:unix:(.+)",
+    [](std::smatch &m) -> bool {
+      return setup(net::endpoint<asio::local::stream_protocol>(m[1])) > 0;
+    },
+    "Listen for HTTP connections on the given unix socket[1].");
 
-static efgy::cli::option
-    tcp("-{0,2}http:(.+):([0-9]+)",
-        [](std::smatch &m) -> bool {
-          return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
-        },
-        "Listen for HTTP connections on the given host[1] and port[2].");
+static efgy::cli::option tcp(
+    "-{0,2}http:(.+):([0-9]+)",
+    [](std::smatch &m) -> bool {
+      return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
+    },
+    "Listen for HTTP connections on the given host[1] and port[2].");
 
 namespace usage {
-template <typename transport> static std::string print(void) {
+template <typename transport>
+static std::string print(void) {
   std::string rv = "";
   for (const auto &servlet :
        set<transport, servlet<transport>>::common().servlets) {

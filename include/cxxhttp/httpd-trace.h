@@ -40,8 +40,8 @@ static const char *regex = ".*";
 
 #if !defined(NO_DEFAULT_TRACE)
 static httpd::servlet<asio::ip::tcp> TCP(regex, trace<asio::ip::tcp>, "TRACE");
-static httpd::servlet<asio::local::stream_protocol>
-    UNIX(regex, trace<asio::local::stream_protocol>, "TRACE");
+static httpd::servlet<asio::local::stream_protocol> UNIX(
+    regex, trace<asio::local::stream_protocol>, "TRACE");
 #endif
 }
 }

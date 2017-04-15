@@ -32,7 +32,7 @@ namespace net {
 template <typename base, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
 class client : public connection<requestProcessor> {
-public:
+ public:
   using connection = connection<requestProcessor>;
   using session = sessionTemplate<base, requestProcessor>;
 
@@ -52,7 +52,7 @@ public:
     startConnect();
   }
 
-protected:
+ protected:
   /**\brief Connect to the socket.
    *
    * This function creates a new, blank session and attempts to connect to the

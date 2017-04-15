@@ -32,7 +32,7 @@ namespace io {
  * service::common() function.
  */
 class service {
-public:
+ public:
   static service &common(void) {
     static service serv;
     return serv;
@@ -51,7 +51,7 @@ public:
     return rv;
   }
 
-protected:
+ protected:
   asio::io_service io_service;
 };
 
@@ -67,7 +67,8 @@ static int main(int argc, char *argv[]) {
  * how to download this header-only library in case it's not installed.
  */
 namespace net {
-template <typename S> static std::string address(const S &socket) {
+template <typename S>
+static std::string address(const S &socket) {
   return "[?]";
 }
 
@@ -76,12 +77,14 @@ std::string address(const asio::local::stream_protocol::socket &socket) {
   return "[UNIX]";
 }
 
-template <> std::string address(const asio::ip::tcp::socket &socket) {
+template <>
+std::string address(const asio::ip::tcp::socket &socket) {
   return socket.remote_endpoint().address().to_string();
 }
 
-template <typename base = asio::local::stream_protocol> class endpoint {
-public:
+template <typename base = asio::local::stream_protocol>
+class endpoint {
+ public:
   endpoint(const std::string &pSocket) : socket(pSocket) {}
 
   std::size_t with(std::function<bool(typename base::endpoint &)> f) {
@@ -95,12 +98,13 @@ public:
 
   const std::string &name(void) const { return socket; }
 
-protected:
+ protected:
   const std::string socket;
 };
 
-template <> class endpoint<asio::ip::tcp> {
-public:
+template <>
+class endpoint<asio::ip::tcp> {
+ public:
   endpoint(const std::string &pHost, const std::string &pPort,
            io::service &pService = io::service::common())
       : host(pHost), port(pPort), service(pService) {}
@@ -126,7 +130,7 @@ public:
 
   const std::string &name(void) const { return host; }
 
-protected:
+ protected:
   const std::string host;
   const std::string port;
   io::service &service;
@@ -139,8 +143,9 @@ protected:
  *
  * \tparam requestProcessor The functor class to handle requests.
  */
-template <typename requestProcessor> class connection {
-public:
+template <typename requestProcessor>
+class connection {
+ public:
   /**\brief Initialise with IO service
    *
    * Default constructor which binds an IO service and sets up a new processor.
@@ -149,7 +154,10 @@ public:
    * \param[out] logfile  A stream to write log messages to.
    */
   connection(io::service &pio, std::ostream &logfile)
-      : io(pio), log(logfile), processor(), name("connection"),
+      : io(pio),
+        log(logfile),
+        processor(),
+        name("connection"),
         version("cxxhttp/") {
     std::ostringstream ver("");
     ver << efgy::version;

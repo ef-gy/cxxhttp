@@ -16,8 +16,8 @@
 #if !defined(CXXHTTP_VERSION_H)
 #define CXXHTTP_VERSION_H
 
-#include <asio/version.hpp>
 #include <ef.gy/version.h>
+#include <asio/version.hpp>
 #include <string>
 
 namespace cxxhttp {

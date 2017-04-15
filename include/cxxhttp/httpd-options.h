@@ -59,8 +59,8 @@ static const char *regex = "^\\*|/.*";
 #if !defined(NO_DEFAULT_OPTIONS)
 static httpd::servlet<asio::ip::tcp> TCP(regex, options<asio::ip::tcp>,
                                          "OPTIONS");
-static httpd::servlet<asio::local::stream_protocol>
-    UNIX(regex, options<asio::local::stream_protocol>, "OPTIONS");
+static httpd::servlet<asio::local::stream_protocol> UNIX(
+    regex, options<asio::local::stream_protocol>, "OPTIONS");
 #endif
 }
 }

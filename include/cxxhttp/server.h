@@ -32,7 +32,7 @@ namespace net {
 template <typename base, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
 class server : public connection<requestProcessor> {
-public:
+ public:
   using connection = connection<requestProcessor>;
   using session = sessionTemplate<base, requestProcessor>;
 
@@ -52,7 +52,7 @@ public:
     startAccept();
   }
 
-protected:
+ protected:
   /**\brief Accept the next incoming connection
    *
    * This function creates a new, blank session to handle the next incoming

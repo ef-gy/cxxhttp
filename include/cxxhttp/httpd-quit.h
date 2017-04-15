@@ -46,8 +46,8 @@ static bool quit(typename net::http::server<transport>::session &session,
 static const char *regex = "/quit";
 
 #if !defined(NO_DEFAULT_QUIT)
-static httpd::servlet<asio::local::stream_protocol>
-    UNIX(regex, quit<asio::local::stream_protocol>);
+static httpd::servlet<asio::local::stream_protocol> UNIX(
+    regex, quit<asio::local::stream_protocol>);
 #endif
 }
 }

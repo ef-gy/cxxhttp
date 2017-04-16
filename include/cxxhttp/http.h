@@ -23,6 +23,7 @@
 #include <system_error>
 
 #include <cxxhttp/client.h>
+#include <cxxhttp/negotiate.h>
 #include <cxxhttp/server.h>
 #include <cxxhttp/version.h>
 
@@ -129,6 +130,10 @@ class headerNameLT
 
 using headers = std::map<std::string, std::string, comparator::headerNameLT>;
 
+static const headers negotiations{
+    {"Accept", "Content-Type"}, {"Vary", "Vary"},
+};
+
 /**\brief Flatten a header map.
  *
  * This function takes a header map and converts it into the form used in the
@@ -190,27 +195,46 @@ class base {
   void operator()(session &sess) const {
     std::set<std::string> methods{};
     bool trigger405 = false;
+    bool trigger406 = false;
     bool methodSupported = false;
 
     for (auto &proc : subprocessor) {
-      std::regex rx(proc.first);
-      std::regex mx(proc.second.first);
+      const auto &subprocessor = proc.second;
       std::smatch matches;
 
-      bool resourceMatch = std::regex_match(sess.resource, matches, rx);
-      bool methodMatch = std::regex_match(sess.method, mx);
+      bool resourceMatch =
+          std::regex_match(sess.resource, matches, subprocessor.resource);
+      bool methodMatch = std::regex_match(sess.method, subprocessor.method);
 
       methodSupported = methodSupported || methodMatch;
 
       if (resourceMatch) {
         if (methodMatch) {
-          if (proc.second.second(sess, matches)) {
+          bool badNegotiation = false;
+          // reset, and perform, header value negotiation based on the
+          // subprocessor's specs and the client data.
+          sess.negotiated = {};
+          for (const auto &n : subprocessor.negotiations) {
+            const std::string cv =
+                sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
+
+            sess.negotiated["Vary"] +=
+                (sess.negotiated["Vary"].empty() ? "" : ",") + n.first;
+            sess.negotiated[n.first] = negotiate(cv, n.second);
+            if (sess.negotiated[n.first] == "") {
+              badNegotiation = true;
+            }
+          }
+
+          if (badNegotiation) {
+            trigger406 = true;
+          } else if (subprocessor.handler(sess, matches)) {
             return;
           }
           methods.insert(sess.method);
         } else
           for (const auto &m : http::method) {
-            if (std::regex_match(m, mx)) {
+            if (std::regex_match(m, subprocessor.method)) {
               methods.insert(m);
             }
           }
@@ -235,10 +259,16 @@ class base {
       }
     }
 
+    if (trigger406) {
+      sess.reply(406,
+                 "Sorry, negotiating the resource's representation failed.");
+      return;
+    }
+
     if (trigger405 && (methods.size() > 0)) {
       std::string allow = "";
       for (const auto &m : methods) {
-        allow += (allow == "" ? "" : ",") + m;
+        allow += (allow.empty() ? "" : ",") + m;
       }
 
       sess.reply(405, {{"Allow", allow}},
@@ -261,8 +291,10 @@ class base {
    */
   void add(const std::string &rx,
            std::function<bool(session &, std::smatch &)> handler,
-           const std::string &methodx = "GET") {
-    subprocessor[rx] = {std::regex(methodx), handler};
+           const std::string &methodx = "GET",
+           const headers &negotiations = {}) {
+    subprocessor[rx] = {std::regex(rx), std::regex(methodx), negotiations,
+                        handler};
   }
 
   /**\brief Begin handling requests
@@ -274,14 +306,19 @@ class base {
   void start(session &) const {}
 
  protected:
+  struct subprocessor {
+    std::regex resource;
+    std::regex method;
+    headers negotiations;
+    std::function<bool(session &, std::smatch &)> handler;
+  };
+
   /**\brief Map of request handlers
    *
    * This is the map that holds the request handlers. It maps regex strings to
    * handler functions, which is fairly straightforward.
    */
-  std::map<std::string,
-           std::pair<std::regex, std::function<bool(session &, std::smatch &)>>>
-      subprocessor;
+  std::map<std::string, subprocessor> subprocessor;
 };
 
 template <class sock>
@@ -439,6 +476,13 @@ class session {
    */
   headers header;
 
+  /**\brief Automatically negotiated headers.
+   *
+   * Set with the value of automatically negotiated headers, if such
+   * negotiation has taken places.
+   */
+  headers negotiated;
+
   /**\brief HTTP request body
    *
    * Contains the request body, if the request contained one.
@@ -578,6 +622,13 @@ class session {
   void reply(int status, headers header, const std::string &body) {
     header["Content-Length"] = std::to_string(body.size());
 
+    for (const auto &n : negotiated) {
+      const auto it = negotiations.find(n.first);
+      if (it != negotiations.end()) {
+        header[it->second] = n.second;
+      }
+    }
+
     if (agent != "") {
       if (header["Server"] != "") {
         header["Server"] += " ";
@@ -681,7 +732,7 @@ class session {
         break;
 
       case stHeader:
-        if ((s == "\r") || (s == "")) {
+        if ((s == "\r") || (s.empty())) {
           const auto &cli = header.find("Content-Length");
 
           // everything we already read before we got here that is left in the

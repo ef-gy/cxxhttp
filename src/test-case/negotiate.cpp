@@ -1,4 +1,8 @@
 /**\file
+ * \brief Test cases for the HTTP/1.1 negotiation algorithm.
+ *
+ * This file contains unit tests for HTTP content negotiation, which is
+ * implemented in cxxhttp/negotiate.h.
  *
  * \copyright
  * This file is part of the cxxhttp project, which is released as open source
@@ -288,7 +292,7 @@ int testFullNegotiation(std::ostream &log) {
       {"a/c;q=0.2", "a/*, a/b;q=0.1", "a/c", "a/c"},
       {"foo/*", "foo/bar;q=0.1, b;q=0.2", "foo/bar", "foo/bar"},
       {"foo/*", "foo/bar;q=0.1, *;q=0.2", "foo/bar", "foo/bar"},
-      // this an example string from RFC 2616
+      // this is an example string from RFC 2616
       {"text/*;q=0.3, text/html;q=0.7, text/html;level=1,"
        "text/html;level=2;q=0.4, */*;q=0.5",
        "text/plain", "text/plain", "text/plain"},

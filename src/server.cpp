@@ -44,19 +44,27 @@ using namespace cxxhttp;
 template <class transport>
 static bool hello(typename net::http::server<transport>::session &session,
                   std::smatch &) {
-  session.reply(200, "Hello World!");
+  if (session.negotiated["Accept"] == "text/plain") {
+    session.reply(200, "Hello World!");
+  } else if (session.negotiated["Accept"] == "application/json") {
+    session.reply(200, "\"Hello World!\"");
+  }
 
   return true;
 }
 
 namespace tcp {
 using asio::ip::tcp;
-static httpd::servlet<tcp> hello("/", ::hello<tcp>);
+static httpd::servlet<tcp> hello("/", ::hello<tcp>, "GET",
+                                 {{"Accept",
+                                   "text/plain, application/json;q=0.9"}});
 }
 
 namespace unix {
 using asio::local::stream_protocol;
-static httpd::servlet<stream_protocol> hello("/", ::hello<stream_protocol>);
+static httpd::servlet<stream_protocol> hello(
+    "/", ::hello<stream_protocol>, "GET",
+    {{"Accept", "text/plain, application/json;q=0.9"}});
 }
 
 /**\brief Main function for the HTTP demo

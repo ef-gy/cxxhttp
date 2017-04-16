@@ -30,7 +30,7 @@ class set {
   template <class processor>
   set &apply(processor &proc) {
     for (const auto &s : servlets) {
-      proc.add(s->regex, s->handler, s->methods);
+      proc.add(s->regex, s->handler, s->methods, s->negotiations);
     }
     return *this;
   }
@@ -51,13 +51,20 @@ class set {
 template <class transport>
 class servlet {
  public:
-  servlet(const std::string pRegex,
+  servlet(const std::string &pRegex,
           std::function<bool(typename net::http::server<transport>::session &,
                              std::smatch &)>
               pHandler,
-          const std::string pMethods = "GET",
+          const std::string &pMethods = "GET",
+          const net::http::headers pNegotiations = {},
+          const std::string &pDescription = "no description available.",
           set<transport, servlet> &pSet = set<transport, servlet>::common())
-      : regex(pRegex), methods(pMethods), handler(pHandler), servlets(pSet) {
+      : regex(pRegex),
+        methods(pMethods),
+        handler(pHandler),
+        negotiations(pNegotiations),
+        description(pDescription),
+        servlets(pSet) {
     servlets.add(*this);
   }
 
@@ -68,6 +75,8 @@ class servlet {
   const std::function<bool(typename net::http::server<transport>::session &,
                            std::smatch &)>
       handler;
+  const net::http::headers negotiations;
+  const std::string description;
 
  protected:
   set<transport, servlet> &servlets;

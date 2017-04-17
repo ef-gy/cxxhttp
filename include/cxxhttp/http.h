@@ -24,6 +24,7 @@
 
 #include <cxxhttp/client.h>
 #include <cxxhttp/negotiate.h>
+#include <cxxhttp/header.h>
 #include <cxxhttp/server.h>
 #include <cxxhttp/version.h>
 
@@ -100,36 +101,6 @@ static const std::set<std::string> non405method{
     "OPTIONS", "TRACE",
 };
 
-namespace comparator {
-/**\brief Case-insensitive comparison functor
- *
- * A simple functor used by the attribute map to compare strings without
- * caring for the letter case.
- */
-class headerNameLT
-    : private std::binary_function<std::string, std::string, bool> {
- public:
-  /**\brief Case-insensitive string comparison
-   *
-   * Compares two strings case-insensitively.
-   *
-   * \param[in] a The first of the two strings to compare.
-   * \param[in] b The second of the two strings to compare.
-   *
-   * \returns 'true' if the first string is "less than" the second.
-   */
-  bool operator()(const std::string &a, const std::string &b) const {
-    return std::lexicographical_compare(
-        a.begin(), a.end(), b.begin(), b.end(),
-        [](const unsigned char &c1, const unsigned char &c2) -> bool {
-          return tolower(c1) < tolower(c2);
-        });
-  }
-};
-}
-
-using headers = std::map<std::string, std::string, comparator::headerNameLT>;
-
 static const headers negotiations{
     {"Accept", "Content-Type"},
 };
@@ -137,23 +108,6 @@ static const headers negotiations{
 static const std::set<std::string> sendNegotiated{
     "Content-Type", "Vary",
 };
-
-/**\brief Flatten a header map.
- *
- * This function takes a header map and converts it into the form used in the
- * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".
- *
- * \param[in] header The header map to turn into a string.
- *
- * \returns A string, with all of the elements in the header parameter.
- */
-static inline std::string flatten(const headers &header) {
-  std::string r = "";
-  for (const auto &h : header) {
-    r += h.first + ": " + h.second + "\r\n";
-  }
-  return r;
-}
 
 /**\brief HTTP processors
  *
@@ -604,7 +558,7 @@ class session {
     }
 
     std::string req = method + " " + resource + " HTTP/1.1\r\n" +
-                      flatten(header) + "\r\n" + body;
+                      to_string(header) + "\r\n" + body;
 
     if (status == stRequest) {
       status = stStatus;
@@ -655,7 +609,7 @@ class session {
       header["Connection"] = "close";
     }
 
-    replyFlat(status, flatten(header), body);
+    replyFlat(status, to_string(header), body);
   }
 
   /**\brief Send reply without custom headers

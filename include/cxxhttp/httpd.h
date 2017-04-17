@@ -56,7 +56,7 @@ class servlet {
                              std::smatch &)>
               pHandler,
           const std::string &pMethods = "GET",
-          const net::http::headers pNegotiations = {},
+          const headers pNegotiations = {},
           const std::string &pDescription = "no description available.",
           set<transport, servlet> &pSet = set<transport, servlet>::common())
       : regex(pRegex),
@@ -75,7 +75,7 @@ class servlet {
   const std::function<bool(typename net::http::server<transport>::session &,
                            std::smatch &)>
       handler;
-  const net::http::headers negotiations;
+  const headers negotiations;
   const std::string description;
 
  protected:

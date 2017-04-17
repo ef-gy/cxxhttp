@@ -131,7 +131,11 @@ class headerNameLT
 using headers = std::map<std::string, std::string, comparator::headerNameLT>;
 
 static const headers negotiations{
-    {"Accept", "Content-Type"}, {"Vary", "Vary"},
+    {"Accept", "Content-Type"},
+};
+
+static const std::set<std::string> sendNegotiated{
+    "Content-Type", "Vary",
 };
 
 /**\brief Flatten a header map.
@@ -217,13 +221,20 @@ class base {
           for (const auto &n : subprocessor.negotiations) {
             const std::string cv =
                 sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
+            const auto it = negotiations.find(n.first);
+            const std::string v = negotiate(cv, n.second);
 
+            std::string tn = n.first;
+            if (it != negotiations.end()) {
+              tn = it->second;
+            }
+
+            // modify the Vary value to indicate we used this header.
             sess.negotiated["Vary"] +=
                 (sess.negotiated["Vary"].empty() ? "" : ",") + n.first;
-            sess.negotiated[n.first] = negotiate(cv, n.second);
-            if (sess.negotiated[n.first] == "") {
-              badNegotiation = true;
-            }
+
+            sess.negotiated[tn] = v;
+            badNegotiation = badNegotiation || v.empty();
           }
 
           if (badNegotiation) {
@@ -622,15 +633,18 @@ class session {
   void reply(int status, headers header, const std::string &body) {
     header["Content-Length"] = std::to_string(body.size());
 
+    // take over specific negotiated headers, iff they haven't been set in the
+    // header map.
     for (const auto &n : negotiated) {
-      const auto it = negotiations.find(n.first);
-      if (it != negotiations.end()) {
-        header[it->second] = n.second;
+      if ((sendNegotiated.count(n.first) == 1) &&
+          (header.count(n.first) == 0)) {
+        header[n.first] = n.second;
       }
     }
 
-    if (agent != "") {
-      if (header["Server"] != "") {
+    // add or append agent string
+    if (!agent.empty()) {
+      if (!header["Server"].empty()) {
         header["Server"] += " ";
       }
       header["Server"] += agent;
@@ -765,11 +779,10 @@ class session {
           lastHeader = matches[1];
 
           // RFC 2616, section 4.2:
-          // Header fields that occur multiple times must combinable into a
-          // single
-          // value by appending the fields in the order they occur, using commas
-          // to separate the individual values.
-          if (header[matches[1]] == "") {
+          // Header fields that occur multiple times must be combinable into a
+          // single value by appending the fields in the order they occur, using
+          // commas to separate the individual values.
+          if (header[matches[1]].empty()) {
             header[matches[1]] = matches[2];
           } else {
             header[matches[1]] += "," + std::string(matches[2]);

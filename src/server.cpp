@@ -44,9 +44,9 @@ using namespace cxxhttp;
 template <class transport>
 static bool hello(typename net::http::server<transport>::session &session,
                   std::smatch &) {
-  if (session.negotiated["Accept"] == "text/plain") {
+  if (session.negotiated["Content-Type"] == "text/plain") {
     session.reply(200, "Hello World!");
-  } else if (session.negotiated["Accept"] == "application/json") {
+  } else if (session.negotiated["Content-Type"] == "application/json") {
     session.reply(200, "\"Hello World!\"");
   }
 

@@ -1,4 +1,5 @@
 # CXXHTTP
+[![Build Status](https://travis-ci.org/ef-gy/cxxhttp.svg?branch=master)](https://travis-ci.org/ef-gy/cxxhttp)
 
 A C++ library implementing an asynchronous HTTP server and client.
 

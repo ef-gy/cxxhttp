@@ -23,8 +23,8 @@
 #include <system_error>
 
 #include <cxxhttp/client.h>
-#include <cxxhttp/negotiate.h>
 #include <cxxhttp/header.h>
+#include <cxxhttp/negotiate.h>
 #include <cxxhttp/server.h>
 #include <cxxhttp/version.h>
 

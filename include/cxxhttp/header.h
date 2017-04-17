@@ -17,8 +17,8 @@
 #if !defined(CXXHTTP_HEADER_H)
 #define CXXHTTP_HEADER_H
 
-#include <map>
 #include <locale>
+#include <map>
 #include <set>
 #include <string>
 
@@ -42,8 +42,8 @@ class headerNameLT
    * \returns 'true' if the first string is "less than" the second.
    */
   bool operator()(const std::string &a, const std::string &b) const {
-    return std::lexicographical_compare(
-        a.begin(), a.end(), b.begin(), b.end(), compare);
+    return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end(),
+                                        compare);
   }
 
  protected:

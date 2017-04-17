@@ -29,10 +29,10 @@ int testToString(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-    {{}, ""},
-    {{{"a", "b"}}, "a: b\r\n"},
-    {{{"a", "b"}, {"A", "c"}}, "a: b\r\n"},
-    {{{"a", "b"}, {"c", "d"}}, "a: b\r\nc: d\r\n"},
+      {{}, ""},
+      {{{"a", "b"}}, "a: b\r\n"},
+      {{{"a", "b"}, {"A", "c"}}, "a: b\r\n"},
+      {{{"a", "b"}, {"c", "d"}}, "a: b\r\nc: d\r\n"},
   };
 
   for (const auto &tt : tests) {
@@ -53,22 +53,22 @@ int testCompare(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-    {"a", "b", true, false},
-    {"a", "a", false, false},
-    {"a", "A", false, false},
-    {"aa", "ab", true, false},
-    {"aA", "Aa", false, false},
+      {"a", "b", true, false},    {"a", "a", false, false},
+      {"a", "A", false, false},   {"aa", "ab", true, false},
+      {"aA", "Aa", false, false},
   };
 
   for (const auto &tt : tests) {
     const auto v = comparator::headerNameLT()(tt.a, tt.b);
     if (v != tt.res) {
-      log << "headerNameLT('"<<tt.a<<"' < '"<<tt.b<<"')='" << v << "', expected '" << tt.res << "'\n";
+      log << "headerNameLT('" << tt.a << "' < '" << tt.b << "')='" << v
+          << "', expected '" << tt.res << "'\n";
       return 1;
     }
     const auto v2 = comparator::headerNameLT()(tt.b, tt.a);
     if (v2 != tt.rev) {
-      log << "headerNameLT('"<<tt.b<<"' < '"<<tt.a<<"')='" << v2 << "', expected '" << tt.rev << "'\n";
+      log << "headerNameLT('" << tt.b << "' < '" << tt.a << "')='" << v2
+          << "', expected '" << tt.rev << "'\n";
       return 2;
     }
   }

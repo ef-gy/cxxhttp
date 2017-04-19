@@ -1,0 +1,28 @@
+language: generic
+compiler: clang
+os: osx
+osx_image: xcode7.2
+env: CXX=clang++ CC=clang CXX_STDLIB=-stdlib=libc++
+
+addons:
+  apt:
+    packages:
+      - clang-3.8
+      - llvm-3.8-dev
+      - libc++1
+      - libc++-dev
+    sources: &sources
+      - llvm-toolchain-precise
+      - ubuntu-toolchain-r-test
+
+matrix:
+  allow_failures:
+    - os: linux
+  include:
+    - os: linux
+      env: CXX=clang++-3.8 CC=clang-3.8 CXX_STDLIB=-stdlib=libc++
+    - os: linux
+      env: CXX=clang++-3.8 CC=clang-3.8 CXX_STDLIB=-stdlib=libstdc++
+
+install:
+script: make test CXX=${CXX} CC=${CC} CXX_STDLIB=${CXX_STDLIB}

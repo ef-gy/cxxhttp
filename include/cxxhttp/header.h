@@ -19,6 +19,7 @@
 
 #include <locale>
 #include <map>
+#include <regex>
 #include <set>
 #include <string>
 
@@ -116,6 +117,42 @@ static inline bool append(std::map<std::string, std::string, comp> &header,
 
   v += "," + value;
   return true;
+}
+
+/**\brief Parse and append header line.
+ *
+ * Parse a header line using MIME header rules, and append any keys or values
+ * to the given header instance.
+ *
+ * To parse these lines correctly, the function needs to know what the last
+ * header line's key was, so it also returns this key.
+ *
+ * \tparam comp A comparator for the map.
+ * \param[in,out] header     The map to put the new data into.
+ * \param[in]     line       The raw line to parse and absorb.
+ * \param[in]     lastHeader The last header's key.
+ * \returns The affected header line's key.
+ */
+template <typename comp>
+static inline std::string absorb(
+    std::map<std::string, std::string, comp> &header, const std::string &line,
+    const std::string &lastHeader) {
+  static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
+  static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");
+  std::smatch matches;
+
+  if (std::regex_match(line, matches, mimeContinued)) {
+    append(header, lastHeader, matches[1]);
+  } else if (std::regex_match(line, matches, mime)) {
+    // RFC 2616, section 4.2:
+    // Header fields that occur multiple times must be combinable into a single
+    // value by appending the fields in the order they occur, using commas to
+    // separate the individual values.
+    append(header, matches[1], matches[2]);
+    return matches[1];
+  }
+
+  return lastHeader;
 }
 }
 

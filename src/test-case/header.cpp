@@ -107,4 +107,36 @@ int testAppend(std::ostream &log) {
   return 0;
 }
 
-TEST_BATCH(testToString, testCompare, testAppend)
+int testAbsorb(std::ostream &log) {
+  struct sampleData {
+    headers in;
+    std::string line, last, out, res;
+  };
+
+  std::vector<sampleData> tests{
+      {{}, "a: b", "", "a: b\r\n", "a"},
+      {{}, "a: b\r\n", "b", "a: b\r\n", "a"},
+      {{{"a", "b"}}, "a: c", "a", "a: b,c\r\n", "a"},
+      {{{"a", "b"}}, "\td\r\n", "a", "a: b,d\r\n", "a"},
+      {{{"a", "b"}, {"c", "d"}}, "a: e\r", "e", "a: b,e\r\nc: d\r\n", "a"},
+  };
+
+  for (const auto &tt : tests) {
+    auto h = tt.in;
+    const auto a = absorb(h, tt.line, tt.last);
+    const auto v = to_string(h);
+    if (v != tt.out) {
+      log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
+      return 1;
+    }
+    if (a != tt.res) {
+      log << "absorb(" << tt.out << ") had the wrong return value: '" << a
+          << "'\n";
+      return 2;
+    }
+  }
+
+  return 0;
+}
+
+TEST_BATCH(testToString, testCompare, testAppend, testAbsorb)

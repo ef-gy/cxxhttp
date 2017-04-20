@@ -249,9 +249,10 @@ class base {
    * in a map, so the order is probably unpredictable - but also probably just
    * alphabetic.
    *
-   * \param[in]  rx      The regex that should trigger a given handler.
-   * \param[out] handler The function to call.
-   * \param[in]  methodx Regex for allowed methods.
+   * \param[in]  rx           The regex that should trigger a given handler.
+   * \param[out] handler      The function to call.
+   * \param[in]  methodx      Regex for allowed methods.
+   * \param[in]  negotiations q-value lists for server-side content negotiation.
    */
   void add(const std::string &rx,
            std::function<bool(session &, std::smatch &)> handler,
@@ -647,8 +648,6 @@ class session {
     static const std::regex req(
         "(\\w+)\\s+([\\w\\d%/.:;()+-]+|\\*)\\s+(HTTP/1.[01])\\s*");
     static const std::regex stat("(HTTP/1.[01])\\s+([0-9]{3})\\s+(.*)\\s*");
-    static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
-    static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");
 
     std::istream is(&input);
     std::string s;
@@ -725,17 +724,8 @@ class session {
             status = stContent;
             s = "";
           }
-        } else if (std::regex_match(s, matches, mimeContinued)) {
-          append(header, lastHeader, matches[1]);
-          break;
-        } else if (std::regex_match(s, matches, mime)) {
-          lastHeader = matches[1];
-
-          // RFC 2616, section 4.2:
-          // Header fields that occur multiple times must be combinable into a
-          // single value by appending the fields in the order they occur, using
-          // commas to separate the individual values.
-          append(header, matches[1], matches[2]);
+        } else {
+          lastHeader = absorb(header, s, lastHeader);
           break;
         }
 

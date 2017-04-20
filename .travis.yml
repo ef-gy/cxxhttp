@@ -1,1 +1,34 @@
-dependencies/libefgy/.travis.yml
+language: cpp
+compiler:
+  - clang
+
+dist: trusty
+sudo: false
+
+os:
+  - osx
+  - linux
+
+env:
+  - CXX_STDLIB=-stdlib=libstdc++
+  - CXX_STDLIB=-stdlib=libc++
+
+addons:
+  apt:
+    packages:
+      - libc++1
+      - libc++-dev
+
+matrix:
+   allow_failures:
+     - os: linux
+     - os: osx
+       env: CXX_STDLIB=-stdlib=libstdc++
+
+install:
+
+script:
+  - make test CFLAGS="-O0 -coverage" CXX_STDLIB=${CXX_STDLIB} DEBUG=true
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

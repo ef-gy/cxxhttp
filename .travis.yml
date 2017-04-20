@@ -26,7 +26,7 @@ matrix:
 install:
 
 script:
-  - make test CFLAGS="-O0 -coverage" CXX_STDLIB=${CXX_STDLIB} DEBUG=true
+  - make test CFLAGS="-O2 -coverage" CXX_STDLIB=${CXX_STDLIB}
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

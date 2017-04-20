@@ -184,8 +184,7 @@ class base {
             }
 
             // modify the Vary value to indicate we used this header.
-            sess.negotiated["Vary"] +=
-                (sess.negotiated["Vary"].empty() ? "" : ",") + n.first;
+            append(sess.negotiated, "Vary", n.first);
 
             sess.negotiated[tn] = v;
             badNegotiation = badNegotiation || v.empty();
@@ -231,12 +230,12 @@ class base {
     }
 
     if (trigger405 && (methods.size() > 0)) {
-      std::string allow = "";
+      headers h{};
       for (const auto &m : methods) {
-        allow += (allow.empty() ? "" : ",") + m;
+        append(h, "Allow", m);
       }
 
-      sess.reply(405, {{"Allow", allow}},
+      sess.reply(405, h,
                  "Sorry, this resource is not available via this method.");
       return;
     }
@@ -727,7 +726,7 @@ class session {
             s = "";
           }
         } else if (std::regex_match(s, matches, mimeContinued)) {
-          header[lastHeader] += "," + std::string(matches[1]);
+          append(header, lastHeader, matches[1]);
           break;
         } else if (std::regex_match(s, matches, mime)) {
           lastHeader = matches[1];
@@ -736,11 +735,7 @@ class session {
           // Header fields that occur multiple times must be combinable into a
           // single value by appending the fields in the order they occur, using
           // commas to separate the individual values.
-          if (header[matches[1]].empty()) {
-            header[matches[1]] = matches[2];
-          } else {
-            header[matches[1]] += "," + std::string(matches[2]);
-          }
+          append(header, matches[1], matches[2]);
           break;
         }
 

@@ -40,16 +40,13 @@ static bool options(typename net::http::server<transport>::session &session,
     }
   }
 
+  headers header{{"Content-Type", "text/markdown; charset=UTF-8"}};
+
   for (const auto &m : methods) {
-    allow += (allow == "" ? "" : ",") + m;
+    append(header, "Allow", m);
   }
 
-  session.reply(
-      200,
-      {
-          {"Content-Type", "text/markdown; charset=UTF-8"}, {"Allow", allow},
-      },
-      text);
+  session.reply(200, header, text);
 
   return true;
 }

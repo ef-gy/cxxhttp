@@ -76,4 +76,35 @@ int testCompare(std::ostream &log) {
   return 0;
 }
 
-TEST_BATCH(testToString, testCompare)
+int testAppend(std::ostream &log) {
+  struct sampleData {
+    headers in;
+    std::string key, value, out;
+    bool res;
+  };
+
+  std::vector<sampleData> tests{
+      {{}, "a", "b", "a: b\r\n", false},
+      {{{"a", "b"}}, "a", "c", "a: b,c\r\n", true},
+      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n", true},
+      {{{"a", "b"}, {"c", "d"}}, "a", "e", "a: b,e\r\nc: d\r\n", true},
+  };
+
+  for (const auto &tt : tests) {
+    auto h = tt.in;
+    const auto a = append(h, tt.key, tt.value);
+    const auto v = to_string(h);
+    if (v != tt.out) {
+      log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
+      return 1;
+    }
+    if (a != tt.res) {
+      log << "append(" << tt.out << ") had the wrong return value\n";
+      return 2;
+    }
+  }
+
+  return 0;
+}
+
+TEST_BATCH(testToString, testCompare, testAppend)

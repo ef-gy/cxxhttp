@@ -75,16 +75,47 @@ using headers = std::map<std::string, std::string, comparator::headerNameLT>;
  * This function takes a header map and converts it into the form used in the
  * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".
  *
+ * \tparam comp A comparator for the map.
  * \param[in] header The header map to turn into a string.
- *
  * \returns A string, with all of the elements in the header parameter.
  */
-static inline std::string to_string(const headers &header) {
+template <typename comp>
+static inline std::string to_string(
+    const std::map<std::string, std::string, comp> &header) {
   std::string r = "";
   for (const auto &h : header) {
     r += h.first + ": " + h.second + "\r\n";
   }
   return r;
+}
+
+/**\brief Append value to header map.
+ *
+ * Appends 'value' to the element 'key' in the header map. The former and the
+ * new value will be separated by a ',', which is used throughout HTTP/1.1
+ * header fields for when lists need to be represented.
+ *
+ * If the key was not originally set, then the value is simply set instead of
+ * appended. This keeps the HTTP/1.1 header list syntax happy.
+ *
+ * \tparam comp A comparator for the map.
+ * \param[in,out] header The map to modify.
+ * \param[in]     key    The key to append to, or set.
+ * \param[in]     value  The new value.
+ * \returns 'true' if the value was appended, 'false' otherwise, i.e. if the
+ *     value was set instead.
+ */
+template <typename comp>
+static inline bool append(std::map<std::string, std::string, comp> &header,
+                          const std::string &key, const std::string &value) {
+  std::string &v = header[key];
+  if (v.empty()) {
+    v = value;
+    return false;
+  }
+
+  v += "," + value;
+  return true;
 }
 }
 

@@ -1,13 +1,16 @@
-language: generic
-compiler: clang
-os: osx
-osx_image: xcode7.2
-env: CXX=clang++ CC=clang CXX_STDLIB=-stdlib=libc++
+language: cpp
+compiler:
+  - clang
+  - gcc
+
+os:
+  - osx
+  - linux
 
 addons:
   apt:
     packages:
-      - clang-3.8
+      - clang
       - llvm-dev
       - libc++1
       - libc++-dev
@@ -15,17 +18,10 @@ addons:
       - llvm-toolchain-precise
       - ubuntu-toolchain-r-test
 
-matrix:
-  allow_failures:
-    - os: linux
-  include:
-    - os: linux
-      env: CXX=clang++-3.8 CC=clang-3.8 CXX_STDLIB=-stdlib=libc++
-    - os: linux
-      env: CXX=clang++-3.8 CC=clang-3.8 CXX_STDLIB=-stdlib=libstdc++
-
 install:
-script: make test CXX=${CXX} CC=${CC} CXX_STDLIB=${CXX_STDLIB} CFLAGS="-O2 -coverage" DEBUG=true
+
+script:
+  - make test CFLAGS="-O0 -coverage" DEBUG=true
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

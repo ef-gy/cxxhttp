@@ -1,15 +1,17 @@
-/**\file
- * \ingroup example-programmes
+/* HTTP client programme.
  *
- * \copyright
+ * Contains a very basic HTTP client, primarily to test the library against an
+ * HTTP server running on a UNIX socket.
+ *
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #define ASIO_DISABLE_THREADS
 #include <cxxhttp/http.h>
 

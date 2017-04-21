@@ -1,14 +1,21 @@
-/**\file
+/* HTTP TRACE handler.
  *
- * \copyright
+ * This is an implementation of the TRACE method for the httpd.h server.
+ *
+ * Do note that there could be security concerns in leaving this enabled. In
+ * particular, TRACE allows http-only cookies to be read out from JavaScript. I
+ * do maintain that if your security relies on this, however, that you have
+ * larger issues that need addressing.
+ *
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #if !defined(CXXHTTP_HTTPD_TRACE_H)
 #define CXXHTTP_HTTPD_TRACE_H
 

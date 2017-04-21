@@ -1,14 +1,17 @@
-/**\file
+/* asio.hpp HTTP server.
  *
- * \copyright
+ * This file implements an actual HTTP server with a simple servlet capability
+ * in top of http.h.
+ *
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #if !defined(CXXHTTP_HTTPD_H)
 #define CXXHTTP_HTTPD_H
 

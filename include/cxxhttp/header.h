@@ -1,19 +1,18 @@
-/**\file
- * \brief HTTP header type.
+/* asio.hpp HTTP header type.
  *
  * The headers data type is a basic map, but with a case-insensitive comparator,
  * which is necessary for processing HTTP/1.1 headers as this makes keys that
  * only differ in their case work as expected.
  *
- * \copyright
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #if !defined(CXXHTTP_HEADER_H)
 #define CXXHTTP_HEADER_H
 

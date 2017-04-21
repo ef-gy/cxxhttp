@@ -1,4 +1,3 @@
-#if !defined(CXXHTTP_CLIENT_H)
 /* asio.hpp Generic Client
  *
  * A generic asynchronous client template using asio.hpp.
@@ -12,6 +11,7 @@
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
+#if !defined(CXXHTTP_CLIENT_H)
 #define CXXHTTP_CLIENT_H
 
 #include <memory>

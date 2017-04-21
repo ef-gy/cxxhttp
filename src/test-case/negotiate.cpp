@@ -1,18 +1,17 @@
-/**\file
- * \brief Test cases for the HTTP/1.1 negotiation algorithm.
+/* Test cases for the HTTP/1.1 negotiation algorithm.
  *
  * This file contains unit tests for HTTP content negotiation, which is
  * implemented in cxxhttp/negotiate.h.
  *
- * \copyright
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: http://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #include <iostream>
 
 #include <ef.gy/test-case.h>

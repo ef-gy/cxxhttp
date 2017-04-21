@@ -1,28 +1,28 @@
-/**\file
- * \ingroup example-programmes
- * \brief "Hello World" HTTP Server
+/* "Hello World" HTTP server sample.
  *
  * An example HTTP server that serves a simple "Hello World!" on /, and a 404 on
  * all other resources.
  *
  * Call it like this:
- * \code
- * $ ./server http:localhost:8080
- * \endcode
+ *
+ *     $ ./server http:localhost:8080
  *
  * With localhost and 8080 being a host name and port of your choosing. Then,
  * while the programme is running, open a browser and go to
  * http://localhost:8080/ and you should see the familiar greeting.
  *
- * \copyright
+ * Contains a very basic HTTP client, primarily to test the library against an
+ * HTTP server running on a UNIX socket.
+ *
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #define ASIO_DISABLE_THREADS
 #include <cxxhttp/httpd.h>
 

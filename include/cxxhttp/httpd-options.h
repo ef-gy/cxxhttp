@@ -1,14 +1,20 @@
-/**\file
+/* HTTP OPTIONS extension.
  *
- * \copyright
+ * This file implements a generic version of the OPTIONS method, for use with
+ * the httpd.h server and servlet implementation.
+ *
+ * This implementation also has a minor extension, whereby the valid and
+ * applicable servlets are provided in markdown.
+ *
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
 #if !defined(CXXHTTP_HTTPD_OPTIONS_H)
 #define CXXHTTP_HTTPD_OPTIONS_H
 

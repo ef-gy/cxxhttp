@@ -6,11 +6,10 @@ dist: trusty
 sudo: false
 
 os:
-  - linux
   - osx
+  - linux
 
 env:
-  - CXX_STDLIB=-stdlib=libstdc++
   - CXX_STDLIB=-stdlib=libc++
 
 addons:
@@ -18,12 +17,6 @@ addons:
     packages:
       - libc++1
       - libc++-dev
-
-matrix:
-   allow_failures:
-     - env: CXX_STDLIB=-stdlib=libstdc++
-
-install:
 
 script:
   - make test CFLAGS="-O2 -coverage" CXX_STDLIB=${CXX_STDLIB}

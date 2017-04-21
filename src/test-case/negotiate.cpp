@@ -21,6 +21,15 @@
 
 using namespace cxxhttp;
 
+/**\brief Test string trim function.
+ *
+ * \test Header fields need to ignore a lot of white space; the trim() function
+ *     removes that from both ends of a string, so this is a simple test to make
+ *     sure that works.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testTrim(std::ostream &log) {
   struct sampleData {
     std::string in, out;
@@ -43,6 +52,17 @@ int testTrim(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test list splitting.
+ *
+ * \test HTTP negotiation headers, like many others, are comma-separated, and
+ *     the actual values are semicolon-separated. MIME has slash-separated
+ *     types. This function exercises the split() function, which can use an
+ *     arbitrary character and return a split list with that character as the
+ *     separator.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testSplit(std::ostream &log) {
   struct sampleData {
     std::string in;
@@ -72,6 +92,15 @@ int testSplit(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test q-value parsing.
+ *
+ * \test This function tests whether q-values are parsed correctly from list
+ *     elements. This is done by first splitting the values and then recombining
+ *     them in various ways.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testQvalue(std::ostream &log) {
   struct sampleData {
     std::string in, recombined, full, value;
@@ -164,6 +193,14 @@ int testQvalue(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test q-value sorting.
+ *
+ * \test Q-values are sorted based on the 'q' parameter alone. This function
+ *     makes sure that actually works, in theory.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testQvalueLessThan(std::ostream &log) {
   struct sampleData {
     std::string a, b;
@@ -194,6 +231,15 @@ int testQvalueLessThan(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test q-value sorting in container.
+ *
+ * \test This is the practical counterpart to testQvalueLessThan(), which uses
+ *     the sorting operation in a std::set container, which in turn uses the
+ *     less-than operator to deduplicate entries.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testQvalueSort(std::ostream &log) {
   struct sampleData {
     std::set<std::string> in;
@@ -231,6 +277,16 @@ int testQvalueSort(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test q-value matching.
+ *
+ * \test Standard less-than and equality relations don't necessarily hold true
+ *     for these values, as sorting is performed primarily on q-value, whereas
+ *     matching is performed based on the string value. This tests the equality
+ *     relation defined on type.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testQvalueMatch(std::ostream &log) {
   struct sampleData {
     std::string a, b;
@@ -275,6 +331,14 @@ int testQvalueMatch(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test actual end-to-end negotiation.
+ *
+ * \test This function tests the actual negotiation algorithm, which pretty much
+ *     ties together the rest of the tests in this file.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testFullNegotiation(std::ostream &log) {
   struct sampleData {
     std::string theirs, mine, result, rresult;

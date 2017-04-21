@@ -6,8 +6,8 @@ dist: trusty
 sudo: false
 
 os:
-  - osx
   - linux
+  - osx
 
 env:
   - CXX_STDLIB=-stdlib=libstdc++

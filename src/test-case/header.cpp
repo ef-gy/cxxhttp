@@ -22,6 +22,14 @@
 
 using namespace cxxhttp;
 
+/**\brief Test header flattening.
+ *
+ * \test The header structure needs to be written out to a string, which
+ *     represents a MIME header form. Thhis is a table based test to do so.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testToString(std::ostream &log) {
   struct sampleData {
     headers in;
@@ -46,6 +54,16 @@ int testToString(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test case-insensitive comparator.
+ *
+ * \test HTTP requires headers to be case-insensitive, so this test makes sure
+ *     that the function we implemented for that works as intended. This is a
+ *     table based test where the test data is used for the comparison both back
+ *     and forward.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testCompare(std::ostream &log) {
   struct sampleData {
     std::string a, b;
@@ -76,6 +94,15 @@ int testCompare(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test header append function.
+ *
+ * \test Appending a header in HTTP means either setting the header or adding a
+ *     comma and then the additional value. This test exercises that, and also
+ *     exercises whether the type is properly case insensitive.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testAppend(std::ostream &log) {
   struct sampleData {
     headers in;
@@ -107,6 +134,15 @@ int testAppend(std::ostream &log) {
   return 0;
 }
 
+/**\brief Test header line parsing.
+ *
+ * \test This test appends single header lines, with various end-of-line
+ *     characters, to prepared headers and verifies that they parsed correctly
+ *     by turning the result into a flat header string.
+ *
+ * \param[out] log
+ * \returns Zero on success, nonzero otherwise.
+ */
 int testAbsorb(std::ostream &log) {
   struct sampleData {
     headers in;

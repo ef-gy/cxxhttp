@@ -1,18 +1,17 @@
-/**\file
- * \brief asio.hpp Generic Client
+#if !defined(CXXHTTP_CLIENT_H)
+/* asio.hpp Generic Client
  *
  * A generic asynchronous client template using asio.hpp.
  *
- * \copyright
+ * See also:
+ * * Project Documentation: https://ef.gy/documentation/cxxhttp
+ * * Project Source Code: https://github.com/ef-gy/cxxhttp
+ * * Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
+ *
+ * @copyright
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Project Documentation: https://ef.gy/documentation/cxxhttp
- * \see Project Source Code: https://github.com/ef-gy/cxxhttp
- * \see Licence Terms: https://github.com/ef-gy/cxxhttp/blob/master/COPYING
  */
-
-#if !defined(CXXHTTP_CLIENT_H)
 #define CXXHTTP_CLIENT_H
 
 #include <memory>
@@ -21,13 +20,13 @@
 
 namespace cxxhttp {
 namespace net {
-/**\brief Basic asynchronous client wrapper
+/* Basic asynchronous client wrapper
  *
  * Contains code that connects to a given endpoint and establishes a session for
  * the duration of that connection.
  *
- * \tparam base             The socket class, e.g. asio::ip::tcp
- * \tparam requestProcessor The functor class to handle requests.
+ * @base The socket class, e.g. asio::ip::tcp
+ * @requestProcessor The functor class to handle requests.
  */
 template <typename base, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
@@ -36,14 +35,14 @@ class client : public connection<requestProcessor> {
   using connection = connection<requestProcessor>;
   using session = sessionTemplate<base, requestProcessor>;
 
-  /**\brief Initialise with IO service
+  /* Initialise with IO service
    *
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    *
-   * \param[in]  endpoint Endpoint for the socket to bind.
-   * \param[out] pio      IO service to use.
-   * \param[out] logfile  A stream to write log messages to.
+   * @endpoint Endpoint for the socket to bind.
+   * @pio IO service to use.
+   * @logfile A stream to write log messages to.
    */
   client(typename base::endpoint &endpoint,
          io::service &pio = io::service::common(),
@@ -53,7 +52,7 @@ class client : public connection<requestProcessor> {
   }
 
  protected:
-  /**\brief Connect to the socket.
+  /* Connect to the socket.
    *
    * This function creates a new, blank session and attempts to connect to the
    * given socket.
@@ -66,14 +65,13 @@ class client : public connection<requestProcessor> {
         });
   }
 
-  /**\brief Handle new connection
+  /* Handle new connection
    *
    * Called by asio.hpp when a new outbound connection has been accepted; this
    * allows the session object to begin interacting with the new session.
    *
-   * \param[in] newSession The blank session object that was created by
-   *                       startConnect().
-   * \param[in] error      Describes any error condition that may have occurred.
+   * @newSession The blank session object that was created by startConnect().
+   * @error Describes any error condition that may have occurred.
    */
   void handleConnect(std::shared_ptr<session> newSession,
                      const std::error_code &error) {

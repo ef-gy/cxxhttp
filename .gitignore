@@ -12,10 +12,6 @@ test-case-*
 
 # auto-generated docs
 documentation/html
-documentation/xml
-documentation.xml
-doxyfile
-*.tag
 
 # build files
 include/optional

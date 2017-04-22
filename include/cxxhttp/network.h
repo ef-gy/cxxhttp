@@ -44,13 +44,12 @@ class service {
 
   std::size_t run(void) { return io_service.run(); }
 
-  int main(int argc, char *argv[],
-           efgy::cli::options<> &opts = efgy::cli::options<>::common()) {
-    int rv = opts.apply(argc, argv) == 0;
+  int main(int argc, char *argv[]) {
+    efgy::cli::options opts(argc, argv);
 
     run();
 
-    return rv;
+    return opts.matches == 0 ? -1 : 0;
   }
 
  protected:

@@ -31,6 +31,8 @@
 #include <cxxhttp/httpd-quit.h>
 #include <cxxhttp/httpd-trace.h>
 
+#include <ef.gy/stream-json.h>
+
 using namespace cxxhttp;
 
 /* Hello World request handler
@@ -43,10 +45,18 @@ using namespace cxxhttp;
 template <class transport>
 static bool hello(typename net::http::server<transport>::session &session,
                   std::smatch &) {
+  using efgy::json::json;
+  using efgy::json::tag;
+
+  const std::string message = "Hello World!";
+
   if (session.negotiated["Content-Type"] == "text/plain") {
-    session.reply(200, "Hello World!");
+    session.reply(200, message);
   } else if (session.negotiated["Content-Type"] == "application/json") {
-    session.reply(200, "\"Hello World!\"");
+    std::ostringstream s("");
+    s << tag() << json(message);
+
+    session.reply(200, s.str());
   }
 
   return true;

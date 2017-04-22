@@ -21,15 +21,15 @@
 
 using namespace cxxhttp;
 
-/**\brief Test header flattening.
+/* Test header flattening.
+ * @log Test output stream.
  *
- * \test The header structure needs to be written out to a string, which
- *     represents a MIME header form. Thhis is a table based test to do so.
+ * The header structure needs to be written out to a string, which represents a
+ * MIME header form. Thhis is a table based test to do so.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testToString(std::ostream &log) {
+bool testToString(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string out;
@@ -46,24 +46,23 @@ int testToString(std::ostream &log) {
     const auto v = to_string(tt.in);
     if (v != tt.out) {
       log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
-      return 1;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test case-insensitive comparator.
+/* Test case-insensitive comparator.
+ * @log Test output stream.
  *
- * \test HTTP requires headers to be case-insensitive, so this test makes sure
- *     that the function we implemented for that works as intended. This is a
- *     table based test where the test data is used for the comparison both back
- *     and forward.
+ * HTTP requires headers to be case-insensitive, so this test makes sure that
+ * the function we implemented for that works as intended. This is a table based
+ * test where the test data is used for the comparison both back and forward.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testCompare(std::ostream &log) {
+bool testCompare(std::ostream &log) {
   struct sampleData {
     std::string a, b;
     bool res, rev;
@@ -80,29 +79,29 @@ int testCompare(std::ostream &log) {
     if (v != tt.res) {
       log << "headerNameLT('" << tt.a << "' < '" << tt.b << "')='" << v
           << "', expected '" << tt.res << "'\n";
-      return 1;
+      return false;
     }
     const auto v2 = comparator::headerNameLT()(tt.b, tt.a);
     if (v2 != tt.rev) {
       log << "headerNameLT('" << tt.b << "' < '" << tt.a << "')='" << v2
           << "', expected '" << tt.rev << "'\n";
-      return 2;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test header append function.
+/* Test header append function.
+ * @log Test output stream.
  *
- * \test Appending a header in HTTP means either setting the header or adding a
- *     comma and then the additional value. This test exercises that, and also
- *     exercises whether the type is properly case insensitive.
+ * Appending a header in HTTP means either setting the header or adding a comma
+ * and then the additional value. This test exercises that, and also exercises
+ * whether the type is properly case insensitive.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testAppend(std::ostream &log) {
+bool testAppend(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string key, value, out;
@@ -122,27 +121,27 @@ int testAppend(std::ostream &log) {
     const auto v = to_string(h);
     if (v != tt.out) {
       log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
-      return 1;
+      return false;
     }
     if (a != tt.res) {
       log << "append(" << tt.out << ") had the wrong return value\n";
-      return 2;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test header line parsing.
+/* Test header line parsing.
+ * @log Test output stream.
  *
- * \test This test appends single header lines, with various end-of-line
- *     characters, to prepared headers and verifies that they parsed correctly
- *     by turning the result into a flat header string.
+ * This test appends single header lines, with various end-of-line characters,
+ * to prepared headers and verifies that they parsed correctly by turning the
+ * result into a flat header string.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testAbsorb(std::ostream &log) {
+bool testAbsorb(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string line, last, out, res;
@@ -162,16 +161,23 @@ int testAbsorb(std::ostream &log) {
     const auto v = to_string(h);
     if (v != tt.out) {
       log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
-      return 1;
+      return false;
     }
     if (a != tt.res) {
       log << "absorb(" << tt.out << ") had the wrong return value: '" << a
           << "'\n";
-      return 2;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-TEST_BATCH(testToString, testCompare, testAppend, testAbsorb)
+namespace test {
+using efgy::test::function;
+
+static function toString(testToString);
+static function compare(testCompare);
+static function append(testAppend);
+static function absorb(testAbsorb);
+}

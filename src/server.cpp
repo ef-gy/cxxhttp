@@ -33,13 +33,12 @@
 
 using namespace cxxhttp;
 
-/**\brief Hello World request handler
+/* Hello World request handler
+ * @session The HTTP session to answer on.
  *
  * This function serves the familiar "Hello World!" when called.
  *
- * \param[out] session The HTTP session to answer on.
- *
- * \returns true (always, as we always reply).
+ * @return 'true' (always, as we always reply).
  */
 template <class transport>
 static bool hello(typename net::http::server<transport>::session &session,
@@ -67,16 +66,15 @@ static httpd::servlet<stream_protocol> hello(
     {{"Accept", "text/plain, application/json;q=0.9"}});
 }
 
-/**\brief Main function for the HTTP demo
+/* Main function for the HTTP demo
+ * @argc Process argument count.
+ * @argv Process argument vector
  *
  * Main function for the network server hello world programme.
  *
  * Sets up server(s) as per the given command line arguments. Invalid arguments
  * are ignored.
  *
- * \param[in] argc Process argument count.
- * \param[in] argv Process argument vector
- *
- * \returns 0 when nothing bad happened, 1 otherwise.
+ * @return 0 when nothing bad happened, 1 otherwise.
  */
 int main(int argc, char *argv[]) { return io::main(argc, argv); }

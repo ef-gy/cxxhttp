@@ -55,11 +55,10 @@ static efgy::cli::option tcp(
     "Fetch the given HTTP URL.");
 }
 
-/**\brief Main function for the HTTP client demo.
+/* Main function for the HTTP client demo.
+ * @argc Process argument count.
+ * @argv Process argument vector
  *
- * \param[in] argc Process argument count.
- * \param[in] argv Process argument vector
- *
- * \returns 0 when nothing bad happened, 1 otherwise.
+ * @return 0 when nothing bad happened, 1 otherwise.
  */
 int main(int argc, char *argv[]) { return io::main(argc, argv); }

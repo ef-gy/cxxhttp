@@ -20,16 +20,16 @@
 
 using namespace cxxhttp;
 
-/**\brief Test string trim function.
+/* Test string trim function.
+ * @log Test output stream.
  *
- * \test Header fields need to ignore a lot of white space; the trim() function
- *     removes that from both ends of a string, so this is a simple test to make
- *     sure that works.
+ * Header fields need to ignore a lot of white space; the trim() function
+ * removes that from both ends of a string, so this is a simple test to make
+ * sure that works.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testTrim(std::ostream &log) {
+bool testTrim(std::ostream &log) {
   struct sampleData {
     std::string in, out;
   };
@@ -44,25 +44,24 @@ int testTrim(std::ostream &log) {
     if (v != tt.out) {
       log << "trim('" << tt.in << "')='" << v << "', expected '" << tt.out
           << "'\n";
-      return 1;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test list splitting.
+/* Test list splitting.
+ * @log Test output stream.
  *
- * \test HTTP negotiation headers, like many others, are comma-separated, and
- *     the actual values are semicolon-separated. MIME has slash-separated
- *     types. This function exercises the split() function, which can use an
- *     arbitrary character and return a split list with that character as the
- *     separator.
+ * HTTP negotiation headers, like many others, are comma-separated, and the
+ * actual values are semicolon-separated. MIME has slash-separated types. This
+ * function exercises the split() function, which can use an arbitrary character
+ * and return a split list with that character as the separator.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testSplit(std::ostream &log) {
+bool testSplit(std::ostream &log) {
   struct sampleData {
     std::string in;
     std::vector<std::string> out;
@@ -79,28 +78,28 @@ int testSplit(std::ostream &log) {
     const auto v = split(tt.in);
     if (v != tt.out) {
       log << "split('" << tt.in << "') has unexpected value.\n";
-      return 1;
+      return false;
     }
     const auto v2 = split(tt.in, ';');
     if (v2 != tt.outSemi) {
       log << "split('" << tt.in << "', ';') has unexpected value.\n";
-      return 1;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test q-value parsing.
+/* Test q-value parsing.
+ * @log Test output stream.
  *
- * \test This function tests whether q-values are parsed correctly from list
- *     elements. This is done by first splitting the values and then recombining
- *     them in various ways.
+ * This function tests whether q-values are parsed correctly from list elements.
+ * This is done by first splitting the values and then recombining them in
+ * various ways.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testQvalue(std::ostream &log) {
+bool testQvalue(std::ostream &log) {
   struct sampleData {
     std::string in, recombined, full, value;
     std::set<std::string> attributes, extensions;
@@ -162,45 +161,45 @@ int testQvalue(std::ostream &log) {
     if (std::string(v) != tt.recombined) {
       log << "qvalue('" << tt.in << "').recombined='" << std::string(v)
           << "', expected '" << tt.recombined << "'\n";
-      return 1;
+      return false;
     }
     if (v.full() != tt.full) {
       log << "qvalue('" << tt.in << "').full()='" << v.full() << "', expected '"
           << tt.full << "'\n";
-      return 1;
+      return false;
     }
     if (v.value != tt.value) {
       log << "qvalue('" << tt.in << "').value='" << v.value << "', expected '"
           << tt.value << "'\n";
-      return 2;
+      return false;
     }
     if (v.q != tt.q) {
       log << "qvalue('" << tt.in << "').q='" << v.q << "', expected '" << tt.q
           << "'\n";
-      return 3;
+      return false;
     }
     if (v.attributes != tt.attributes) {
       log << "qvalue('" << tt.in << "').attributes has an unexpected value\n";
-      return 4;
+      return false;
     }
     if (v.extensions != tt.extensions) {
       log << "qvalue('" << tt.in << "').extensions has an unexpected value\n";
-      return 4;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test q-value sorting.
+/* Test q-value sorting.
+ * @log Test output stream.
  *
- * \test Q-values are sorted based on the 'q' parameter alone. This function
- *     makes sure that actually works, in theory.
+ * Q-values are sorted based on the 'q' parameter alone. This function makes
+ * sure that actually works, in theory.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testQvalueLessThan(std::ostream &log) {
+bool testQvalueLessThan(std::ostream &log) {
   struct sampleData {
     std::string a, b;
     bool isLess;
@@ -223,23 +222,23 @@ int testQvalueLessThan(std::ostream &log) {
     if ((a < b) != tt.isLess) {
       log << "qvalue('" << tt.a << "' < '" << tt.b
           << "') has unexpected value.\n";
-      return 1;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test q-value sorting in container.
+/* Test q-value sorting in container.
+ * @log Test output stream.
  *
- * \test This is the practical counterpart to testQvalueLessThan(), which uses
- *     the sorting operation in a std::set container, which in turn uses the
- *     less-than operator to deduplicate entries.
+ * This is the practical counterpart to testQvalueLessThan(), which uses the
+ * sorting operation in a std::set container, which in turn uses the less-than
+ * operator to deduplicate entries.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testQvalueSort(std::ostream &log) {
+bool testQvalueSort(std::ostream &log) {
   struct sampleData {
     std::set<std::string> in;
     std::vector<std::string> out;
@@ -269,24 +268,24 @@ int testQvalueSort(std::ostream &log) {
       for (const auto &a : out) {
         log << " * " << a.full() << "\n";
       }
-      return 1;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test q-value matching.
+/* Test q-value matching.
+ * @log Test output stream.
  *
- * \test Standard less-than and equality relations don't necessarily hold true
- *     for these values, as sorting is performed primarily on q-value, whereas
- *     matching is performed based on the string value. This tests the equality
- *     relation defined on type.
+ * Standard less-than and equality relations don't necessarily hold true for
+ * these values, as sorting is performed primarily on q-value, whereas matching
+ * is performed based on the string value. This tests the equality relation
+ * defined on type.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testQvalueMatch(std::ostream &log) {
+bool testQvalueMatch(std::ostream &log) {
   struct sampleData {
     std::string a, b;
     bool isMatch, aWildcard, bWildcard;
@@ -313,32 +312,32 @@ int testQvalueMatch(std::ostream &log) {
     if ((a == b) != tt.isMatch) {
       log << "qvalue('" << tt.a << "' == '" << tt.b
           << "') has unexpected value.\n";
-      return 1;
+      return false;
     }
     if (a.hasWildcard() != tt.aWildcard) {
       log << "qvalue('" << tt.a << "').hasWildcard()=" << tt.aWildcard
           << " has unexpected value.\n";
-      return 2;
+      return false;
     }
     if (b.hasWildcard() != tt.bWildcard) {
       log << "qvalue('" << tt.b << "').hasWildcard()=" << tt.bWildcard
           << " has unexpected value.\n";
-      return 3;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-/**\brief Test actual end-to-end negotiation.
+/* Test actual end-to-end negotiation.
+ * @log Test output stream.
  *
- * \test This function tests the actual negotiation algorithm, which pretty much
- *     ties together the rest of the tests in this file.
+ * This function tests the actual negotiation algorithm, which pretty much ties
+ * together the rest of the tests in this file.
  *
- * \param[out] log
- * \returns Zero on success, nonzero otherwise.
+ * @return 'true' on success, 'false' otherwise.
  */
-int testFullNegotiation(std::ostream &log) {
+bool testFullNegotiation(std::ostream &log) {
   struct sampleData {
     std::string theirs, mine, result, rresult;
   };
@@ -372,18 +371,27 @@ int testFullNegotiation(std::ostream &log) {
     if (v != tt.result) {
       log << "negotiate('" << tt.theirs << "','" << tt.mine << "')='" << v
           << "', expected '" << tt.result << "'.\n";
-      return 1;
+      return false;
     }
     const std::string v2 = negotiate(tt.mine, tt.theirs);
     if (v2 != tt.rresult) {
       log << "negotiate('" << tt.mine << "','" << tt.theirs << "')='" << v2
           << "', expected '" << tt.rresult << "'.\n";
-      return 2;
+      return false;
     }
   }
 
-  return 0;
+  return true;
 }
 
-TEST_BATCH(testTrim, testSplit, testQvalue, testQvalueLessThan, testQvalueSort,
-           testQvalueMatch, testFullNegotiation)
+namespace test {
+using efgy::test::function;
+
+static function trim(testTrim);
+static function split(testSplit);
+static function qValue(testQvalue);
+static function qValueLessThan(testQvalueLessThan);
+static function qValueSort(testQvalueSort);
+static function qValueMatch(testQvalueMatch);
+static function fullNegotiation(testFullNegotiation);
+}

@@ -64,7 +64,7 @@ class servlet {
 
 template <class transport>
 static std::size_t setup(net::endpoint<transport> lookup,
-                         io::service &service = efgy::global<io::service>()) {
+                         service &service = efgy::global<cxxhttp::service>()) {
   return lookup.with(
       [&service](typename transport::endpoint &endpoint) -> bool {
         net::http::server<transport> *s =
@@ -74,11 +74,6 @@ static std::size_t setup(net::endpoint<transport> lookup,
 
         return true;
       });
-}
-
-namespace transport {
-using tcp = net::transport::tcp;
-using unix = net::transport::unix;
 }
 
 namespace cli {

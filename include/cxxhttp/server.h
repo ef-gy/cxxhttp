@@ -45,7 +45,7 @@ class server : public connection<requestProcessor> {
    * \param[out] logfile  A stream to write log messages to.
    */
   server(typename base::endpoint &endpoint,
-         io::service &pio = efgy::global<io::service>(),
+         service &pio = efgy::global<service>(),
          std::ostream &logfile = std::cout)
       : connection(pio, logfile), acceptor(pio, endpoint) {
     startAccept();

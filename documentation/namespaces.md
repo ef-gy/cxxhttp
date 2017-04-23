@@ -14,7 +14,7 @@ Contains templates that deal with networking in one way or another. This code
 is based on asio.hpp, an asynchronous I/O library for C++. The makefile knows
 how to download this header-only library in case it's not installed.
 
-#<cldoc:cxxhttp::net::transport>
+#<cldoc:cxxhttp::transport>
 
 Supported transport sockets.
 

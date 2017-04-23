@@ -22,7 +22,7 @@ namespace client {
 template <class transport>
 static std::size_t setup(net::endpoint<transport> lookup, std::string host,
                          std::string resource,
-                         io::service &service = efgy::global<io::service>()) {
+                         service &service = efgy::global<cxxhttp::service>()) {
   return lookup.with([&service, host, resource](
                          typename transport::endpoint &endpoint) -> bool {
     net::http::client<transport> *s =

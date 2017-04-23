@@ -27,55 +27,58 @@
 #include <ef.gy/version.h>
 
 namespace cxxhttp {
-namespace io {
 /* asio::io_service type.
  *
  * We declare this here so expicitly declare support for this.
  */
 using service = asio::io_service;
 
-// define USE_DEFAULT_IO_MAIN to use this main function, or call it.
+// define USE_DEFAULT_IO_MAIN to use this main function, or just call it.
 #if defined(USE_DEFAULT_IO_MAIN)
-extern "C"
+#define IO_MAIN_SPEC extern "C"
 #else
-static
+#define IO_MAIN_SPEC static
 #endif
-    /* Default IO main function.
-     * @argc Argument count.
-     * @argv Argument vector.
-     *
-     * Applies all arguments with the efgy::cli facilities, then (try to) run an
-     * ASIO I/O loop.
-     *
-     * @return 0 on success, -1 on failure.
-     */
-    int
-    main(int argc, char *argv[]) {
+
+/* Default IO main function.
+ * @argc Argument count.
+ * @argv Argument vector.
+ *
+ * Applies all arguments with the efgy::cli facilities, then (tries to) run an
+ * ASIO I/O loop.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+IO_MAIN_SPEC int main(int argc, char *argv[]) {
   efgy::cli::options opts(argc, argv);
 
   efgy::global<service>().run();
 
   return opts.matches == 0 ? -1 : 0;
 }
-}
 
-namespace net {
 namespace transport {
 using tcp = asio::ip::tcp;
 using unix = asio::local::stream_protocol;
 }
 
-template <typename S>
-static std::string address(const S &socket) {
-  return "[?]";
-}
+namespace net {
+/* Resolve UNIX socket address.
+ *
+ * This is currently not supported, so will just return a string to indicate
+ * that it's a UNIX socket and not something else.
+ *
+ * @return A fixed string that says that this is a UNIX socket.
+ */
+std::string address(const transport::unix::socket &) { return "[UNIX]"; }
 
-template <>
-std::string address(const transport::unix::socket &socket) {
-  return "[UNIX]";
-}
-
-template <>
+/* Resolve TCP socket address.
+ * @socket The socket to examine.
+ *
+ * Examines a TCP socket to resolve the host address on the other end.
+ *
+ * @return The address of whatever the socket is connected to.
+ */
 std::string address(const transport::tcp::socket &socket) {
   return socket.remote_endpoint().address().to_string();
 }
@@ -104,7 +107,7 @@ template <>
 class endpoint<transport::tcp> {
  public:
   endpoint(const std::string &pHost, const std::string &pPort,
-           io::service &pService = efgy::global<io::service>())
+           service &pService = efgy::global<cxxhttp::service>())
       : host(pHost), port(pPort), service(pService) {}
 
   std::size_t with(std::function<bool(transport::tcp::endpoint &)> f) {
@@ -131,7 +134,7 @@ class endpoint<transport::tcp> {
  protected:
   const std::string host;
   const std::string port;
-  io::service &service;
+  service &service;
 };
 
 /**\brief Basic asynchronous connection wrapper
@@ -151,7 +154,7 @@ class connection {
    * \param[out] pio      IO service to use.
    * \param[out] logfile  A stream to write log messages to.
    */
-  connection(io::service &pio, std::ostream &logfile)
+  connection(service &pio, std::ostream &logfile)
       : io(pio),
         log(logfile),
         processor(),
@@ -173,7 +176,7 @@ class connection {
    * Bound in the constructor to an asio.hpp IO service which handles
    * asynchronous connections.
    */
-  io::service &io;
+  service &io;
 
   /**\brief Log stream
    *

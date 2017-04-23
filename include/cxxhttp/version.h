@@ -19,8 +19,18 @@
 #include <string>
 
 namespace cxxhttp {
+/* Library version.
+ *
+ * Check this if you need to guard against specific version of the library. This
+ * is only increased after a release, but should still provide some measure of
+ * feature testing.
+ */
 static const unsigned int version = 1;
 
+/* Server identifier.
+ *
+ * Used as the default User-Agent/Server string.
+ */
 static const std::string identifier =
     "cxxhttp/" + std::to_string(version) + " asio/" +
     std::to_string(ASIO_VERSION) + " libefgy/" + std::to_string(efgy::version);

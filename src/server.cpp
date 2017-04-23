@@ -64,14 +64,14 @@ static bool hello(typename net::http::server<transport>::session &session,
 }
 
 namespace tcp {
-using cxxhttp::httpd::transport::tcp;
+using cxxhttp::transport::tcp;
 static httpd::servlet<tcp> hello("/", ::hello<tcp>, "GET",
                                  {{"Accept",
                                    "text/plain, application/json;q=0.9"}});
 }
 
 namespace unix {
-using cxxhttp::httpd::transport::unix;
+using cxxhttp::transport::unix;
 static httpd::servlet<unix> hello("/", ::hello<unix>, "GET",
                                   {{"Accept",
                                     "text/plain, application/json;q=0.9"}});

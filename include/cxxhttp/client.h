@@ -45,7 +45,7 @@ class client : public connection<requestProcessor> {
    * @logfile A stream to write log messages to.
    */
   client(typename base::endpoint &endpoint,
-         io::service &pio = io::service::common(),
+         io::service &pio = efgy::global<io::service>(),
          std::ostream &logfile = std::cout)
       : connection(pio, logfile), target(endpoint) {
     startConnect();

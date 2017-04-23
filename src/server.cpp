@@ -24,6 +24,7 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 #define ASIO_DISABLE_THREADS
+#define USE_DEFAULT_IO_MAIN
 #include <cxxhttp/httpd.h>
 
 // Optional server features.
@@ -75,16 +76,3 @@ static httpd::servlet<unix> hello("/", ::hello<unix>, "GET",
                                   {{"Accept",
                                     "text/plain, application/json;q=0.9"}});
 }
-
-/* Main function for the HTTP demo
- * @argc Process argument count.
- * @argv Process argument vector
- *
- * Main function for the network server hello world programme.
- *
- * Sets up server(s) as per the given command line arguments. Invalid arguments
- * are ignored.
- *
- * @return 0 when nothing bad happened, 1 otherwise.
- */
-int main(int argc, char *argv[]) { return io::main(argc, argv); }

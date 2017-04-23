@@ -23,41 +23,39 @@
 #include <asio.hpp>
 
 #include <ef.gy/cli.h>
+#include <ef.gy/global.h>
 #include <ef.gy/version.h>
 
 namespace cxxhttp {
 namespace io {
-/* asio::io_service wrapper
+/* asio::io_service type.
  *
- * The purpose of this object is to be able to have a 'default' IO service
- * object for server and client code to use. This is provided by the
- * service::common() function.
+ * We declare this here so expicitly declare support for this.
  */
-class service {
- public:
-  static service &common(void) {
-    static service serv;
-    return serv;
-  }
+using service = asio::io_service;
 
-  asio::io_service &get(void) { return io_service; }
+// define USE_DEFAULT_IO_MAIN to use this main function, or call it.
+#if defined(USE_DEFAULT_IO_MAIN)
+extern "C"
+#else
+static
+#endif
+    /* Default IO main function.
+     * @argc Argument count.
+     * @argv Argument vector.
+     *
+     * Applies all arguments with the efgy::cli facilities, then (try to) run an
+     * ASIO I/O loop.
+     *
+     * @return 0 on success, -1 on failure.
+     */
+    int
+    main(int argc, char *argv[]) {
+  efgy::cli::options opts(argc, argv);
 
-  std::size_t run(void) { return io_service.run(); }
+  efgy::global<service>().run();
 
-  int main(int argc, char *argv[]) {
-    efgy::cli::options opts(argc, argv);
-
-    run();
-
-    return opts.matches == 0 ? -1 : 0;
-  }
-
- protected:
-  asio::io_service io_service;
-};
-
-static int main(int argc, char *argv[]) {
-  return service::common().main(argc, argv);
+  return opts.matches == 0 ? -1 : 0;
 }
 }
 
@@ -106,13 +104,13 @@ template <>
 class endpoint<transport::tcp> {
  public:
   endpoint(const std::string &pHost, const std::string &pPort,
-           io::service &pService = io::service::common())
+           io::service &pService = efgy::global<io::service>())
       : host(pHost), port(pPort), service(pService) {}
 
   std::size_t with(std::function<bool(transport::tcp::endpoint &)> f) {
     std::size_t res = 0;
 
-    transport::tcp::resolver resolver(service.get());
+    transport::tcp::resolver resolver(service);
     transport::tcp::resolver::query query(host, port);
     transport::tcp::resolver::iterator endpoint_iterator =
         resolver.resolve(query);

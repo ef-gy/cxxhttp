@@ -44,7 +44,7 @@ static bool quit(typename net::http::server<transport>::session &session,
                  std::smatch &) {
   session.reply(200, "Good-Bye, Cruel World!");
 
-  session.connection.io.get().stop();
+  session.connection.io.stop();
 
   return true;
 }

@@ -13,6 +13,7 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 #define ASIO_DISABLE_THREADS
+#define USE_DEFAULT_IO_MAIN
 #include <cxxhttp/http.h>
 
 using namespace cxxhttp;
@@ -21,7 +22,7 @@ namespace client {
 template <class transport>
 static std::size_t setup(net::endpoint<transport> lookup, std::string host,
                          std::string resource,
-                         io::service &service = io::service::common()) {
+                         io::service &service = efgy::global<io::service>()) {
   return lookup.with([&service, host, resource](
                          typename transport::endpoint &endpoint) -> bool {
     net::http::client<transport> *s =
@@ -60,11 +61,3 @@ static option tcp("http://([^@:/]+)(:([0-9]+))?(/.*)",
                   "Fetch the given HTTP URL.");
 }
 }
-
-/* Main function for the HTTP client demo.
- * @argc Process argument count.
- * @argv Process argument vector
- *
- * @return 0 when nothing bad happened, 1 otherwise.
- */
-int main(int argc, char *argv[]) { return io::main(argc, argv); }

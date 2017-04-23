@@ -477,7 +477,7 @@ class session {
   session(connectionType &pConnection)
       : self(this),
         connection(pConnection),
-        socket(pConnection.io.get()),
+        socket(pConnection.io),
         status(stRequest),
         input(),
         agent(cxxhttp::identifier) {}

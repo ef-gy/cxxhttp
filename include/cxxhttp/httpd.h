@@ -33,7 +33,7 @@ template <class transport>
 class servlet {
  public:
   servlet(const std::string &pRegex,
-          std::function<bool(typename net::http::server<transport>::session &,
+          std::function<bool(typename http::server<transport>::session &,
                              std::smatch &)>
               pHandler,
           const std::string &pMethods = "GET", const headers pNegotiations = {},
@@ -52,7 +52,7 @@ class servlet {
 
   const std::string regex;
   const std::string methods;
-  const std::function<bool(typename net::http::server<transport>::session &,
+  const std::function<bool(typename http::server<transport>::session &,
                            std::smatch &)>
       handler;
   const headers negotiations;
@@ -65,15 +65,14 @@ class servlet {
 template <class transport>
 static std::size_t setup(net::endpoint<transport> lookup,
                          service &service = efgy::global<cxxhttp::service>()) {
-  return lookup.with(
-      [&service](typename transport::endpoint &endpoint) -> bool {
-        net::http::server<transport> *s =
-            new net::http::server<transport>(endpoint, service);
+  return lookup.with([&service](
+                         typename transport::endpoint &endpoint) -> bool {
+    http::server<transport> *s = new http::server<transport>(endpoint, service);
 
-        apply(s->processor, efgy::global<std::set<servlet<transport> *>>());
+    apply(s->processor, efgy::global<std::set<servlet<transport> *>>());
 
-        return true;
-      });
+    return true;
+  });
 }
 
 namespace cli {

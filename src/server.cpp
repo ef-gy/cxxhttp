@@ -44,7 +44,7 @@ using namespace cxxhttp;
  * @return 'true' (always, as we always reply).
  */
 template <class transport>
-static bool hello(typename net::http::server<transport>::session &session,
+static bool hello(typename http::server<transport>::session &session,
                   std::smatch &) {
   using efgy::json::json;
   using efgy::json::tag;

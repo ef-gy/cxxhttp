@@ -25,13 +25,11 @@ static std::size_t setup(net::endpoint<transport> lookup, std::string host,
                          service &service = efgy::global<cxxhttp::service>()) {
   return lookup.with([&service, host, resource](
                          typename transport::endpoint &endpoint) -> bool {
-    net::http::client<transport> *s =
-        new net::http::client<transport>(endpoint, service);
+    http::client<transport> *s = new http::client<transport>(endpoint, service);
 
     s->processor
         .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}}, "")
-        .then([](typename net::http::client<transport>::session &session)
-                  -> bool {
+        .then([](typename http::client<transport>::session &session) -> bool {
           std::cout << session.content;
           return true;
         });
@@ -45,9 +43,8 @@ using efgy::cli::option;
 
 static option socket("-{0,2}http:unix:(.+):(.+)",
                      [](std::smatch &m) -> bool {
-                       return setup(net::endpoint<asio::local::stream_protocol>(
-                                        m[1]),
-                                    m[1], m[2]) > 0;
+                       return setup(net::endpoint<transport::unix>(m[1]), m[1],
+                                    m[2]) > 0;
                      },
                      "Fetch resource[2] via HTTP from unix socket[1].");
 
@@ -55,8 +52,8 @@ static option tcp("http://([^@:/]+)(:([0-9]+))?(/.*)",
                   [](std::smatch &m) -> bool {
                     const std::string port =
                         m[2] != "" ? std::string(m[3]) : std::string("80");
-                    return setup(net::endpoint<asio::ip::tcp>(m[1], port), m[1],
-                                 m[4]) > 0;
+                    return setup(net::endpoint<transport::tcp>(m[1], port),
+                                 m[1], m[4]) > 0;
                   },
                   "Fetch the given HTTP URL.");
 }

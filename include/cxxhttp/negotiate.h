@@ -23,36 +23,36 @@
 #include <vector>
 
 namespace cxxhttp {
-/**\brief std::isspace wrapper for trim().
+/* std::isspace wrapper for trim().
+ * @c The character to check.
  *
  * Reports whether 'c' is a whitespace character.
  *
- * \params[in] c The character to check.
- * \returns true if c is a whitepace character.
+ * @return true if c is a whitepace character.
  */
 static inline bool isspace(int c) { return std::isspace(c); }
 
-/**\brief Trim whitespace on either side of string.
+/* Trim whitespace on either side of string.
+ * @s The string to trim.
  *
  * This function creates a new copy of a string that has whitespace on either
  * side of it removed.
  *
- * \param[in] s The string to trim.
- * \returns 's', without whitespace on either side.
+ * @return 's', without whitespace on either side.
  */
 static inline std::string trim(const std::string &s) {
   return std::string(std::find_if_not(s.begin(), s.end(), isspace),
                      std::find_if_not(s.rbegin(), s.rend(), isspace).base());
 }
 
-/**\brief Split string by delimiter.
+/* Split string by delimiter.
+ * @list The string to split.
+ * @sep The separator to use.
  *
  * This splits up a string based on the given delimiter. The resulting strings
  * are also trimmed.
  *
- * \param[in] list The string to split.
- * \param[in] sep  The separator to use.
- * \returns A vector of list elements in 'list', split by 'sep'.
+ * @return A vector of list elements in 'list', split by 'sep'.
  */
 static inline std::vector<std::string> split(const std::string &list,
                                              const char sep = ',') {
@@ -65,20 +65,19 @@ static inline std::vector<std::string> split(const std::string &list,
   return rv;
 }
 
-/**\brief Container type for quality-tagged values.
+/* Container type for quality-tagged values.
  *
  * q-values are used throughout HTTP for content negotiation. This type
  * encapsulates such types, so we can do content negotiation based on them.
  */
 class qvalue {
  public:
-  /**\brief Construct from encoded string
+  /* Construct from encoded string
+   * @val The value to parse.
    *
    * This constructor gets a fully-qualified string and returns the parsed
    * version of it. The value is of the form 'foo(;attr)*(;q=D.DDD)?(;ext)*' as
    * described in RFC 2616.
-   *
-   * \param[in] val The value to parse.
    */
   qvalue(const std::string &val) : q(-1) {
     for (const auto &s : split(val, ';')) {
@@ -111,7 +110,7 @@ class qvalue {
     q = std::max(std::min(q, 1000), 0);
   }
 
-  /**\brief Value
+  /* Value
    *
    * This is the main value with which the quality value below is associated. In
    * HTTP/1.1, this would be a single element in a list of MIME types, or a
@@ -119,7 +118,7 @@ class qvalue {
    */
   std::string value;
 
-  /**\brief Attributes for value.
+  /* Attributes for value.
    *
    * If 'value' is a MIME type, then this would be additional attributes for
    * this MIME type. RFC 2616 has an example of 'level=1' for type 'text/html',
@@ -127,7 +126,7 @@ class qvalue {
    */
   std::set<std::string> attributes;
 
-  /**\brief Extensions
+  /* Extensions
    *
    * Fields like "Accept" allow for extension attributes, which come after the
    * q= attribute and would not be part of the MIME type or similar value. There
@@ -140,18 +139,18 @@ class qvalue {
    */
   std::set<std::string> extensions;
 
-  /**\brief Quality value.
+  /* Quality value.
    *
    * This is the 'quality' value, or q-value associated with the entry. See RFC
    * 2616, section 3.9 for a summary. The range of these is 0.000 - 1.000, with
    * 3 digits max after the decimal point, so the're represented here as an int
    * with a range of 0 - 1000, defaulting to 1000.
    *
-   * \see https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
+   * See: https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
    */
   int q;
 
-  /**\brief Recombined value.
+  /* Recombined value.
    *
    * This will recombine the value with the attributes, if there are any, by
    * appending any attributes to the value separated by a semicolon.
@@ -162,7 +161,7 @@ class qvalue {
    * and I couldn't find any where the ordering mattered, I assumed this will be
    * grand.
    *
-   * \returns A string of the form 'value(;attribute)*'.
+   * @return A string of the form 'value(;attribute)*'.
    */
   operator std::string(void) const {
     std::string rv = value;
@@ -174,12 +173,12 @@ class qvalue {
     return rv;
   }
 
-  /**\brief Full recombined value.
+  /* Full recombined value.
    *
    * Like the std::string conversion operator, but including the q-value and any
    * extension attributes.
    *
-   * \returns A string of the form 'value(;attribute)*;q=D.DDD(;ext)*'.
+   * @return A string of the form 'value(;attribute)*;q=D.DDD(;ext)*'.
    */
   std::string full(void) const {
     std::stringstream qv;
@@ -194,7 +193,8 @@ class qvalue {
     return rv;
   }
 
-  /**\brief Order qvalues.
+  /* Order qvalues.
+   * @b The value to compare to.
    *
    * RFC 2616 imposes a specific order on these qvalues. The primary sorting is
    * via the quality value, but as tie breakers the spec (e.g. in section 14.1)
@@ -202,11 +202,10 @@ class qvalue {
    * includes attributes and, if the value is a mime type, then it's important
    * whether these use the * operator to match several types.
    *
-   * \see https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+   * See: https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
    *
-   * \param[in] b The value to compare to.
-   * \returns true if the value is less than b's value, taking into account the
-   *     preferences expressed.
+   * @return true if the value is less than b's value, taking into account the
+   * preferences expressed.
    */
   bool operator<(const qvalue &b) const {
     if (q < b.q) {
@@ -268,7 +267,8 @@ class qvalue {
     return std::string(*this) < std::string(b);
   }
 
-  /**\brief Report whether two qvalue values match.
+  /* Report whether two qvalue values match.
+   * @b The value to compare to.
    *
    * This does not take into account the quality value, only the actual value
    * and its attributes. If either side is a '*' then that is also considered
@@ -279,8 +279,7 @@ class qvalue {
    * to match precisely. The logic here is that the fuzzy matching already
    * implies that we can't know the valid attributes anyway, so we ignore them.
    *
-   * \param[in] b The value to compare to.
-   * \returns true if the values are equal, allowing for wildcards.
+   * @return true if the values are equal, allowing for wildcards.
    */
   bool operator==(const qvalue &b) const {
     bool valueMatch = value == b.value;
@@ -318,13 +317,13 @@ class qvalue {
     return false;
   }
 
-  /**\brief Report whether value has a wildcard or a wildcard component.
+  /* Report whether value has a wildcard or a wildcard component.
    *
    * Wildcard matching requires some shenanigans. Generally, elements with
    * wildcards can't be used as the result in negotiations directly, and have
    * lower precedence than non-wildcard values.
    *
-   * \returns 'true' if the value has a wildcard.
+   * @return 'true' if the value has a wildcard.
    */
   bool hasWildcard(void) const {
     auto a = split(value, '/');
@@ -332,7 +331,9 @@ class qvalue {
   }
 };
 
-/**\brief Negotiate with quality-value.
+/* Negotiate with quality-value.
+ * @theirs The client's list of acceptable values.
+ * @mine The server's list of acceptable values.
  *
  * Implements the HTTP/1.1 content negotiation as described in RFC 2616, section
  * 14. See the RFC for extra details.
@@ -348,11 +349,9 @@ class qvalue {
  * mean that there's a match between both sides in principle, but nothing is
  * returned because of wildcards on both sides.
  *
- * \see https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+ * See: https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
  *
- * \param[in] theirs The client's list of acceptable values.
- * \param[in] mine   The server's list of acceptable values.
- * \returns The negotiated value.
+ * @return The negotiated value.
  */
 static inline std::string negotiate(std::set<qvalue> theirs,
                                     std::set<qvalue> mine) {
@@ -416,14 +415,14 @@ static inline std::string negotiate(std::set<qvalue> theirs,
   return *(is.rbegin());
 }
 
-/**\brief Negotiate with quality-value.
+/* Negotiate with quality-value.
+ * @theirs The client's list of acceptable values.
+ * @mine The server's list of acceptable values.
  *
  * This is the std::vector version of the negotiation function. See the std::set
  * variant for more details on the algorithm.
  *
- * \param[in] theirs The client's list of acceptable values.
- * \param[in] mine   The server's list of acceptable values.
- * \returns The negotiated value.
+ * @return The negotiated value.
  */
 static inline std::string negotiate(std::vector<std::string> theirs,
                                     std::vector<std::string> mine) {
@@ -431,14 +430,14 @@ static inline std::string negotiate(std::vector<std::string> theirs,
                    std::set<qvalue>(mine.begin(), mine.end()));
 }
 
-/**\brief Negotiate with quality-value.
+/* Negotiate with quality-value.
+ * @theirs The client's list of acceptable values.
+ * @mine The server's list of acceptable values.
  *
  * This is the string version of the negotiation function. See the std::set
  * variant for more details on the algorithm.
  *
- * \param[in] theirs The client's list of acceptable values.
- * \param[in] mine   The server's list of acceptable values.
- * \returns The negotiated value.
+ * @return The negotiated value.
  */
 static inline std::string negotiate(const std::string &theirs,
                                     const std::string &mine) {

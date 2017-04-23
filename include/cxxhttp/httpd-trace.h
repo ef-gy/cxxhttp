@@ -25,7 +25,7 @@ namespace cxxhttp {
 namespace httpd {
 namespace trace {
 template <class transport>
-static bool trace(typename net::http::server<transport>::session &session,
+static bool trace(typename http::server<transport>::session &session,
                   std::smatch &re) {
   std::string message =
       session.method + " " + session.resource + " " + session.protocol + "\r\n";

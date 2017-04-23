@@ -40,7 +40,7 @@ namespace quit {
  * @returns true (always, as we always reply).
  */
 template <class transport>
-static bool quit(typename net::http::server<transport>::session &session,
+static bool quit(typename http::server<transport>::session &session,
                  std::smatch &) {
   session.reply(200, "Good-Bye, Cruel World!");
 

@@ -24,7 +24,7 @@ namespace cxxhttp {
 namespace httpd {
 namespace options {
 template <class transport>
-static bool options(typename net::http::server<transport>::session &session,
+static bool options(typename http::server<transport>::session &session,
                     std::smatch &re) {
   std::string text = "# Applicable Resource Processors\n\n";
   std::set<std::string> methods{};
@@ -37,7 +37,7 @@ static bool options(typename net::http::server<transport>::session &session,
 
     if ((full == "*") || std::regex_match(full, rx)) {
       text += "* _" + servlet->methods + "_ `" + servlet->regex + "`\n";
-      for (const auto &m : net::http::method) {
+      for (const auto &m : http::method) {
         if (std::regex_match(m, mx)) {
           methods.insert(m);
         }

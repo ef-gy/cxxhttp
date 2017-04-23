@@ -28,14 +28,7 @@
 #include <cxxhttp/version.h>
 
 namespace cxxhttp {
-namespace net {
-/**\brief HTTP handling
- *
- * Contains an HTTP server and templates for session management and
- * processing by user code.
- */
 namespace http {
-
 /**\brief Known HTTP Status codes.
  *
  * \see https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10
@@ -839,7 +832,6 @@ using server = net::server<base, requestProcessor, session>;
 
 template <typename base, typename requestProcessor = processor::client<base>>
 using client = net::client<base, requestProcessor, session>;
-}
 }
 }
 

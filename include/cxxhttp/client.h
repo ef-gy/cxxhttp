@@ -21,12 +21,11 @@
 namespace cxxhttp {
 namespace net {
 /* Basic asynchronous client wrapper
+ * @base The socket class, e.g. asio::ip::tcp
+ * @requestProcessor The functor class to handle requests.
  *
  * Contains code that connects to a given endpoint and establishes a session for
  * the duration of that connection.
- *
- * @base The socket class, e.g. asio::ip::tcp
- * @requestProcessor The functor class to handle requests.
  */
 template <typename base, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
@@ -36,13 +35,12 @@ class client : public connection<requestProcessor> {
   using session = sessionTemplate<base, requestProcessor>;
 
   /* Initialise with IO service
-   *
-   * Default constructor which binds an IO service to a socket endpoint that was
-   * passed in. The socket is bound asynchronously.
-   *
    * @endpoint Endpoint for the socket to bind.
    * @pio IO service to use.
    * @logfile A stream to write log messages to.
+   *
+   * Default constructor which binds an IO service to a socket endpoint that was
+   * passed in. The socket is bound asynchronously.
    */
   client(typename base::endpoint &endpoint,
          service &pio = efgy::global<service>(),
@@ -66,12 +64,11 @@ class client : public connection<requestProcessor> {
   }
 
   /* Handle new connection
+   * @newSession The blank session object that was created by startConnect().
+   * @error Describes any error condition that may have occurred.
    *
    * Called by asio.hpp when a new outbound connection has been accepted; this
    * allows the session object to begin interacting with the new session.
-   *
-   * @newSession The blank session object that was created by startConnect().
-   * @error Describes any error condition that may have occurred.
    */
   void handleConnect(std::shared_ptr<session> newSession,
                      const std::error_code &error) {

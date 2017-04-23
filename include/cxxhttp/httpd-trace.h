@@ -43,13 +43,14 @@ static bool trace(typename http::server<transport>::session &session,
   return true;
 }
 
-static const char *regex = ".*";
+static const char *resource = ".*";
+static const char *method = "TRACE";
 
 #if !defined(NO_DEFAULT_TRACE)
-static httpd::servlet<transport::tcp> TCP(regex, trace<transport::tcp>,
-                                          "TRACE");
-static httpd::servlet<transport::unix> UNIX(regex, trace<transport::unix>,
-                                            "TRACE");
+static httpd::servlet<transport::tcp> TCP(resource, trace<transport::tcp>,
+                                          method);
+static httpd::servlet<transport::unix> UNIX(resource, trace<transport::unix>,
+                                            method);
 #endif
 }
 }

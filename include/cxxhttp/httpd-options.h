@@ -56,13 +56,14 @@ static bool options(typename http::server<transport>::session &session,
   return true;
 }
 
-static const char *regex = "^\\*|/.*";
+static const char *resource = "^\\*|/.*";
+static const char *method = "OPTIONS";
 
 #if !defined(NO_DEFAULT_OPTIONS)
-static httpd::servlet<transport::tcp> TCP(regex, options<transport::tcp>,
-                                          "OPTIONS");
-static httpd::servlet<transport::unix> UNIX(regex, options<transport::unix>,
-                                            "OPTIONS");
+static httpd::servlet<transport::tcp> TCP(resource, options<transport::tcp>,
+                                          method);
+static httpd::servlet<transport::unix> UNIX(resource, options<transport::unix>,
+                                            method);
 #endif
 }
 }

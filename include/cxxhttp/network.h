@@ -24,7 +24,6 @@
 
 #include <ef.gy/cli.h>
 #include <ef.gy/global.h>
-#include <ef.gy/version.h>
 
 namespace cxxhttp {
 /* asio::io_service type.
@@ -80,21 +79,21 @@ std::string address(const transport::unix::socket &) { return "[UNIX]"; }
  * @return The address of whatever the socket is connected to.
  */
 std::string address(const transport::tcp::socket &socket) {
-  return socket.remote_endpoint().address().to_string();
+  try {
+    return socket.remote_endpoint().address().to_string();
+  } catch (...) {
+    return "[UNAVAILABLE]";
+  }
 }
 
-template <typename base = transport::unix>
+template <typename transport = transport::unix>
 class endpoint {
  public:
   endpoint(const std::string &pSocket) : socket(pSocket) {}
 
-  std::size_t with(std::function<bool(typename base::endpoint &)> f) {
-    typename base::endpoint endpoint(socket);
-    if (f(endpoint)) {
-      return 1;
-    }
-
-    return 0;
+  std::size_t with(std::function<bool(typename transport::endpoint &)> f) {
+    typename transport::endpoint endpoint(socket);
+    return f(endpoint) ? 1 : 0;
   }
 
   const std::string &name(void) const { return socket; }
@@ -137,68 +136,43 @@ class endpoint<transport::tcp> {
   service &service;
 };
 
-/**\brief Basic asynchronous connection wrapper
+/* Basic asynchronous connection wrapper
+ * @requestProcessor The functor class to handle requests.
  *
  * Contains all the data relating to a particular connection - either for a
  * server, or a client.
- *
- * \tparam requestProcessor The functor class to handle requests.
  */
 template <typename requestProcessor>
 class connection {
  public:
-  /**\brief Initialise with IO service
+  /* Initialise with IO service
+   * @pio IO service to use.
+   * @logfile A stream to write log messages to.
    *
    * Default constructor which binds an IO service and sets up a new processor.
-   *
-   * \param[out] pio      IO service to use.
-   * \param[out] logfile  A stream to write log messages to.
    */
   connection(service &pio, std::ostream &logfile)
-      : io(pio),
-        log(logfile),
-        processor(),
-        name("connection"),
-        version("cxxhttp/") {
-    std::ostringstream ver("");
-    ver << efgy::version;
-    version = version + ver.str();
-  }
+      : io(pio), log(logfile), processor() {}
 
-  /**\brief Request processor instance
+  /* Request processor instance
    *
    * Used to generate replies for incoming queries.
    */
   requestProcessor processor;
 
-  /**\brief IO service
+  /* IO service
    *
    * Bound in the constructor to an asio.hpp IO service which handles
    * asynchronous connections.
    */
   service &io;
 
-  /**\brief Log stream
+  /* Log stream
    *
    * This is a standard output stream to send log data to. Log data is written
    * by the session code, so that code determines the format of log lines.
    */
   std::ostream &log;
-
-  /**\brief Node name
-   *
-   * A name for the endpoint; some server protocols may need this. By default
-   * this is populated with "server" in the constructor, so you have to set this
-   * yourself if the kind of server you have needs this.
-   */
-  std::string name;
-
-  /**\brief Software version
-   *
-   * A "software version" string, which is used by some protocols.
-   * Defaults to "cxxhttp/<version>".
-   */
-  std::string version;
 };
 }
 }

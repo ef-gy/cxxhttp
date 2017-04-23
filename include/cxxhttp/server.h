@@ -18,39 +18,38 @@
 
 namespace cxxhttp {
 namespace net {
-/**\brief Basic asynchronous server wrapper
+/* Basic asynchronous server wrapper
+ * @transport The socket class, e.g. asio::ip::tcp
+ * @requestProcessor The functor class to handle requests.
  *
  * Contains the code that accepts incoming requests and dispatches sessions to
  * process these requests asynchronously.
- *
- * \tparam base             The socket class, e.g. asio::ip::tcp
- * \tparam requestProcessor The functor class to handle requests.
  */
-template <typename base, typename requestProcessor,
+template <typename transport, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
 class server : public connection<requestProcessor> {
  public:
+  using base = transport;
   using connection = connection<requestProcessor>;
-  using session = sessionTemplate<base, requestProcessor>;
+  using session = sessionTemplate<transport, requestProcessor>;
+  using endpoint = typename base::endpoint;
 
-  /**\brief Initialise with IO service
+  /* Initialise with IO service
+   * @endpoint Endpoint for the socket to bind.
+   * @pio IO service to use.
+   * @logfile A stream to write log messages to.
    *
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
-   *
-   * \param[in]  endpoint Endpoint for the socket to bind.
-   * \param[out] pio      IO service to use.
-   * \param[out] logfile  A stream to write log messages to.
    */
-  server(typename base::endpoint &endpoint,
-         service &pio = efgy::global<service>(),
+  server(endpoint &endpoint, service &pio = efgy::global<service>(),
          std::ostream &logfile = std::cout)
       : connection(pio, logfile), acceptor(pio, endpoint) {
     startAccept();
   }
 
  protected:
-  /**\brief Accept the next incoming connection
+  /* Accept the next incoming connection
    *
    * This function creates a new, blank session to handle the next incoming
    * request.
@@ -63,15 +62,13 @@ class server : public connection<requestProcessor> {
                           });
   }
 
-  /**\brief Handle next incoming connection
+  /* Handle next incoming connection
+   * @newSession The blank session object that was created by startAccept().
+   * @error Describes any error condition that may have occurred.
    *
    * Called by asio.hpp when a new inbound connection has been accepted; this
    * will make the session parse the incoming request and dispatch it to the
    * request processor specified as a template argument.
-   *
-   * \param[in] newSession The blank session object that was created by
-   *                       startAccept().
-   * \param[in] error      Describes any error condition that may have occurred.
    */
   void handleAccept(session *newSession, const std::error_code &error) {
     if (!error) {
@@ -83,7 +80,7 @@ class server : public connection<requestProcessor> {
     startAccept();
   }
 
-  /**\brief Socket acceptor
+  /* Socket acceptor
    *
    * This is the acceptor which has been bound to the socket specified in the
    * constructor.

@@ -23,7 +23,6 @@
 #include <cxxhttp/header.h>
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/server.h>
-#include <cxxhttp/version.h>
 
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-processor.h>
@@ -52,21 +51,28 @@ enum status {
 };
 
 /* Session wrapper
+ * @transport The connection type, e.g. transport::tcp.
  * @requestProcessor The functor class to handle requests.
  *
  * Used by the server to keep track of all the data associated with a single,
  * asynchronous client connection.
  */
-template <typename base, typename requestProcessor>
+template <typename transport, typename requestProcessor>
 class session {
  public:
-  /* Connection type
+  /* Connection type.
    *
    * This is the type of the server or client that the session is being served
    * on; used when instantiating a session, as we need to use some of the data
    * the server or client may have to offer.
    */
-  using connectionType = connection<base, requestProcessor>;
+  using connectionType = net::connection<requestProcessor>;
+
+  /* Connection socket type.
+   *
+   * The type of socket we're talking to, which is the transport's socket type.
+   */
+  using socketType = typename transport::socket;
 
   /* Current status of the session.
    *
@@ -79,7 +85,7 @@ class session {
    * This is the asynchronous I/O socket that is used to communicate with the
    * client.
    */
-  typename base::socket socket;
+  socketType socket;
 
   /* The request's HTTP method
    *
@@ -185,7 +191,7 @@ class session {
     status = stShutdown;
 
     try {
-      socket.shutdown(base::socket::shutdown_both);
+      socket.shutdown(socketType::shutdown_both);
     } catch (std::system_error &e) {
       std::cerr << "exception while shutting down socket: " << e.what() << "\n";
     }
@@ -201,8 +207,9 @@ class session {
    *
    * Starts processing the incoming request.
    */
-  void start() {
+  void start(void) {
     connection.processor.start(*this);
+    // TODO: this should be in the processor, not here.
     read();
   }
 
@@ -244,11 +251,7 @@ class session {
 
   void request(const std::string &method, const std::string &resource,
                headers header, const std::string &body) {
-    headers head{
-        {"User-Agent", cxxhttp::identifier},
-    };
-
-    header.insert(head.begin(), head.end());
+    header.insert(defaultClientHeaders.begin(), defaultClientHeaders.end());
 
     std::string req = method + " " + resource + " HTTP/1.1\r\n" +
                       to_string(header) + "\r\n" + body;
@@ -305,6 +308,39 @@ class session {
    * headers.
    */
   void reply(int status, const std::string &body) { reply(status, {}, body); }
+
+  /* Asynchronouse read handler
+   *
+   * Decides if things need to be read in and - if so - what needs to be read.
+   *
+   * Automatically deletes the object on errors - which also closes the
+   * connection automagically.
+   */
+  void read(void) {
+    switch (status) {
+      case stRequest:
+      case stStatus:
+      case stHeader:
+        asio::async_read_until(
+            socket, input, "\n",
+            [&](const asio::error_code &error, std::size_t bytes_transferred) {
+              handleRead(error, bytes_transferred);
+            });
+        break;
+      case stContent:
+        asio::async_read(
+            socket, input,
+            asio::transfer_at_least(contentLength - content.size()),
+            [&](const asio::error_code &error, std::size_t bytes_transferred) {
+              handleRead(error, bytes_transferred);
+            });
+        break;
+      case stProcessing:
+      case stErrorContentTooLarge:
+      case stShutdown:
+        break;
+    }
+  }
 
  protected:
   /* Read more data
@@ -462,39 +498,6 @@ class session {
     }
   }
 
-  /* Asynchronouse read handler
-   *
-   * Decides if things need to be read in and - if so - what needs to be read.
-   *
-   * Automatically deletes the object on errors - which also closes the
-   * connection automagically.
-   */
-  void read(void) {
-    switch (status) {
-      case stRequest:
-      case stStatus:
-      case stHeader:
-        asio::async_read_until(
-            socket, input, "\n",
-            [&](const asio::error_code &error, std::size_t bytes_transferred) {
-              handleRead(error, bytes_transferred);
-            });
-        break;
-      case stContent:
-        asio::async_read(
-            socket, input,
-            asio::transfer_at_least(contentLength - content.size()),
-            [&](const asio::error_code &error, std::size_t bytes_transferred) {
-              handleRead(error, bytes_transferred);
-            });
-        break;
-      case stProcessing:
-      case stErrorContentTooLarge:
-      case stShutdown:
-        break;
-    }
-  }
-
   /* Name of the last parsed header
    *
    * This is the name of the last header line that was parsed. Used with
@@ -516,11 +519,12 @@ class session {
   asio::streambuf input;
 };
 
-template <typename base, typename requestProcessor = processor::base<base>>
-using server = net::server<base, requestProcessor, session>;
+template <class transport, class requestProcessor = processor::base<transport>>
+using server = net::server<transport, requestProcessor, session>;
 
-template <typename base, typename requestProcessor = processor::client<base>>
-using client = net::client<base, requestProcessor, session>;
+template <class transport,
+          class requestProcessor = processor::client<transport>>
+using client = net::client<transport, requestProcessor, session>;
 }
 }
 

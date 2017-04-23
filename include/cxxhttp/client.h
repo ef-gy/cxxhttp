@@ -19,18 +19,20 @@
 namespace cxxhttp {
 namespace net {
 /* Basic asynchronous client wrapper
- * @base The socket class, e.g. asio::ip::tcp
+ * @transport The socket class, e.g. asio::ip::tcp
  * @requestProcessor The functor class to handle requests.
  *
  * Contains code that connects to a given endpoint and establishes a session for
  * the duration of that connection.
  */
-template <typename base, typename requestProcessor,
+template <typename transport, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
 class client : public connection<requestProcessor> {
  public:
+  using base = transport;
   using connection = connection<requestProcessor>;
-  using session = sessionTemplate<base, requestProcessor>;
+  using session = sessionTemplate<transport, requestProcessor>;
+  using endpoint = typename base::endpoint;
 
   /* Initialise with IO service
    * @endpoint Endpoint for the socket to bind.
@@ -40,8 +42,7 @@ class client : public connection<requestProcessor> {
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    */
-  client(typename base::endpoint &endpoint,
-         service &pio = efgy::global<service>(),
+  client(endpoint &endpoint, service &pio = efgy::global<service>(),
          std::ostream &logfile = std::cout)
       : connection(pio, logfile), target(endpoint) {
     startConnect();
@@ -76,7 +77,11 @@ class client : public connection<requestProcessor> {
     }
   }
 
-  typename base::endpoint target;
+  /* Target endpoint.
+   *
+   * This is where we want to connect to.
+   */
+  endpoint target;
 };
 }
 }

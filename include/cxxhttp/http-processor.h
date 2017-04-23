@@ -35,12 +35,33 @@ static const headers sendNegotiatedAs{
     {"Accept", "Content-Type"},
 };
 
+static const headers defaultServerHeaders{
+    {"Server", identifier},
+};
+
+static const headers defaultClientHeaders{
+    {"User-Agent", identifier},
+};
+
 /* HTTP processors
  *
  * This namespace is reserved for HTTP "processors", which contain the logic to
  * actually handle an HTTP request after it has been parsed.
  */
 namespace processor {
+/* Subprocessor type.
+ * @session The session type for the subprocessor.
+ *
+ * Used in the basic server processor to dispatch requests.
+ */
+template <class session>
+struct subprocessor {
+  std::regex resource;
+  std::regex method;
+  headers negotiations;
+  std::function<bool(session &, std::smatch &)> handler;
+};
+
 /* Base processor
  * @transport The socket class for the request, e.g. transport::tcp
  *
@@ -95,9 +116,7 @@ class base {
           // reset, and perform, header value negotiation based on the
           // subprocessor's specs and the client data.
           sess.negotiated = {};
-          sess.outbound = {
-              {"Server", cxxhttp::identifier},
-          };
+          sess.outbound = defaultServerHeaders;
           for (const auto &n : subprocessor.negotiations) {
             const std::string cv =
                 sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
@@ -188,29 +207,49 @@ class base {
   }
 
   /* Begin handling requests
+   * @sess The session that's just been established.
    *
    * Called by a specific session object to indicate that a session and
-   * connection have now been established. Doesn't do anything in the server
-   * case.
+   * connection have now been established.
+   *
+   * In the HTTP server case, we begin by reading.
    */
-  void start(session &) const {}
+  void start(session &sess) {
+    //  sess.read();
+  }
 
  protected:
-  struct subprocessor {
-    std::regex resource;
-    std::regex method;
-    headers negotiations;
-    std::function<bool(session &, std::smatch &)> handler;
-  };
+  /* The subprocessor type.
+   *
+   * Assembled using the local session type.
+   */
+  using processor = subprocessor<session>;
 
   /* Map of request handlers
    *
    * This is the map that holds the request handlers. It maps regex strings to
    * handler functions, which is fairly straightforward.
    */
-  std::map<std::string, subprocessor> subprocessor;
+  std::map<std::string, processor> subprocessor;
 };
 
+/* Client request data.
+ *
+ * This is all the data needed to do a client request, assuming you're already
+ * connected, anyway.
+ */
+struct request {
+  std::string method;
+  std::string resource;
+  headers header;
+  std::string body;
+};
+
+/* Basic HTTP client processor.
+ * @transport The transport type, e.g. transport::tcp.
+ *
+ * Like the basic server processor, but handles client requests.
+ */
 template <class transport>
 class client {
  public:
@@ -219,7 +258,7 @@ class client {
    * This is the session type that the processor is intended for. This typedef
    * is mostly here for convenience.
    */
-  typedef session<transport, client> session;
+  using session = session<transport, client>;
 
   bool operator()(session &sess) const {
     if (onSuccess) {
@@ -236,23 +275,9 @@ class client {
     sess.request(req.method, req.resource, req.header, req.body);
   }
 
- protected:
-  class request {
-   public:
-    std::string method;
-    std::string resource;
-    headers header;
-    std::string body;
-
-    request(const std::string &pMethod, const std::string &pResource,
-            const headers &pHeader, const std::string &pBody)
-        : method(pMethod), resource(pResource), header(pHeader), body(pBody){};
-  };
-
- public:
   client &query(const std::string &method, const std::string &resource,
                 const headers &header, const std::string &body) {
-    requests.push_back(request(method, resource, header, body));
+    requests.push_back(request{method, resource, header, body});
     return *this;
   }
 
@@ -266,9 +291,6 @@ class client {
   std::function<bool(session &)> onSuccess;
 };
 }
-
-template <typename base, typename requestProcessor = processor::base<base>>
-using connection = net::connection<requestProcessor>;
 }
 }
 

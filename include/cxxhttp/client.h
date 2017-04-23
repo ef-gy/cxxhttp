@@ -14,8 +14,6 @@
 #if !defined(CXXHTTP_CLIENT_H)
 #define CXXHTTP_CLIENT_H
 
-#include <memory>
-
 #include <cxxhttp/network.h>
 
 namespace cxxhttp {
@@ -56,7 +54,7 @@ class client : public connection<requestProcessor> {
    * given socket.
    */
   void startConnect(void) {
-    std::shared_ptr<session> newSession = (new session(*this))->self;
+    session *newSession = new session(*this);
     newSession->socket.async_connect(
         target, [newSession, this](const std::error_code &error) {
           handleConnect(newSession, error);
@@ -70,12 +68,11 @@ class client : public connection<requestProcessor> {
    * Called by asio.hpp when a new outbound connection has been accepted; this
    * allows the session object to begin interacting with the new session.
    */
-  void handleConnect(std::shared_ptr<session> newSession,
-                     const std::error_code &error) {
+  void handleConnect(session *newSession, const std::error_code &error) {
     if (!error) {
       newSession->start();
     } else {
-      newSession->self.reset();
+      delete newSession;
     }
   }
 

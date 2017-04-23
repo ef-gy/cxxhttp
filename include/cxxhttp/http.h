@@ -74,12 +74,6 @@ class session {
    */
   enum status status;
 
-  /* Self-reference.
-   *
-   * To be able to commit suicide when the time comes.
-   */
-  std::shared_ptr<session> self;
-
   /* Stream socket
    *
    * This is the asynchronous I/O socket that is used to communicate with the
@@ -177,8 +171,7 @@ class session {
    * Constructs a session with the given asynchronous connection.
    */
   session(connectionType &pConnection)
-      : self(this),
-        connection(pConnection),
+      : connection(pConnection),
         socket(pConnection.io),
         status(stRequest),
         input() {}
@@ -330,7 +323,7 @@ class session {
     }
 
     if (error) {
-      self.reset();
+      delete this;
       return;
     }
 
@@ -462,7 +455,7 @@ class session {
     }
 
     if (error || (statusCode >= 400)) {
-      self.reset();
+      delete this;
     } else if (status == stProcessing) {
       status = stRequest;
       read();

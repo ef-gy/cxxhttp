@@ -14,8 +14,6 @@
 #if !defined(CXXHTTP_SERVER_H)
 #define CXXHTTP_SERVER_H
 
-#include <memory>
-
 #include <cxxhttp/network.h>
 
 namespace cxxhttp {
@@ -58,7 +56,7 @@ class server : public connection<requestProcessor> {
    * request.
    */
   void startAccept(void) {
-    std::shared_ptr<session> newSession = (new session(*this))->self;
+    session *newSession = new session(*this);
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code &error) {
                             handleAccept(newSession, error);
@@ -75,12 +73,11 @@ class server : public connection<requestProcessor> {
    *                       startAccept().
    * \param[in] error      Describes any error condition that may have occurred.
    */
-  void handleAccept(std::shared_ptr<session> newSession,
-                    const std::error_code &error) {
+  void handleAccept(session *newSession, const std::error_code &error) {
     if (!error) {
       newSession->start();
     } else {
-      newSession->self.reset();
+      delete newSession;
     }
 
     startAccept();

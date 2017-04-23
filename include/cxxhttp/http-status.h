@@ -39,11 +39,39 @@ static std::string statusDescription(unsigned status) {
   return "Other Status";
 }
 
+/* Broken out status line.
+ *
+ * Contains all the data in a status line, broken out into the relevant fields.
+ */
 struct statusLine {
+  /* The status code.
+   *
+   * Anything not in the http::status map is probably an error.
+   */
   unsigned code;
-  std::string protocol, description;
+
+  /* Protocol name.
+   *
+   * HTTP/1.0 or HTTP/1.1.
+   */
+  std::string protocol;
+
+  /* Status code description.
+   *
+   * Should pretty much be ignored, and is only useful for humans reading a
+   * stream transcript. And even then it can't really be trusted.
+   */
+  std::string description;
 };
 
+/* Parse HTTP status line.
+ * @line The (suspected) status line to parse.
+ *
+ * This currently only accepts HTTP/1.0 and HTTP/1.1 status lines, all others
+ * will be rejected.
+ *
+ * @return An empty optional, or the parsed status line.
+ */
 static std::optional<statusLine> parse(const std::string &line) {
   static const std::regex stat("(HTTP/1.[01])\\s+([0-9]{3})\\s+(.*)\\s*");
   std::smatch matches;
@@ -57,9 +85,9 @@ static std::optional<statusLine> parse(const std::string &line) {
     } catch (...) {
     }
     return statusLine{code, protocol, description};
+  } else {
+    return std::optional<statusLine>();
   }
-
-  return std::optional<statusLine>();
 }
 }
 }

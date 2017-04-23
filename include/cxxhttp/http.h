@@ -26,6 +26,7 @@
 
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-processor.h>
+#include <cxxhttp/http-status.h>
 
 namespace cxxhttp {
 namespace http {
@@ -230,13 +231,8 @@ class session {
   void replyFlat(int status, const std::string &header,
                  const std::string &body) {
     std::stringstream reply;
-    std::string statusDescr = "Other Status";
-    auto it = http::status.find(status);
-    if (it != http::status.end()) {
-      statusDescr = it->second;
-    }
 
-    reply << "HTTP/1.1 " << status << " " + statusDescr + "\r\n"
+    reply << "HTTP/1.1 " << status << " " + statusDescription(status) + "\r\n"
           << header << "\r\n" + body;
 
     asio::async_write(socket, asio::buffer(reply.str()),
@@ -365,7 +361,6 @@ class session {
 
     static const std::regex req(
         "(\\w+)\\s+([\\w\\d%/.:;()+-]+|\\*)\\s+(HTTP/1.[01])\\s*");
-    static const std::regex stat("(HTTP/1.[01])\\s+([0-9]{3})\\s+(.*)\\s*");
 
     std::istream is(&input);
     std::string s;
@@ -400,20 +395,17 @@ class session {
         }
         break;
 
-      case stStatus:
-        if (std::regex_match(s, matches, stat)) {
-          protocol = matches[1];
-          try {
-            code = std::stoi(matches[2]);
-          } catch (...) {
-            code = 500;
-          }
-          description = matches[3];
+      case stStatus: {
+        const auto stat = parse(s);
+        if (stat) {
+          code = stat->code;
+          protocol = stat->protocol;
+          description = stat->description;
 
           header = {};
           status = stHeader;
         }
-        break;
+      } break;
 
       case stHeader:
         if ((s == "\r") || (s.empty())) {

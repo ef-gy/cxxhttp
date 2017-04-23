@@ -42,16 +42,14 @@ A very trivial sample server would be this (see src/server.cpp):
     }
 
     namespace tcp {
-      using asio::ip::tcp;
-      static httpd::servlet<tcp> hello("/", ::hello<tcp>);
+      static httpd::servlet<transport::tcp> hello("/", ::hello<transport::tcp>);
     }
 
     namespace unix {
-      using asio::local::stream_protocol;
-      static httpd::servlet<stream_protocol> hello("/", ::hello<stream_protocol>);
+      static httpd::servlet<transport::unix> hello("/", ::hello<transport::unix>);
     }
 
-    int main(int argc, char *argv[]) { return io::main(argc, argv); }
+    int main(int argc, char *argv[]) { return cxxhttp::main(argc, argv); }
 
 If you saved this as src/example.cpp, then you could run it like this:
 

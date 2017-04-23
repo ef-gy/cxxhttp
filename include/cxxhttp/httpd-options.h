@@ -31,7 +31,7 @@ static bool options(typename net::http::server<transport>::session &session,
   std::string allow = "";
   const std::string full = re[0];
 
-  for (const auto &servlet : efgy::registered<servlet<transport>>::common()) {
+  for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
     std::regex rx(servlet->regex);
     std::regex mx(servlet->methods);
 

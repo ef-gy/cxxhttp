@@ -16,14 +16,14 @@
 #define CXXHTTP_HTTPD_H
 
 #include <ef.gy/cli.h>
-#include <ef.gy/registered.h>
+#include <ef.gy/global.h>
 
 #include <cxxhttp/http.h>
 
 namespace cxxhttp {
 namespace httpd {
 template <class processor, class servlet>
-void apply(processor &proc, efgy::registered<servlet> &servlets) {
+void apply(processor &proc, std::set<servlet *> &servlets) {
   for (const auto &s : servlets) {
     proc.add(s->regex, s->handler, s->methods, s->negotiations);
   }
@@ -38,17 +38,17 @@ class servlet {
               pHandler,
           const std::string &pMethods = "GET", const headers pNegotiations = {},
           const std::string &pDescription = "no description available.",
-          efgy::registered<servlet> &pSet = efgy::registered<servlet>::common())
+          std::set<servlet *> &pSet = efgy::global<std::set<servlet *>>())
       : regex(pRegex),
         methods(pMethods),
         handler(pHandler),
         negotiations(pNegotiations),
         description(pDescription),
         root(pSet) {
-    root.add(*this);
+    root.insert(this);
   }
 
-  ~servlet(void) { root.remove(*this); }
+  ~servlet(void) { root.erase(this); }
 
   const std::string regex;
   const std::string methods;
@@ -59,7 +59,7 @@ class servlet {
   const std::string description;
 
  protected:
-  efgy::registered<servlet> &root;
+  std::set<servlet *> &root;
 };
 
 template <class transport>
@@ -70,7 +70,7 @@ static std::size_t setup(net::endpoint<transport> lookup,
         net::http::server<transport> *s =
             new net::http::server<transport>(endpoint, service);
 
-        apply(s->processor, efgy::registered<servlet<transport>>::common());
+        apply(s->processor, efgy::global<std::set<servlet<transport> *>>());
 
         return true;
       });
@@ -105,7 +105,7 @@ using efgy::cli::hint;
 template <typename transport>
 static std::string print(void) {
   std::string rv = "";
-  for (const auto &servlet : efgy::registered<servlet<transport>>::common()) {
+  for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
     rv += " " + servlet->methods + " " + servlet->regex + "\n";
   }
   return rv;

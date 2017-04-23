@@ -1,6 +1,8 @@
 #<cldoc:index>
 
-# CXXHTTP
+CXXHTTP
+
+# CXXHTTP-1
 
 ## Introduction
 

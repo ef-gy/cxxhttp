@@ -31,8 +31,7 @@ static bool options(typename net::http::server<transport>::session &session,
   std::string allow = "";
   const std::string full = re[0];
 
-  for (const auto &servlet :
-       set<transport, servlet<transport>>::common().servlets) {
+  for (const auto &servlet : efgy::registered<servlet<transport>>::common()) {
     std::regex rx(servlet->regex);
     std::regex mx(servlet->methods);
 
@@ -60,10 +59,10 @@ static bool options(typename net::http::server<transport>::session &session,
 static const char *regex = "^\\*|/.*";
 
 #if !defined(NO_DEFAULT_OPTIONS)
-static httpd::servlet<asio::ip::tcp> TCP(regex, options<asio::ip::tcp>,
-                                         "OPTIONS");
-static httpd::servlet<asio::local::stream_protocol> UNIX(
-    regex, options<asio::local::stream_protocol>, "OPTIONS");
+static httpd::servlet<transport::tcp> TCP(regex, options<transport::tcp>,
+                                          "OPTIONS");
+static httpd::servlet<transport::unix> UNIX(regex, options<transport::unix>,
+                                            "OPTIONS");
 #endif
 }
 }

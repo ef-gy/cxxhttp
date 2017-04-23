@@ -27,7 +27,7 @@
 
 namespace cxxhttp {
 namespace io {
-/**\brief asio::io_service wrapper
+/* asio::io_service wrapper
  *
  * The purpose of this object is to be able to have a 'default' IO service
  * object for server and client code to use. This is provided by the
@@ -61,29 +61,28 @@ static int main(int argc, char *argv[]) {
 }
 }
 
-/**\brief Networking code
- *
- * Contains templates that deal with networking in one way or another. This code
- * is based on asio.hpp, an asynchronous I/O library for C++. The makefile knows
- * how to download this header-only library in case it's not installed.
- */
 namespace net {
+namespace transport {
+using tcp = asio::ip::tcp;
+using unix = asio::local::stream_protocol;
+}
+
 template <typename S>
 static std::string address(const S &socket) {
   return "[?]";
 }
 
 template <>
-std::string address(const asio::local::stream_protocol::socket &socket) {
+std::string address(const transport::unix::socket &socket) {
   return "[UNIX]";
 }
 
 template <>
-std::string address(const asio::ip::tcp::socket &socket) {
+std::string address(const transport::tcp::socket &socket) {
   return socket.remote_endpoint().address().to_string();
 }
 
-template <typename base = asio::local::stream_protocol>
+template <typename base = transport::unix>
 class endpoint {
  public:
   endpoint(const std::string &pSocket) : socket(pSocket) {}
@@ -104,23 +103,23 @@ class endpoint {
 };
 
 template <>
-class endpoint<asio::ip::tcp> {
+class endpoint<transport::tcp> {
  public:
   endpoint(const std::string &pHost, const std::string &pPort,
            io::service &pService = io::service::common())
       : host(pHost), port(pPort), service(pService) {}
 
-  std::size_t with(std::function<bool(asio::ip::tcp::endpoint &)> f) {
+  std::size_t with(std::function<bool(transport::tcp::endpoint &)> f) {
     std::size_t res = 0;
 
-    asio::ip::tcp::resolver resolver(service.get());
-    asio::ip::tcp::resolver::query query(host, port);
-    asio::ip::tcp::resolver::iterator endpoint_iterator =
+    transport::tcp::resolver resolver(service.get());
+    transport::tcp::resolver::query query(host, port);
+    transport::tcp::resolver::iterator endpoint_iterator =
         resolver.resolve(query);
-    asio::ip::tcp::resolver::iterator end;
+    transport::tcp::resolver::iterator end;
 
     if (endpoint_iterator != end) {
-      asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
+      transport::tcp::endpoint endpoint = *endpoint_iterator;
       if (f(endpoint)) {
         res++;
       }

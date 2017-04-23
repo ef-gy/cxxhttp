@@ -153,6 +153,7 @@ bool testAbsorb(std::ostream &log) {
       {{{"a", "b"}}, "a: c", "a", "a: b,c\r\n", "a"},
       {{{"a", "b"}}, "\td\r\n", "a", "a: b,d\r\n", "a"},
       {{{"a", "b"}, {"c", "d"}}, "a: e\r", "e", "a: b,e\r\nc: d\r\n", "a"},
+      {{}, "bad line", "", "", ""},
   };
 
   for (const auto &tt : tests) {

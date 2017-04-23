@@ -15,41 +15,19 @@
 #if !defined(CXXHTTP_HTTPD_H)
 #define CXXHTTP_HTTPD_H
 
+#include <ef.gy/cli.h>
+#include <ef.gy/registered.h>
+
 #include <cxxhttp/http.h>
 
 namespace cxxhttp {
 namespace httpd {
-template <class transport>
-class servlet;
-
-template <class transport, class servlet = servlet<transport>>
-class set {
- public:
-  static set &common(void) {
-    static set s;
-    return s;
+template <class processor, class servlet>
+void apply(processor &proc, efgy::registered<servlet> &servlets) {
+  for (const auto &s : servlets) {
+    proc.add(s->regex, s->handler, s->methods, s->negotiations);
   }
-
-  template <class processor>
-  set &apply(processor &proc) {
-    for (const auto &s : servlets) {
-      proc.add(s->regex, s->handler, s->methods, s->negotiations);
-    }
-    return *this;
-  }
-
-  set &add(servlet &o) {
-    servlets.insert(&o);
-    return *this;
-  }
-
-  set &remove(servlet &o) {
-    servlets.erase(&o);
-    return *this;
-  }
-
-  std::set<servlet *> servlets;
-};
+}
 
 template <class transport>
 class servlet {
@@ -60,17 +38,17 @@ class servlet {
               pHandler,
           const std::string &pMethods = "GET", const headers pNegotiations = {},
           const std::string &pDescription = "no description available.",
-          set<transport, servlet> &pSet = set<transport, servlet>::common())
+          efgy::registered<servlet> &pSet = efgy::registered<servlet>::common())
       : regex(pRegex),
         methods(pMethods),
         handler(pHandler),
         negotiations(pNegotiations),
         description(pDescription),
-        servlets(pSet) {
-    servlets.add(*this);
+        root(pSet) {
+    root.add(*this);
   }
 
-  ~servlet(void) { servlets.remove(*this); }
+  ~servlet(void) { root.remove(*this); }
 
   const std::string regex;
   const std::string methods;
@@ -81,49 +59,60 @@ class servlet {
   const std::string description;
 
  protected:
-  set<transport, servlet> &servlets;
+  efgy::registered<servlet> &root;
 };
 
-template <class sock>
-static std::size_t setup(net::endpoint<sock> lookup,
+template <class transport>
+static std::size_t setup(net::endpoint<transport> lookup,
                          io::service &service = io::service::common()) {
-  return lookup.with([&service](typename sock::endpoint &endpoint) -> bool {
-    net::http::server<sock> *s = new net::http::server<sock>(endpoint, service);
+  return lookup.with(
+      [&service](typename transport::endpoint &endpoint) -> bool {
+        net::http::server<transport> *s =
+            new net::http::server<transport>(endpoint, service);
 
-    set<sock>::common().apply(s->processor);
+        apply(s->processor, efgy::registered<servlet<transport>>::common());
 
-    return true;
-  });
+        return true;
+      });
 }
 
-static efgy::cli::option socket(
+namespace transport {
+using tcp = net::transport::tcp;
+using unix = net::transport::unix;
+}
+
+namespace cli {
+using efgy::cli::option;
+
+static option socket(
     "-{0,2}http:unix:(.+)",
     [](std::smatch &m) -> bool {
-      return setup(net::endpoint<asio::local::stream_protocol>(m[1])) > 0;
+      return setup(net::endpoint<transport::unix>(m[1])) > 0;
     },
     "Listen for HTTP connections on the given unix socket[1].");
 
-static efgy::cli::option tcp(
+static option tcp(
     "-{0,2}http:(.+):([0-9]+)",
     [](std::smatch &m) -> bool {
-      return setup(net::endpoint<asio::ip::tcp>(m[1], m[2])) > 0;
+      return setup(net::endpoint<transport::tcp>(m[1], m[2])) > 0;
     },
     "Listen for HTTP connections on the given host[1] and port[2].");
+}
 
 namespace usage {
+using efgy::cli::hint;
+
 template <typename transport>
 static std::string print(void) {
   std::string rv = "";
-  for (const auto &servlet :
-       set<transport, servlet<transport>>::common().servlets) {
+  for (const auto &servlet : efgy::registered<servlet<transport>>::common()) {
     rv += " " + servlet->methods + " " + servlet->regex + "\n";
   }
   return rv;
 }
 
-static efgy::cli::hint tcp("HTTP Endpoints (TCP)", print<asio::ip::tcp>);
-static efgy::cli::hint unix("HTTP Endpoints (UNIX)",
-                            print<asio::local::stream_protocol>);
+static hint tcp("HTTP Endpoints (TCP)", print<transport::tcp>);
+static hint unix("HTTP Endpoints (UNIX)", print<transport::unix>);
 }
 }
 }

@@ -46,9 +46,10 @@ static bool trace(typename net::http::server<transport>::session &session,
 static const char *regex = ".*";
 
 #if !defined(NO_DEFAULT_TRACE)
-static httpd::servlet<asio::ip::tcp> TCP(regex, trace<asio::ip::tcp>, "TRACE");
-static httpd::servlet<asio::local::stream_protocol> UNIX(
-    regex, trace<asio::local::stream_protocol>, "TRACE");
+static httpd::servlet<transport::tcp> TCP(regex, trace<transport::tcp>,
+                                          "TRACE");
+static httpd::servlet<transport::unix> UNIX(regex, trace<transport::unix>,
+                                            "TRACE");
 #endif
 }
 }

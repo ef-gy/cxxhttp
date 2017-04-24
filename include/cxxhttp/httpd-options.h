@@ -32,11 +32,12 @@ static bool options(typename http::server<transport>::session &session,
   const std::string full = re[0];
 
   for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
-    std::regex rx(servlet->regex);
-    std::regex mx(servlet->methods);
+    std::regex rx(servlet->resourcex);
+    std::regex mx(servlet->methodx);
 
     if ((full == "*") || std::regex_match(full, rx)) {
-      text += "* _" + servlet->methods + "_ `" + servlet->regex + "`\n";
+      text += "* _" + servlet->methodx + "_ `" + servlet->resourcex + "`\n" +
+              "  " + servlet->description + "\n";
       for (const auto &m : http::method) {
         if (std::regex_match(m, mx)) {
           methods.insert(m);

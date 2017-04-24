@@ -29,7 +29,6 @@
 
 // Optional server features.
 #include <cxxhttp/httpd-options.h>
-#include <cxxhttp/httpd-quit.h>
 #include <cxxhttp/httpd-trace.h>
 
 #include <ef.gy/stream-json.h>

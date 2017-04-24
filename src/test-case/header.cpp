@@ -75,13 +75,13 @@ bool testCompare(std::ostream &log) {
   };
 
   for (const auto &tt : tests) {
-    const auto v = comparator::headerNameLT()(tt.a, tt.b);
+    const auto v = headerNameLT()(tt.a, tt.b);
     if (v != tt.res) {
       log << "headerNameLT('" << tt.a << "' < '" << tt.b << "')='" << v
           << "', expected '" << tt.res << "'\n";
       return false;
     }
-    const auto v2 = comparator::headerNameLT()(tt.b, tt.a);
+    const auto v2 = headerNameLT()(tt.b, tt.a);
     if (v2 != tt.rev) {
       log << "headerNameLT('" << tt.b << "' < '" << tt.a << "')='" << v2
           << "', expected '" << tt.rev << "'\n";

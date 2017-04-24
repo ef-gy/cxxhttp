@@ -23,7 +23,6 @@
 #include <string>
 
 namespace cxxhttp {
-namespace comparator {
 /* Case-insensitive comparison functor
  *
  * A simple functor used by the attribute map to compare strings without
@@ -58,7 +57,6 @@ class headerNameLT
     return std::tolower(c1) < std::tolower(c2);
   }
 };
-}
 
 /* HTTP header type.
  *
@@ -67,7 +65,7 @@ class headerNameLT
  * that keys are effectively considered the same if they only differ in their
  * case.
  */
-using headers = std::map<std::string, std::string, comparator::headerNameLT>;
+using headers = std::map<std::string, std::string, headerNameLT>;
 
 /* Turn a header map into a string.
  * @comp A comparator for the map.

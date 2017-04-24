@@ -22,25 +22,44 @@
 
 namespace cxxhttp {
 namespace httpd {
-template <class processor, class servlet>
-void apply(processor &proc, std::set<servlet *> &servlets) {
-  for (const auto &s : servlets) {
-    proc.add(s->regex, s->handler, s->methods, s->negotiations);
-  }
-}
-
+/* HTTP servlet container.
+ * @transport What transport the servlet is for, e.g. transport::tcp.
+ *
+ * This contains all the data needed to set up a subprocessor for the default
+ * server processor type. This consists of regexen to match against a requested
+ * resource and the method invoked, as well as a handler for a succsseful match.
+ *
+ * For advanced usage, it is possible to provide data or content negotiation.
+ */
 template <class transport>
 class servlet {
  public:
-  servlet(const std::string &pRegex,
-          std::function<bool(typename http::server<transport>::session &,
-                             std::smatch &)>
-              pHandler,
-          const std::string &pMethods = "GET", const headers pNegotiations = {},
-          const std::string &pDescription = "no description available.",
+  /* Session type alias.
+   *
+   * This shortens a few lines below, as the type is surprisingly long to write
+   * out.
+   */
+  using sessionType = typename http::server<transport>::session;
+
+  /* Constructor.
+   * @pResourceX Regex for applicable resources.
+   * @pHandler Function specification to handle incoming requests that match.
+   * @pMethodx Optional method regex; defaults to only allowing GET.
+   * @pNegotiations Map of content negotiations to perform for this servlet.
+   * @pDescription Optional API description string. URL recommended.
+   * @pSet Where to register the servlet; defaults to the global set.
+   *
+   * Initialisation allows setting all the available options. The only reason
+   * this isn't a POD type is that we also need to register with the
+   * per-transport set of servlets.
+   */
+  servlet(const std::string &pResourcex,
+          std::function<bool(sessionType &, std::smatch &)> pHandler,
+          const std::string &pMethodx = "GET", const headers pNegotiations = {},
+          const std::string &pDescription = "no description available",
           std::set<servlet *> &pSet = efgy::global<std::set<servlet *>>())
-      : regex(pRegex),
-        methods(pMethods),
+      : resourcex(pResourcex),
+        methodx(pMethodx),
         handler(pHandler),
         negotiations(pNegotiations),
         description(pDescription),
@@ -48,65 +67,206 @@ class servlet {
     root.insert(this);
   }
 
+  /* Destructor.
+   *
+   * Unregisters from the global set this servlet was registered to.
+   */
   ~servlet(void) { root.erase(this); }
 
-  const std::string regex;
-  const std::string methods;
-  const std::function<bool(typename http::server<transport>::session &,
-                           std::smatch &)>
-      handler;
+  /* Resource regex.
+   *
+   * A regex that is matched, in full, against any incoming requests. The
+   * matches structure that results is passed into the handler function, so it
+   * is recommended that interesting parts of the URL are captured using
+   * parentheses to indicate subexpressions.
+   */
+  const std::string resourcex;
+
+  /* Method regex.
+   *
+   * Similar to the resource regex, but for the method that is used by the
+   * client. The matches struct here is not provided to the handler, but the
+   * original method name is provided as part of the session object.
+   */
+  const std::string methodx;
+
+  /* Content negotiation data.
+   *
+   * This is a map of the form `header: valid options`. Any header specified
+   * will be automatically negotiated against what the client specifies during
+   * the request, while allowing q-values on either side.
+   *
+   * If there's no matches between what both sides provide, then this is
+   * considered a bad match, and a reply is sent to the client indicating that
+   * content negotiation has failed.
+   *
+   * As an example, suppose this is set to:
+   *
+   *     {
+   *       {"Accept": "text/plain, application/json;q=0.9"}
+   *     }
+   *
+   * If the client sent no `Accept` header, the negotiated value would be
+   * `text/plain`. If it sent the value `application/json` then this would pick
+   * `application/json`. If it sent `foo/blargh` then that would be a bad match,
+   * resulting in a client error unless a different servlet that is applicable
+   * matches successfully.
+   *
+   * Also note that `Accept` in particular will cause an appropriate
+   * `Content-Type` header with the correct negotiation to be sent back
+   * automatically. This is configured in one of the constants in
+   * `http-constants.h`. Also, each match will add the original header to the
+   * `Vary` header that will also be added to the output automatically.
+   */
   const headers negotiations;
+
+  /* Handler function.
+   *
+   * Will be invoked if the resource and method match the provided regexen, and
+   * content negotiation was successful.
+   *
+   * The return type is a boolean, and returning `true` indicates that the
+   * request has been adequately processed. If this function returns `false`,
+   * then the processor will continue trying to look up matching handlers and
+   * assume no reply has been sent, yet.
+   */
+  const std::function<bool(sessionType &, std::smatch &)> handler;
+
+  /* Description of the servlet.
+   *
+   * Help texts may use this to provide more details on what a servlet does and
+   * how to invoke it correctly. A URL with an API description si recommended.
+   */
   const std::string description;
 
+  /* Add servlet to processor.
+   * @processor The HTTP processor type. Most likely http::processor::server.
+   * @proc The HTTP processor instance to add to.
+   *
+   * Adds the servlet as a subprocessor to the given processor, allowing that
+   * processor to use it.
+   */
+  template <class processor>
+  void apply(processor &proc) const {
+    proc.add(resourcex, handler, methodx, negotiations);
+  }
+
  protected:
+  /* The servlet set we're registered with.
+   *
+   * Used in the destructor to unregister the servlet.
+   */
   std::set<servlet *> &root;
 };
 
+namespace cli {
+using efgy::cli::option;
+
+/* Set up an endpoint as an HTTP server.
+ * @transport The transport type of the endpoint, e.g. transport::tcp.
+ * @lookup The endpoint to bind to.
+ * @service The I/O service to use, defaults to the global one.
+ * @servlets The servlets to bind, defaults to the global set for the transport.
+ *
+ * This sets up an HTTP server on a new listening socket bound to whatever
+ * `lookup` specifies.
+ *
+ * @return `true` if the setup was successful.
+ */
 template <class transport>
 static std::size_t setup(net::endpoint<transport> lookup,
-                         service &service = efgy::global<cxxhttp::service>()) {
-  return lookup.with([&service](
+                         service &service = efgy::global<cxxhttp::service>(),
+                         std::set<servlet<transport> *> &servlets =
+                             efgy::global<std::set<servlet<transport> *>>()) {
+  return lookup.with([&service, &servlets](
                          typename transport::endpoint &endpoint) -> bool {
     http::server<transport> *s = new http::server<transport>(endpoint, service);
 
-    apply(s->processor, efgy::global<std::set<servlet<transport> *>>());
+    for (const auto &sv : servlets) {
+      sv->apply(s->processor);
+    }
 
     return true;
   });
 }
 
-namespace cli {
-using efgy::cli::option;
+/* Set up an HTTP server on a TCP socket.
+ * @match The matches from the TCP regex.
+ *
+ * This uses setup() to create a server on the interface specified with match[1]
+ * and the port specified with match[2].
+ * The server will have the default HTTP processor, with all registered TCP
+ * servlets applied.
+ *
+ * @return 'true' if the setup was successful.
+ */
+static inline bool setupTCP(std::smatch &match) {
+  return setup(net::endpoint<transport::tcp>(match[1], match[2])) > 0;
+}
 
-static option socket(
-    "-{0,2}http:unix:(.+)",
-    [](std::smatch &m) -> bool {
-      return setup(net::endpoint<transport::unix>(m[1])) > 0;
-    },
-    "Listen for HTTP connections on the given unix socket[1].");
+/* Set up an HTTP server on a UNIX socket.
+ * @match The matches from the UNIX regex.
+ *
+ * This uses setup() to create a server on the socket file specified with
+ * match[1]. The server will have the default HTTP processor, with all
+ * registered UNIX servlets applied.
+ *
+ * @return 'true' if the setup was successful.
+ */
+static inline bool setupUNIX(std::smatch &match) {
+  return setup(net::endpoint<transport::unix>(match[1])) > 0;
+}
 
-static option tcp(
-    "-{0,2}http:(.+):([0-9]+)",
-    [](std::smatch &m) -> bool {
-      return setup(net::endpoint<transport::tcp>(m[1], m[2])) > 0;
-    },
-    "Listen for HTTP connections on the given host[1] and port[2].");
+/* TCP HTTP server CLI option.
+ *
+ * The format is `http:<interface-address>:<port>`. The server that is set up
+ * will have all available servlets registered.
+ */
+static option TCP(
+    "-{0,2}http:(.+):([0-9]+)", setupTCP,
+    "listen for HTTP connections on the given host[1] and port[2]");
+
+/* UNIX socket HTTP server CLI option.
+ *
+ * The format is `http:unix:<socket-file>`. The server that is set up will have
+ * all available servlets registered.
+ */
+static option UNIX("-{0,2}http:unix:(.+)", setupUNIX,
+                   "listen for HTTP connections on the given unix socket[1]");
 }
 
 namespace usage {
 using efgy::cli::hint;
 
+/* Create usage hint.
+ * @transport Used to look up the correct set of servlets, e.g. transpor::tcp.
+ *
+ * This creates a brief textual summary of the available servlets, with the
+ * regular expressions that are used to match them against incoming queries.
+ *
+ * @return A string with a summary of the available servlets.
+ */
 template <typename transport>
-static std::string print(void) {
+static std::string describe(void) {
   std::string rv = "";
   for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
-    rv += " " + servlet->methods + " " + servlet->regex + "\n";
+    rv += " * " + servlet->methodx + " " + servlet->resourcex + "\n" + "   " +
+          servlet->description + "\n";
   }
   return rv;
 }
 
-static hint tcp("HTTP Endpoints (TCP)", print<transport::tcp>);
-static hint unix("HTTP Endpoints (UNIX)", print<transport::unix>);
+/* TCP servlet hints.
+ *
+ * Enables a description of all available TCP servlets for the `--help` flag.
+ */
+static hint TCP("HTTP Endpoints (TCP)", describe<transport::tcp>);
+
+/* UNIX socket servlet hints.
+ *
+ * Enables a description of all available UNIX servlets for the `--help` flag.
+ */
+static hint UNIX("HTTP Endpoints (UNIX)", describe<transport::unix>);
 }
 }
 }

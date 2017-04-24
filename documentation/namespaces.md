@@ -13,9 +13,9 @@ HTTP handling.
 Contains an HTTP server and templates for session management and processing by
 user code.
 
-#<cldoc:cxxhttp:httpd>
+#<cldoc:cxxhttp::httpd>
 
-Servler-based HTTP server.
+Servlet-based HTTP server.
 
 A simple HTTP server that is based on a global, per-transport list of servlets.
 There's also a few sample servlets in `include/cxxhttp/httpd-(...).h`, for

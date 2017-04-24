@@ -82,6 +82,27 @@ static const std::set<std::string> method{
 static const std::set<std::string> non405method{
     "OPTIONS", "TRACE",
 };
+
+/* HTTP request lifecycle status.
+ *
+ * Describes where we currently are in the life cycle of a request.
+ */
+enum status {
+  /* Waiting for a request line. */
+  stRequest,
+  /* Waiting for a status line. */
+  stStatus,
+  /* Currently parsing the request header. */
+  stHeader,
+  /* Currently parsing the request body. */
+  stContent,
+  /* Currently processing the request. */
+  stProcessing,
+  /* An error has occurred, and we won't continue parsing. */
+  stError,
+  /* Will shut down the connection now. Set in the destructor. */
+  stShutdown
+};
 }
 }
 

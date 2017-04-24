@@ -62,7 +62,7 @@ struct subprocessor {
   std::function<bool(session &, std::smatch &)> handler;
 };
 
-/* Base processor
+/* Basis server processor
  * @transport The socket class for the request, e.g. transport::tcp
  *
  * This is the default processor, which fans out incoming requests by means of a
@@ -77,14 +77,21 @@ struct subprocessor {
  * is kept around for as long as the server object is.
  */
 template <class transport>
-class base {
+class server {
  public:
   /* Session type
    *
    * This is the session type that the processor is intended for. This typedef
    * is mostly here for convenience.
    */
-  typedef session<transport, base> session;
+  typedef session<transport, server> session;
+
+  /* Maximum request content size
+   *
+   * The maximum number of octets supported for a request body. Requests larger
+   * than this are cancelled with an error.
+   */
+  std::size_t maxContentLength = (1024 * 1024 * 12);
 
   /* Handle request
    * @sess The session object where the request was made.
@@ -94,7 +101,7 @@ class base {
    * all that match it will call the registered function, until one of them
    * returns true.
    */
-  void operator()(session &sess) const {
+  void handle(session &sess) const {
     std::set<std::string> methods{};
     bool trigger405 = false;
     bool trigger406 = false;
@@ -188,6 +195,37 @@ class base {
     sess.reply(404, "Sorry, this resource was not found.");
   }
 
+  enum status afterHeaders(session &sess) const {
+    const auto &cli = sess.header.find("Content-Length");
+    const auto &exp = sess.header.find("Expect");
+
+    if (exp != sess.header.end()) {
+      if (exp->second == "100-continue") {
+        sess.reply(100, "");
+      } else {
+        sess.reply(417, "Expectation Failed");
+        return stError;
+      }
+    }
+
+    if (cli != sess.header.end()) {
+      try {
+        sess.contentLength = std::stoi(cli->second);
+      } catch (...) {
+        sess.contentLength = 0;
+      }
+
+      if (sess.contentLength > maxContentLength) {
+        sess.reply(413, "Request Entity Too Large");
+        return stError;
+      }
+    } else {
+      sess.contentLength = 0;
+    }
+
+    return stContent;
+  }
+
   /* Add handler
    * @rx The regex that should trigger a given handler.
    * @handler The function to call.
@@ -260,12 +298,26 @@ class client {
    */
   using session = session<transport, client>;
 
-  bool operator()(session &sess) const {
+  void handle(session &sess) const {
     if (onSuccess) {
-      return onSuccess(sess);
+      onSuccess(sess);
+    }
+  }
+
+  enum status afterHeaders(session &sess) const {
+    const auto &cli = sess.header.find("Content-Length");
+
+    if (cli != sess.header.end()) {
+      try {
+        sess.contentLength = std::stoi(cli->second);
+      } catch (...) {
+        sess.contentLength = 0;
+      }
+    } else {
+      sess.contentLength = 0;
     }
 
-    return true;
+    return stContent;
   }
 
   void start(session &sess) {

@@ -30,27 +30,6 @@
 
 namespace cxxhttp {
 namespace http {
-/* HTTP request parser status
- *
- * Contains the current status of the request parser for the current session.
- */
-enum status {
-  /* Waiting for a request line. */
-  stRequest,
-  /* Waiting for a status line. */
-  stStatus,
-  /* Currently parsing the request header. */
-  stHeader,
-  /* Currently parsing the request body. */
-  stContent,
-  /* Currently processing the request. */
-  stProcessing,
-  /* Error: Content-Length is greater than maxContentLength */
-  stErrorContentTooLarge,
-  /* Will shut down the connection now. Set in the destructor. */
-  stShutdown
-};
-
 /* Session wrapper
  * @transport The connection type, e.g. transport::tcp.
  * @requestProcessor The functor class to handle requests.
@@ -157,6 +136,13 @@ class session {
    */
   std::string content;
 
+  /* Content length
+   *
+   * This is the value of the Content-Length header. Used when parsing a request
+   * with a body.
+   */
+  std::size_t contentLength;
+
   /* Connection instance
    *
    * A reference to the server or client that this session belongs to and was
@@ -164,13 +150,6 @@ class session {
    * maintenance.
    */
   connectionType &connection;
-
-  /* Maximum request content size
-   *
-   * The maximum number of octets supported for a request body. Requests larger
-   * than this are cancelled with an error.
-   */
-  std::size_t maxContentLength = (1024 * 1024 * 12);
 
   /* Construct with I/O connection
    * @pConnection The connection instance this session belongs to.
@@ -233,7 +212,13 @@ class session {
     std::stringstream reply;
 
     reply << "HTTP/1.1 " << status << " " + statusDescription(status) + "\r\n"
-          << header << "\r\n" + body;
+          << header << "\r\n";
+
+    if (status == 100) {
+      // informational response, no body.
+    } else {
+      reply << body;
+    }
 
     asio::async_write(socket, asio::buffer(reply.str()),
                       [status, this](std::error_code ec, std::size_t length) {
@@ -279,6 +264,11 @@ class session {
     headers head{
         {"Content-Length", std::to_string(body.size())},
     };
+
+    if (status == 100) {
+      // informational response, no body.
+      head = {};
+    }
 
     // Add the headers the client wanted to send.
     head.insert(header.begin(), header.end());
@@ -332,7 +322,7 @@ class session {
             });
         break;
       case stProcessing:
-      case stErrorContentTooLarge:
+      case stError:
       case stShutdown:
         break;
     }
@@ -378,7 +368,7 @@ class session {
         is.read(&s[0], input.size());
         break;
       case stProcessing:
-      case stErrorContentTooLarge:
+      case stError:
       case stShutdown:
         break;
     }
@@ -409,29 +399,16 @@ class session {
 
       case stHeader:
         if ((s == "\r") || (s.empty())) {
-          const auto &cli = header.find("Content-Length");
-
-          // everything we already read before we got here that is left in the
-          // buffer is part of the content.
-          content = std::string(input.size(), '\0');
-          is.read(&content[0], input.size());
-
-          if (cli != header.end()) {
-            try {
-              contentLength = std::stoi(cli->second);
-            } catch (...) {
-              contentLength = 0;
-            }
-
-            if (contentLength > maxContentLength) {
-              status = stErrorContentTooLarge;
-              reply(413, "Request Entity Too Large");
-            } else {
-              status = stContent;
-            }
+          status = connection.processor.afterHeaders(*this);
+          if (contentLength > 0) {
+            // read in up to Content-Length bytes from the stream from what's
+            // already available.
+            std::size_t readNow = std::min(input.size(), contentLength);
+            content = std::string(readNow, '\0');
+            is.read(&content[0], readNow);
             break;
           } else {
-            status = stContent;
+            content = "";
             s = "";
           }
         } else {
@@ -444,12 +421,12 @@ class session {
         status = stProcessing;
 
         /* processing the request takes places here */
-        connection.processor(*this);
+        connection.processor.handle(*this);
 
         break;
 
       case stProcessing:
-      case stErrorContentTooLarge:
+      case stError:
       case stShutdown:
         break;
     }
@@ -461,7 +438,7 @@ class session {
       case stContent:
         read();
       case stProcessing:
-      case stErrorContentTooLarge:
+      case stError:
       case stShutdown:
         break;
     }
@@ -497,13 +474,6 @@ class session {
    */
   std::string lastHeader;
 
-  /* Content length
-   *
-   * This is the value of the Content-Length header. Used when parsing a request
-   * with a body.
-   */
-  std::size_t contentLength;
-
   /* ASIO input stream buffer
    *
    * This is the stream buffer that the object is reading from.
@@ -511,7 +481,8 @@ class session {
   asio::streambuf input;
 };
 
-template <class transport, class requestProcessor = processor::base<transport>>
+template <class transport,
+          class requestProcessor = processor::server<transport>>
 using server = net::server<transport, requestProcessor, session>;
 
 template <class transport,

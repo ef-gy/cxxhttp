@@ -49,6 +49,12 @@ static bool hello(typename http::server<transport>::session &session,
   using efgy::json::json;
   using efgy::json::tag;
 
+  if (session.method == "POST") {
+    session.reply(200, {{"Content-Type", session.header["Content-Type"]}},
+                  session.content);
+    return true;
+  }
+
   const std::string message = "Hello World!";
 
   if (session.outbound["Content-Type"] == "text/plain") {
@@ -66,7 +72,7 @@ static bool hello(typename http::server<transport>::session &session,
 }
 
 static const char *resource = "/";
-static const char *method = "GET";
+static const char *method = "GET|POST";
 static const headers negotiations{
     {"Accept", "text/plain, application/json;q=0.9"}};
 

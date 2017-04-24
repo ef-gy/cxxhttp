@@ -88,19 +88,11 @@ class session {
    */
   std::string protocol;
 
-  /* Status code
+  /* The reply's status line.
    *
-   * HTTP replies send a status code to indicate errors and the like. For client
-   * request replies, this code is set based on what the client sent.
+   * Only set if for an HTTP client, not a server.
    */
-  int code;
-
-  /* Status description
-   *
-   * HTTP replies have a textual description of the status code that was sent;
-   * this member variable holds that description.
-   */
-  std::string description;
+  statusLine replyStatus;
 
   /* HTTP request headers
    *
@@ -210,9 +202,9 @@ class session {
   void replyFlat(int status, const std::string &header,
                  const std::string &body) {
     std::stringstream reply;
+    statusLine stat(status, protocol);
 
-    reply << "HTTP/1.1 " << status << " " + statusDescription(status) + "\r\n"
-          << header << "\r\n";
+    reply << std::string(stat) << header << "\r\n";
 
     if (status == 100) {
       // informational response, no body.
@@ -386,11 +378,10 @@ class session {
         break;
 
       case stStatus: {
-        const auto stat = parse(s);
-        if (stat) {
-          code = stat->code;
-          protocol = stat->protocol;
-          description = stat->description;
+        const auto stat = statusLine(s);
+        if (stat.valid()) {
+          replyStatus = stat;
+          protocol = stat.protocol;
 
           header = {};
           status = stHeader;

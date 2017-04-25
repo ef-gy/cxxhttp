@@ -14,7 +14,6 @@
 #if !defined(CXXHTTP_HTTP_STATUS_H)
 #define CXXHTTP_HTTP_STATUS_H
 
-#include <optional>
 #include <regex>
 #include <sstream>
 #include <string>

@@ -22,6 +22,8 @@
 #include <set>
 #include <string>
 
+#include <cxxhttp/http-grammar.h>
+
 namespace cxxhttp {
 /* Case-insensitive comparison functor
  *
@@ -132,14 +134,23 @@ static inline bool append(std::map<std::string, std::string, comp> &header,
 template <typename comp>
 static inline std::string absorb(
     std::map<std::string, std::string, comp> &header, const std::string &line,
-    const std::string &lastHeader) {
-  static const std::regex mime("([\\w-]+):\\s*(.*)\\s*");
-  static const std::regex mimeContinued("[ \t]\\s*(.*)\\s*");
+    const std::string lastHeader) {
+  using namespace http::grammar;
+
+  static const std::string captureName = "(" + fieldName + ")";
+  static const std::string captureValue = "(" + fieldContent + ")";
+
+  static const std::regex headerMention(captureName + ":" + ows + "\r?\n?");
+  static const std::regex headerProper(captureName + ":" + ows + captureValue +
+                                       ows + "\r?\n?");
+  static const std::regex headerContinued(rws + captureValue + ows + "\r?\n?");
   std::smatch matches;
 
-  if (std::regex_match(line, matches, mimeContinued)) {
+  if (std::regex_match(line, matches, headerContinued)) {
     append(header, lastHeader, matches[1]);
-  } else if (std::regex_match(line, matches, mime)) {
+  } else if (std::regex_match(line, matches, headerMention)) {
+    return matches[1];
+  } else if (std::regex_match(line, matches, headerProper)) {
     // RFC 2616, section 4.2:
     // Header fields that occur multiple times must be combinable into a single
     // value by appending the fields in the order they occur, using commas to

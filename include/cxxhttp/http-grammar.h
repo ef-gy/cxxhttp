@@ -58,6 +58,41 @@ static const std::string wsp = "[ \t]";
 //     #element => [ 1#element ]
 //     <n>#<m>element => element <n-1>*<m-1>( OWS "," OWS element )
 //
+// Most of this is defined in section 3, "Message Format" which opens with this
+// overall ABNS rule:
+//
+//      HTTP-message   = start-line
+//                       *( header-field CRLF )
+//                       CRLF
+//                       [ message-body ]
+//
+
+/* Protocol name.
+ *
+ * From RFC 7230, section 2.6, "Protocol Versioning".
+ *
+ * Used in the start line, and is a verbatim, upper-case "HTTP". Only here for
+ * completeness, as this would be used via httpVersion, which has subexpressions
+ * for getting the actual version digits.
+ *
+ * Original grammar rule:
+ *
+ *      HTTP-name     = %x48.54.54.50 ; "HTTP", case-sensitive
+ */
+static const std::string httpName = "HTTP";
+
+/* Protocol version.
+ *
+ * HTTP uses a fixed, single-digit and two-component version numbering scheme.
+ * This has subexpressions for the versions added, as these are the only parts
+ * that could be different between protocol versions and we need this bit of
+ * information only while parsing a status line.
+ *
+ * Original grammar rule:
+ *
+ *      HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
+ */
+static const std::string httpVersion = "HTTP/([0-9])\\.([0-9])";
 
 // Whitespace rules:
 // Only space and tab are considered whitespace.
@@ -69,8 +104,82 @@ static const std::string rws = "[ \t]+";
 //      BWS            = OWS  ; "bad" whitespace
 static const std::string bws = "[ \t]*";
 
-//      obs-text       = %x80-FF
+/* HTTP "obsolete" text.
+ *
+ * It's considered good practice, according to RFC 7230, to not use anyting but
+ * 7-bit ASCII in HTTP control contexts. However, the transport is expected to
+ * be 8-bit, and for backwards compatibility with clients using other encodings
+ * it's encouraged to be lenient about that.
+ *
+ * This character class represents all characters with the highest bit set in an
+ * 8-bit encoding. Places where this is actually used will have this class
+ * rolled into other character classes nearby.
+ *
+ * Original grammar rule:
+ *
+ *      obs-text       = %x80-FF
+ */
 static const std::string obsText = "[\\\x80-\\\xff]";
+
+/* A single token character.
+ *
+ * This is any VCHAR, except delimiters. Has been resolved to a simple character
+ * class to make it easy to capture with regex subexpressions.
+ *
+ * Original grammar rule:
+ *
+ *      tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+ *                     / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+ *                     / DIGIT / ALPHA
+ */
+static const std::string tchar = "[-!#$%&'*+.^_`|~0-9A-Za-z]";
+
+/* An HTTP token.
+ *
+ * HTTP uses tokens for headers, methods and other places where an opaque name
+ * of one form or another is needed.
+ *
+ * This has no subexpressions to make it easy to capture.
+ *
+ * Original grammar rule:
+ *
+ *      token          = 1*tchar
+ */
+static const std::string token = tchar + "+";
+
+// RFC 7230, section 3.1: start line
+
+//      start-line     = request-line / status-line
+//      request-line   = method SP request-target SP HTTP-version CRLF
+//      method         = token
+//      status-line = HTTP-version SP status-code SP reason-phrase CRLF
+
+/* Status code.
+ *
+ * Must be exactly 3 digits, no more and no less. This actually allows codes
+ * outside of the "normal" range, but this is what the grammar says.
+ *
+ * This has no subexpressions, because we want this easily captured.
+ *
+ * Original grammar rule:
+ *
+ *      status-code    = 3DIGIT
+ */
+static const std::string statusCode = "[0-9]{3}";
+
+/* Reason phrase.
+ *
+ * Basically a text explanation for the status code. Note that this grammar
+ * allows entirely empty reaosn phrases, but there still must be a space
+ * between a status code and an empty reason phrase.
+ *
+ * Original grammr rule:
+ *
+ *      reason-phrase  = *( HTAB / SP / VCHAR / obs-text )
+ */
+static const std::string reasonPhrase = "[\t \\\x21-\\\x7e\\\x80-\\\xff]*";
+
+// RFC 7230, section 3.2: header lines
 
 /* Quoted pair.
  *
@@ -116,18 +225,6 @@ static const std::string ctext =
  */
 static const std::string comment =
     "(\\(((" + ctext + "|" + quotedPair + "|[()])*)\\))";
-
-/* Any VCHAR, except delimiters.
- *
- *      tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
- *                     / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
- *                     / DIGIT / ALPHA
- */
-// static const std::string tchar = "([-!#$%&'*+.^_`|~]|"+digit+"|"+alpha+")";
-static const std::string tchar = "[-!#$%&'*+.^_`|~0-9A-Za-z]";
-
-//      token          = 1*tchar
-static const std::string token = tchar + "+";
 
 //      header-field   = field-name ":" OWS field-value OWS
 //

@@ -19,6 +19,7 @@
 #include <string>
 
 #include <cxxhttp/http-constants.h>
+#include <cxxhttp/http-grammar.h>
 
 namespace cxxhttp {
 namespace http {
@@ -50,7 +51,7 @@ class statusLine {
    * Initialise everything to be empty. Obviously this doesn't make for a valid
    * header.
    */
-  statusLine(void) : code(0) {}
+  statusLine(void) : code(0), majorVersion(0), minorVersion(0) {}
 
   /* Parse HTTP status line.
    * @line The (suspected) status line to parse.
@@ -58,16 +59,22 @@ class statusLine {
    * This currently only accepts HTTP/1.0 and HTTP/1.1 status lines, all others
    * will be rejected.
    */
-  statusLine(const std::string &line) : code(0) {
-    static const std::regex stat("(HTTP/1.[01])\\s+([0-9]{3})\\s+(.*)\\s*");
+  statusLine(const std::string &line)
+      : code(0), majorVersion(0), minorVersion(0) {
+    static const std::regex stat(grammar::httpVersion + " (" +
+                                 grammar::statusCode + ") (" +
+                                 grammar::reasonPhrase + ")\r?\n?");
     std::smatch matches;
     bool matched = std::regex_match(line, matches, stat);
 
     if (matched) {
-      protocol = matches[1];
-      description = matches[3];
+      const std::string maj = matches[1];
+      const std::string min = matches[2];
+      majorVersion = maj[0] - '0';
+      minorVersion = min[0] - '0';
+      description = matches[4];
       try {
-        code = std::stoi(matches[2]);
+        code = std::stoi(matches[3]);
       } catch (...) {
         code = 500;
       }
@@ -76,13 +83,15 @@ class statusLine {
 
   /* Create status line with status and protocol.
    * @pStatus The status code.
-   * @pProtocol The protocol for the status line.
+   * @major Major version component of the HTTP protocol.
+   * @minor Minor version component of the HTTP protocol.
    *
    * Use this to create a status line when replying to a query.
    */
-  statusLine(unsigned pStatus, const std::string &pProtocol = "HTTP/1.1")
+  statusLine(unsigned pStatus, unsigned major = 1, unsigned minor = 1)
       : code(pStatus),
-        protocol(pProtocol),
+        majorVersion(major),
+        minorVersion(minor),
         description(statusDescription(pStatus)) {}
 
   /* Did this status line parse correctly?
@@ -90,9 +99,13 @@ class statusLine {
    * Set to false, unless a successful parse happened (or the object has been
    * initialised directly, presumably with correct values).
    *
+   * This does not consider HTTP/0.9 status lines to be valid.
+   *
    * @return A boolean indicating whether or not this is a valid status line.
    */
-  bool valid(void) const { return (code >= 100) && (code < 600); }
+  bool valid(void) const {
+    return (code >= 100) && (code < 600) && (majorVersion > 0);
+  }
 
   /* The status code.
    *
@@ -102,9 +115,26 @@ class statusLine {
 
   /* Protocol name.
    *
-   * HTTP/1.0 or HTTP/1.1.
+   * HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion accepts.
    */
-  std::string protocol;
+  std::string protocol(void) const {
+    std::ostringstream s("");
+    s << "HTTP/" << majorVersion << "." << minorVersion;
+    return s.str();
+  }
+
+  /* Major protocol version.
+   *
+   * Should be '1', otherwise we'll likely reject the request in a later stage.
+   */
+  unsigned majorVersion;
+
+  /* Minor protocol version.
+   *
+   * Should be '0' or '1', otherwise we'll likely reject the request in a later
+   * stage.
+   */
+  unsigned minorVersion;
 
   /* Status code description.
    *
@@ -126,7 +156,7 @@ class statusLine {
     }
 
     std::ostringstream s("");
-    s << protocol << " " << code << " " << description << "\r\n";
+    s << protocol() << " " << code << " " << description << "\r\n";
     return s.str();
   }
 };

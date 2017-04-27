@@ -86,8 +86,8 @@ bool testParse(std::ostream &log) {
             << "', expected'" << tt.code << "'\n";
         return false;
       }
-      if (v.protocol != tt.protocol) {
-        log << "http::statusLine(" << tt.in << ").protocol='" << v.protocol
+      if (v.protocol() != tt.protocol) {
+        log << "http::statusLine(" << tt.in << ").protocol='" << v.protocol()
             << "', expected'" << tt.protocol << "'\n";
         return false;
       }
@@ -119,9 +119,10 @@ bool testGenerate(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {"", false, 0, "", "", "HTTP/1.1 500 Bad Status Line\r\n"},
-      {"frob", false, 0, "", "", "HTTP/1.1 500 Bad Status Line\r\n"},
-      {"HTTP/1.1 glorb", false, 0, "", "", "HTTP/1.1 500 Bad Status Line\r\n"},
+      {"", false, 0, "HTTP/0.0", "", "HTTP/1.1 500 Bad Status Line\r\n"},
+      {"frob", false, 0, "HTTP/0.0", "", "HTTP/1.1 500 Bad Status Line\r\n"},
+      {"HTTP/1.1 glorb", false, 0, "HTTP/0.0", "",
+       "HTTP/1.1 500 Bad Status Line\r\n"},
       {"HTTP/1.1 555 glorb\r", true, 555, "HTTP/1.1", "glorb",
        "HTTP/1.1 555 glorb\r\n"},
       {"HTTP/1.1 999 glorb\r", false, 999, "HTTP/1.1", "glorb",
@@ -141,8 +142,8 @@ bool testGenerate(std::ostream &log) {
           << "', expected'" << tt.code << "'\n";
       return false;
     }
-    if (v.protocol != tt.protocol) {
-      log << "http::statusLine(" << tt.in << ").protocol='" << v.protocol
+    if (v.protocol() != tt.protocol) {
+      log << "http::statusLine(" << tt.in << ").protocol='" << v.protocol()
           << "', expected'" << tt.protocol << "'\n";
       return false;
     }

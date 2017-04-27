@@ -202,7 +202,7 @@ class session {
   void replyFlat(int status, const std::string &header,
                  const std::string &body) {
     std::stringstream reply;
-    statusLine stat(status, protocol);
+    statusLine stat(status);
 
     reply << std::string(stat) << header << "\r\n";
 
@@ -381,7 +381,7 @@ class session {
         const auto stat = statusLine(s);
         if (stat.valid()) {
           replyStatus = stat;
-          protocol = stat.protocol;
+          protocol = stat.protocol();
 
           header = {};
           status = stHeader;

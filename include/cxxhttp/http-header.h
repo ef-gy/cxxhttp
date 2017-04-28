@@ -89,79 +89,98 @@ static inline std::string to_string(
   return r;
 }
 
-/* Append value to header map.
- * @comp A comparator for the map.
- * @header The map to modify.
- * @key The key to append to, or set.
- * @value The new value.
- *
- * Appends 'value' to the element 'key' in the header map. The former and the
- * new value will be separated by a ',', which is used throughout HTTP/1.1
- * header fields for when lists need to be represented.
- *
- * If the key was not originally set, then the value is simply set instead of
- * appended. This keeps the HTTP/1.1 header list syntax happy.
- *
- * @return 'true' if the value was appended, 'false' otherwise, i.e. if the
- * value was set instead.
- */
-template <typename comp>
-static inline bool append(std::map<std::string, std::string, comp> &header,
-                          const std::string &key, const std::string &value) {
-  std::string &v = header[key];
-  if (v.empty()) {
-    v = value;
-    return false;
+template <class headers>
+class parser {
+ public:
+  /* Header map.
+   *
+   * Populated with absorb() and append().
+   */
+  headers header;
+
+  /* Name of the last parsed header
+   *
+   * This is the name of the last header line that was parsed. Used with
+   * multi-line headers.
+   */
+  std::string lastHeader;
+
+  /* Append value to header map.
+   * @key The key to append to, or set.
+   * @value The new value.
+   *
+   * Appends 'value' to the element 'key' in the header map. The former and the
+   * new value will be separated by a ',', which is used throughout HTTP/1.1
+   * header fields for when lists need to be represented.
+   *
+   * If the key was not originally set, then the value is simply set instead of
+   * appended. This keeps the HTTP/1.1 header list syntax happy.
+   *
+   * @return 'true' if the value was appended, 'false' otherwise, i.e. if the
+   * value was set instead.
+   */
+  bool append(const std::string &key, const std::string &value) {
+    if (!value.empty()) {
+      std::string &v = header[key];
+      if (v.empty()) {
+        v = value;
+        return false;
+      }
+
+      v += "," + value;
+    }
+    return true;
   }
 
-  v += "," + value;
-  return true;
-}
+  /* Parse and append header line.
+   * @line The raw line to parse and absorb.
+   *
+   * Parse a header line using MIME header rules, and append any keys or values
+   * to the header instance.
+   *
+   * @return 'true' if the line was successfully parsed as a header.
+   */
+  bool absorb(const std::string &line) {
+    static const std::string captureName = "(" + grammar::fieldName + ")";
+    static const std::string captureValue = "(" + grammar::fieldContent + ")?";
 
-/* Parse and append header line.
- * @comp A comparator for the map.
- * @header The map to put the new data into.
- * @line The raw line to parse and absorb.
- * @lastHeader The last header's key.
- *
- * Parse a header line using MIME header rules, and append any keys or values
- * to the given header instance.
- *
- * To parse these lines correctly, the function needs to know what the last
- * header line's key was, so it also returns this key.
- *
- * @return The affected header line's key.
- */
-template <typename comp>
-static inline std::string absorb(
-    std::map<std::string, std::string, comp> &header, const std::string &line,
-    const std::string lastHeader) {
-  using namespace http::grammar;
+    static const std::regex headerProper(captureName + ":" + grammar::ows +
+                                         captureValue + grammar::ows +
+                                         "\r?\n?");
+    static const std::regex headerContinued(grammar::rws + captureValue +
+                                            grammar::ows + "\r?\n?");
 
-  static const std::string captureName = "(" + fieldName + ")";
-  static const std::string captureValue = "(" + fieldContent + ")";
+    std::smatch matches;
 
-  static const std::regex headerMention(captureName + ":" + ows + "\r?\n?");
-  static const std::regex headerProper(captureName + ":" + ows + captureValue +
-                                       ows + "\r?\n?");
-  static const std::regex headerContinued(rws + captureValue + ows + "\r?\n?");
-  std::smatch matches;
+    bool matched =
+        !lastHeader.empty() && std::regex_match(line, matches, headerContinued);
+    std::string appendValue;
 
-  if (std::regex_match(line, matches, headerContinued)) {
-    append(header, lastHeader, matches[1]);
-  } else if (std::regex_match(line, matches, headerMention)) {
-    return matches[1];
-  } else if (std::regex_match(line, matches, headerProper)) {
-    // RFC 2616, section 4.2:
-    // Header fields that occur multiple times must be combinable into a single
-    // value by appending the fields in the order they occur, using commas to
-    // separate the individual values.
-    append(header, matches[1], matches[2]);
-    return matches[1];
+    if (matched) {
+      appendValue = matches[1];
+    } else {
+      matched = std::regex_match(line, matches, headerProper);
+
+      if (matched) {
+        lastHeader = matches[1];
+
+        // RFC 2616, section 4.2:
+        // Header fields that occur multiple times must be combinable into a
+        // single
+        // value by appending the fields in the order they occur, using commas
+        // to
+        // separate the individual values.
+        appendValue = matches[2];
+      }
+    }
+
+    if (!appendValue.empty()) {
+      append(lastHeader, appendValue);
+    }
+
+    return matched;
   }
-
-  return lastHeader;
-}
+};
 }
 }
 

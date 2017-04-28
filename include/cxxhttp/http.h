@@ -121,7 +121,7 @@ class session {
    * For negotiated headers, this uses the output header name, e.g.
    * "Content-Type" for when the client used "Accept".
    */
-  headers outbound;
+  parser<headers> outbound;
 
   /* HTTP request body
    *
@@ -268,7 +268,7 @@ class session {
 
     // take over outbound headers that have been negotiated, or similar, iff
     // they haven't been overridden.
-    head.insert(outbound.begin(), outbound.end());
+    head.insert(outbound.header.begin(), outbound.header.end());
 
     // we automatically close connections when an error code is sent.
     if (status >= 400) {
@@ -369,7 +369,7 @@ class session {
           resource = req.resource;
           protocol = req.protocol();
 
-          header = {};
+          headerParser = {};
           status = stHeader;
         }
       } break;
@@ -380,13 +380,14 @@ class session {
           replyStatus = stat;
           protocol = stat.protocol();
 
-          header = {};
+          headerParser = {};
           status = stHeader;
         }
       } break;
 
       case stHeader:
         if ((s == "\r") || (s.empty())) {
+          header = headerParser.header;
           status = connection.processor.afterHeaders(*this);
           if (contentLength > 0) {
             // read in up to Content-Length bytes from the stream from what's
@@ -400,7 +401,7 @@ class session {
             s = "";
           }
         } else {
-          lastHeader = absorb(header, s, lastHeader);
+          headerParser.absorb(s);
           break;
         }
 
@@ -455,12 +456,11 @@ class session {
     }
   }
 
-  /* Name of the last parsed header
+  /* Header parser instance.
    *
-   * This is the name of the last header line that was parsed. Used with
-   * multi-line headers.
+   * Constains all the state we need to parse headers.
    */
-  std::string lastHeader;
+  parser<headers> headerParser;
 
   /* ASIO input stream buffer
    *

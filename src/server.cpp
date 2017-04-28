@@ -56,9 +56,9 @@ static bool hello(typename http::server<transport>::session &session,
 
   const std::string message = "Hello World!";
 
-  if (session.outbound["Content-Type"] == "text/plain") {
+  if (session.outbound.header["Content-Type"] == "text/plain") {
     session.reply(200, message);
-  } else if (session.outbound["Content-Type"] == "application/json") {
+  } else if (session.outbound.header["Content-Type"] == "application/json") {
     std::ostringstream s("");
     s << tag() << json(message);
 

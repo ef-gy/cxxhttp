@@ -117,9 +117,9 @@ bool testAppend(std::ostream &log) {
   };
 
   for (const auto &tt : tests) {
-    auto h = tt.in;
-    const auto a = append(h, tt.key, tt.value);
-    const auto v = to_string(h);
+    parser<headers> p{tt.in, ""};
+    const auto a = p.append(tt.key, tt.value);
+    const auto v = to_string(p.header);
     if (v != tt.out) {
       log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
       return false;
@@ -146,30 +146,68 @@ bool testAbsorb(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string line, last, out, res;
+    bool match;
   };
 
   std::vector<sampleData> tests{
-      {{}, "a: b", "", "a: b\r\n", "a"},
-      {{}, "a: b\r\n", "b", "a: b\r\n", "a"},
-      {{{"a", "b"}}, "a: c", "a", "a: b,c\r\n", "a"},
-      {{{"a", "b"}}, "\td\r\n", "a", "a: b,d\r\n", "a"},
-      {{{"a", "b"}, {"c", "d"}}, "a: e\r", "e", "a: b,e\r\nc: d\r\n", "a"},
-      {{}, "bad line", "", "", ""},
+      {{}, "a: b", "", "a: b\r\n", "a", true},
+      {{}, "a: b\r\n", "b", "a: b\r\n", "a", true},
+      {{{"a", "b"}}, "b:", "a", "a: b\r\n", "b", true},
+      {{{"a", "b"}}, "a: c", "a", "a: b,c\r\n", "a", true},
+      {{{"a", "b"}}, "\td\r\n", "a", "a: b,d\r\n", "a", true},
+      {{{"a", "b"}, {"c", "d"}},
+       "a: e\r",
+       "e",
+       "a: b,e\r\nc: d\r\n",
+       "a",
+       true},
+      {{}, "bad line", "", "", "", false},
   };
 
   for (const auto &tt : tests) {
-    auto h = tt.in;
-    const auto a = absorb(h, tt.line, tt.last);
-    const auto v = to_string(h);
+    parser<headers> p{tt.in, tt.last};
+    const auto a = p.absorb(tt.line);
+    const auto v = to_string(p.header);
     if (v != tt.out) {
       log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
       return false;
     }
-    if (a != tt.res) {
-      log << "absorb(" << tt.out << ") had the wrong return value: '" << a
-          << "'\n";
+    if (p.lastHeader != tt.res) {
+      log << "absorb(" << tt.out << ") matched the wrong header: '"
+          << p.lastHeader << "'\n";
       return false;
     }
+    if (a != tt.match) {
+      log << "absorb(" << tt.out
+          << ") did not have the expected matching state\n";
+    }
+  }
+
+  return true;
+}
+
+/* Test if assigning an empty header parser clears all state.
+ * @log Test output stream.
+ *
+ * Makes sure that assigning an empty header parser instance actually clears the
+ * previous instance's state entirely. We rely on this in the code.
+ *
+ * As a side-effect, this is a quick syntax check to see that the compiler
+ * supports proper list initialisations.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testClear(std::ostream &log) {
+  parser<headers> p{{{"a", "b"}}, "c"};
+
+  if (p.header.empty() || p.lastHeader.empty()) {
+    return false;
+  }
+
+  p = {};
+
+  if (!p.header.empty() || !p.lastHeader.empty()) {
+    return false;
   }
 
   return true;
@@ -182,4 +220,5 @@ static function toString(testToString);
 static function compare(testCompare);
 static function append(testAppend);
 static function absorb(testAbsorb);
+static function clear(testClear);
 }

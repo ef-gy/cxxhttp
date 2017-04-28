@@ -55,7 +55,8 @@ class servlet {
    */
   servlet(const std::string &pResourcex,
           std::function<bool(sessionType &, std::smatch &)> pHandler,
-          const std::string &pMethodx = "GET", const http::headers pNegotiations = {},
+          const std::string &pMethodx = "GET",
+          const http::headers pNegotiations = {},
           const std::string &pDescription = "no description available",
           std::set<servlet *> &pSet = efgy::global<std::set<servlet *>>())
       : resourcex(pResourcex),

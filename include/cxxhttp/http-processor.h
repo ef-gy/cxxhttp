@@ -123,20 +123,20 @@ class server {
           // reset, and perform, header value negotiation based on the
           // subprocessor's specs and the client data.
           sess.negotiated = {};
-          sess.outbound = defaultServerHeaders;
+          sess.outbound = {defaultServerHeaders};
           for (const auto &n : subprocessor.negotiations) {
             const std::string cv =
                 sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
             const std::string v = negotiate(cv, n.second);
 
             // modify the Vary value to indicate we used this header.
-            append(sess.outbound, "Vary", n.first);
+            sess.outbound.append("Vary", n.first);
 
             sess.negotiated[n.first] = v;
 
             const auto it = sendNegotiatedAs.find(n.first);
             if (it != sendNegotiatedAs.end()) {
-              sess.outbound[it->second] = v;
+              sess.outbound.header[it->second] = v;
             }
 
             badNegotiation = badNegotiation || v.empty();
@@ -182,12 +182,12 @@ class server {
     }
 
     if (trigger405 && (methods.size() > 0)) {
-      headers h{};
+      parser<headers> p{};
       for (const auto &m : methods) {
-        append(h, "Allow", m);
+        p.append("Allow", m);
       }
 
-      sess.reply(405, h,
+      sess.reply(405, p.header,
                  "Sorry, this resource is not available via this method.");
       return;
     }

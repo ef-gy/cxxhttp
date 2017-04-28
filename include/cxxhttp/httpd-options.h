@@ -46,13 +46,14 @@ static bool options(typename http::server<transport>::session &session,
     }
   }
 
-  http::headers header{{"Content-Type", "text/markdown; charset=UTF-8"}};
+  http::parser<http::headers> p{
+      {{"Content-Type", "text/markdown; charset=UTF-8"}}};
 
   for (const auto &m : methods) {
-    append(header, "Allow", m);
+    p.append("Allow", m);
   }
 
-  session.reply(200, header, text);
+  session.reply(200, p.header, text);
 
   return true;
 }

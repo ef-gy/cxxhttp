@@ -20,11 +20,11 @@
 #include <system_error>
 
 #include <cxxhttp/client.h>
-#include <cxxhttp/header.h>
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/server.h>
 
 #include <cxxhttp/http-constants.h>
+#include <cxxhttp/http-header.h>
 #include <cxxhttp/http-processor.h>
 #include <cxxhttp/http-request.h>
 #include <cxxhttp/http-status.h>

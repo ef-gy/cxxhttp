@@ -20,11 +20,11 @@
 #include <map>
 #include <regex>
 
-#include <cxxhttp/header.h>
 #include <cxxhttp/network.h>
 #include <cxxhttp/version.h>
 
 #include <cxxhttp/http-constants.h>
+#include <cxxhttp/http-header.h>
 
 namespace cxxhttp {
 namespace http {

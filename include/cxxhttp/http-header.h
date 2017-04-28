@@ -13,8 +13,8 @@
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
-#if !defined(CXXHTTP_HEADER_H)
-#define CXXHTTP_HEADER_H
+#if !defined(CXXHTTP_HTTP_HEADER_H)
+#define CXXHTTP_HTTP_HEADER_H
 
 #include <locale>
 #include <map>
@@ -25,6 +25,7 @@
 #include <cxxhttp/http-grammar.h>
 
 namespace cxxhttp {
+namespace http {
 /* Case-insensitive comparison functor
  *
  * A simple functor used by the attribute map to compare strings without
@@ -160,6 +161,7 @@ static inline std::string absorb(
   }
 
   return lastHeader;
+}
 }
 }
 

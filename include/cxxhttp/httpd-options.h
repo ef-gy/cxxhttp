@@ -46,7 +46,7 @@ static bool options(typename http::server<transport>::session &session,
     }
   }
 
-  headers header{{"Content-Type", "text/markdown; charset=UTF-8"}};
+  http::headers header{{"Content-Type", "text/markdown; charset=UTF-8"}};
 
   for (const auto &m : methods) {
     append(header, "Allow", m);

@@ -56,11 +56,10 @@ class statusLine {
       majorVersion = maj[0] - '0';
       minorVersion = min[0] - '0';
       description = matches[4];
-      try {
-        code = std::stoi(matches[3]);
-      } catch (...) {
-        code = 500;
-      }
+      // we pre-validate that this is a number in the range of 100-999 with the
+      // regex, so while this could ordinarily throw an exception it would be
+      // programme-terminatingly bad if it did here.
+      code = std::stoi(matches[3]);
     }
   }
 

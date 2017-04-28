@@ -55,7 +55,7 @@ class servlet {
    */
   servlet(const std::string &pResourcex,
           std::function<bool(sessionType &, std::smatch &)> pHandler,
-          const std::string &pMethodx = "GET", const headers pNegotiations = {},
+          const std::string &pMethodx = "GET", const http::headers pNegotiations = {},
           const std::string &pDescription = "no description available",
           std::set<servlet *> &pSet = efgy::global<std::set<servlet *>>())
       : resourcex(pResourcex),
@@ -118,7 +118,7 @@ class servlet {
    * `http-constants.h`. Also, each match will add the original header to the
    * `Vary` header that will also be added to the output automatically.
    */
-  const headers negotiations;
+  const http::headers negotiations;
 
   /* Handler function.
    *

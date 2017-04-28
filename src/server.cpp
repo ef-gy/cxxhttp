@@ -72,7 +72,7 @@ static bool hello(typename http::server<transport>::session &session,
 
 static const char *resource = "/";
 static const char *method = "GET|POST";
-static const headers negotiations{
+static const http::headers negotiations{
     {"Accept", "text/plain, application/json;q=0.9"}};
 
 namespace tcp {

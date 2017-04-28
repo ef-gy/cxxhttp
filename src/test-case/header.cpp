@@ -17,9 +17,10 @@
 
 #include <ef.gy/test-case.h>
 
-#include <cxxhttp/header.h>
+#include <cxxhttp/http-header.h>
 
 using namespace cxxhttp;
+using namespace cxxhttp::http;
 
 /* Test header flattening.
  * @log Test output stream.

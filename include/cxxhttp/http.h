@@ -26,6 +26,7 @@
 
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-processor.h>
+#include <cxxhttp/http-request.h>
 #include <cxxhttp/http-status.h>
 
 namespace cxxhttp {
@@ -341,13 +342,8 @@ class session {
       return;
     }
 
-    static const std::regex req(
-        "(\\w+)\\s+([\\w\\d%/.:;()+-]+|\\*)\\s+(HTTP/1.[01])\\s*");
-
     std::istream is(&input);
     std::string s;
-
-    std::smatch matches;
 
     switch (status) {
       case stRequest:
@@ -366,16 +362,17 @@ class session {
     }
 
     switch (status) {
-      case stRequest:
-        if (std::regex_match(s, matches, req)) {
-          method = matches[1];
-          resource = matches[2];
-          protocol = matches[3];
+      case stRequest: {
+        const auto req = requestLine(s);
+        if (req.valid()) {
+          method = req.method;
+          resource = req.resource;
+          protocol = req.protocol();
 
           header = {};
           status = stHeader;
         }
-        break;
+      } break;
 
       case stStatus: {
         const auto stat = statusLine(s);

@@ -39,9 +39,9 @@ bool testDescription(std::ostream &log) {
   };
 
   for (const auto &tt : tests) {
-    const auto v = http::statusDescription(tt.in);
+    const auto v = http::statusLine::getDescription(tt.in);
     if (v != tt.out) {
-      log << "http::statusDescription(" << tt.in << ")='" << v
+      log << "http::statusLine::getDescription(" << tt.in << ")='" << v
           << "', expected '" << tt.out << "'\n";
       return false;
     }

@@ -23,23 +23,6 @@
 
 namespace cxxhttp {
 namespace http {
-/* Get status code text description.
- * @status The HTTP status code to look up.
- *
- * This is a separate function, because we need to provide a default for the
- * map lookup.
- *
- * @return A text description, which can be sent with your HTTP request.
- */
-static std::string statusDescription(unsigned status) {
-  auto it = http::status.find(status);
-  if (it != http::status.end()) {
-    return it->second;
-  }
-
-  return "Other Status";
-}
-
 /* Broken out status line.
  *
  * Contains all the data in a status line, broken out into the relevant fields.
@@ -92,7 +75,7 @@ class statusLine {
       : code(pStatus),
         majorVersion(major),
         minorVersion(minor),
-        description(statusDescription(pStatus)) {}
+        description(getDescription(pStatus)) {}
 
   /* Did this status line parse correctly?
    *
@@ -158,6 +141,23 @@ class statusLine {
     std::ostringstream s("");
     s << protocol() << " " << code << " " << description << "\r\n";
     return s.str();
+  }
+
+  /* Get status code text description.
+   * @status The HTTP status code to look up.
+   *
+   * This is a separate function, because we need to provide a default for the
+   * map lookup.
+   *
+   * @return A text description, which can be sent with your HTTP request.
+   */
+  static std::string getDescription(unsigned status) {
+    auto it = http::status.find(status);
+    if (it != http::status.end()) {
+      return it->second;
+    }
+
+    return "Other Status";
   }
 };
 }

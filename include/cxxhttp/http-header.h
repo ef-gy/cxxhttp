@@ -70,25 +70,6 @@ class headerNameLT
  */
 using headers = std::map<std::string, std::string, headerNameLT>;
 
-/* Turn a header map into a string.
- * @comp A comparator for the map.
- * @header The header map to turn into a string.
- *
- * This function takes a header map and converts it into the form used in the
- * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".
- *
- * @return A string, with all of the elements in the header parameter.
- */
-template <typename comp>
-static inline std::string to_string(
-    const std::map<std::string, std::string, comp> &header) {
-  std::string r = "";
-  for (const auto &h : header) {
-    r += h.first + ": " + h.second + "\r\n";
-  }
-  return r;
-}
-
 template <class headers>
 class parser {
  public:
@@ -179,6 +160,31 @@ class parser {
     }
 
     return matched;
+  }
+
+  /* Insert a different header map.
+   * @map The map to merge in.
+   *
+   * Merges headers with the given new map. This uses std::map::insert(), which
+   * will not overwrite values that already but instead only insert elements
+   * that don't exist yet.
+   */
+  void insert(const headers &map) { header.insert(map.begin(), map.end()); }
+
+  /* Turn a header map into a string.
+   * @header The header map to turn into a string.
+   *
+   * This function takes a header map and converts it into the form used in the
+   * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".
+   *
+   * @return A string, with all of the elements in the header parameter.
+   */
+  operator std::string(void) const {
+    std::string r = "";
+    for (const auto &h : header) {
+      r += h.first + ": " + h.second + "\r\n";
+    }
+    return r;
   }
 };
 }

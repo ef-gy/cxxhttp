@@ -155,7 +155,7 @@ class session {
         status(stRequest),
         input() {}
 
-  /* Destructor
+  /* Destructor.
    *
    * Closes the socket, cancels all remaining requests and sets the status to
    * stShutdown.
@@ -176,15 +176,11 @@ class session {
     }
   }
 
-  /* Start processing
+  /* Start processing.
    *
    * Starts processing the incoming request.
    */
-  void start(void) {
-    connection.processor.start(*this);
-    // TODO: this should be in the processor, not here.
-    read();
-  }
+  void start(void) { connection.processor.start(*this); }
 
   /* Send reply
    * @status The status to return.
@@ -225,10 +221,11 @@ class session {
 
   void request(const std::string &method, const std::string &resource,
                headers header, const std::string &body) {
-    header.insert(defaultClientHeaders.begin(), defaultClientHeaders.end());
+    parser<headers> head{header};
+    head.insert(defaultClientHeaders);
 
     std::string req = method + " " + resource + " HTTP/1.1\r\n" +
-                      to_string(header) + "\r\n" + body;
+                      std::string(head) + "\r\n" + body;
 
     if (status == stRequest) {
       status = stStatus;
@@ -254,9 +251,9 @@ class session {
    * function.
    */
   void reply(int status, const headers &header, const std::string &body) {
-    headers head{
+    parser<headers> head{{
         {"Content-Length", std::to_string(body.size())},
-    };
+    }};
 
     if (status == 100) {
       // informational response, no body.
@@ -264,18 +261,18 @@ class session {
     }
 
     // Add the headers the client wanted to send.
-    head.insert(header.begin(), header.end());
+    head.insert(header);
 
     // take over outbound headers that have been negotiated, or similar, iff
     // they haven't been overridden.
-    head.insert(outbound.header.begin(), outbound.header.end());
+    head.insert(outbound.header);
 
     // we automatically close connections when an error code is sent.
     if (status >= 400) {
-      head["Connection"] = "close";
+      head.header["Connection"] = "close";
     }
 
-    replyFlat(status, to_string(head), body);
+    replyFlat(status, std::string(head), body);
   }
 
   /* Send reply without custom headers

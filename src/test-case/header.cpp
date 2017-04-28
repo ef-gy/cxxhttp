@@ -44,9 +44,10 @@ bool testToString(std::ostream &log) {
   };
 
   for (const auto &tt : tests) {
-    const auto v = to_string(tt.in);
+    parser<headers> p{tt.in};
+    const std::string v = p;
     if (v != tt.out) {
-      log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
+      log << "string()='" << v << "', expected '" << tt.out << "'\n";
       return false;
     }
   }
@@ -119,9 +120,9 @@ bool testAppend(std::ostream &log) {
   for (const auto &tt : tests) {
     parser<headers> p{tt.in, ""};
     const auto a = p.append(tt.key, tt.value);
-    const auto v = to_string(p.header);
+    const std::string v = p;
     if (v != tt.out) {
-      log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
+      log << "string()='" << v << "', expected '" << tt.out << "'\n";
       return false;
     }
     if (a != tt.res) {
@@ -167,9 +168,9 @@ bool testAbsorb(std::ostream &log) {
   for (const auto &tt : tests) {
     parser<headers> p{tt.in, tt.last};
     const auto a = p.absorb(tt.line);
-    const auto v = to_string(p.header);
+    const std::string v = p;
     if (v != tt.out) {
-      log << "to_string()='" << v << "', expected '" << tt.out << "'\n";
+      log << "string()='" << v << "', expected '" << tt.out << "'\n";
       return false;
     }
     if (p.lastHeader != tt.res) {
@@ -180,6 +181,7 @@ bool testAbsorb(std::ostream &log) {
     if (a != tt.match) {
       log << "absorb(" << tt.out
           << ") did not have the expected matching state\n";
+      return false;
     }
   }
 
@@ -208,6 +210,46 @@ bool testClear(std::ostream &log) {
 
   if (!p.header.empty() || !p.lastHeader.empty()) {
     return false;
+  }
+
+  return true;
+}
+
+/* Test if inserting works as expected.
+ * @log Test output stream.
+ *
+ * This merges two headers with 'insert' to see if the semantics of that are as
+ * they should be.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testMerge(std::ostream &log) {
+  struct sampleData {
+    headers a, b, out;
+  };
+
+  std::vector<sampleData> tests{
+      {{}, {}, {}},
+      {{{"a", "b"}}, {{"c", "d"}}, {{"a", "b"}, {"c", "d"}}},
+      {{{"a", "b"}}, {{"a", "d"}}, {{"a", "b"}}},
+      {{{"A", "b"}}, {{"a", "d"}}, {{"A", "b"}}},
+      {{{"a", "b"}}, {{"A", "e"}, {"c", "d"}}, {{"a", "b"}, {"c", "d"}}},
+  };
+
+  for (const auto &tt : tests) {
+    parser<headers> p{tt.a};
+    p.insert(tt.b);
+    if (p.header != tt.out) {
+      parser<headers> a{tt.a};
+      parser<headers> b{tt.b};
+      parser<headers> out{tt.out};
+      log << "bad header merge; expected:\n"
+          << std::string(out) << "got:\n"
+          << std::string(p) << "with left hand side:\n"
+          << std::string(a) << "and right hand side:\n"
+          << std::string(b);
+      return false;
+    }
   }
 
   return true;

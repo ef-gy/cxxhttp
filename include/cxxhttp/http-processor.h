@@ -56,9 +56,34 @@ namespace processor {
  */
 template <class session>
 struct subprocessor {
+  /* Compiled resource regex.
+   *
+   * Matched against the resource that the client is requesting.
+   */
   std::regex resource;
+
+  /* Compiled method regex.
+   *
+   * Matched against the method that the client used.
+   */
   std::regex method;
+
+  /* List of applicable server-side content negotiations.
+   *
+   * If present, these automatically get resolved against what the client sends
+   * and the outbound headers are updated accordingly. Will also generate a Vary
+   * header to go along with it.
+   */
   headers negotiations;
+
+  /* Handling function.
+   *
+   * Called if the resource and method are a match and the negotiations, if
+   * there were any, were successful.
+   *
+   * If this returns false, then the code assumes you've not sent a reply and
+   * it will continue to perform matching with other handlers.
+   */
   std::function<bool(session &, std::smatch &)> handler;
 };
 
@@ -252,9 +277,7 @@ class server {
    *
    * In the HTTP server case, we begin by reading.
    */
-  void start(session &sess) {
-    //  sess.read();
-  }
+  void start(session &sess) const { sess.read(); }
 
  protected:
   /* The subprocessor type.
@@ -325,6 +348,7 @@ class client {
     requests.pop_front();
 
     sess.request(req.method, req.resource, req.header, req.body);
+    sess.read();
   }
 
   client &query(const std::string &method, const std::string &resource,
@@ -333,13 +357,32 @@ class client {
     return *this;
   }
 
+  /* Set function to call upon completion.
+   * @callback The post-completion callback.
+   *
+   * The naming here is vaguely in line with the naming scheme used in recent
+   * JavaScript libraries.
+   *
+   * @return A reference to the object's instance, to allow for chaining of
+   * function calls.
+   */
   client &then(std::function<bool(session &)> callback) {
     onSuccess = callback;
     return *this;
   }
 
  protected:
+  /* Request pool.
+   *
+   * Will be processed in sequence until either the connection is closed or the
+   * list is empty. This allows for pipelining on the client side.
+   */
   std::deque<request> requests;
+
+  /* Success callback.
+   *
+   * Called when a server has returned something to one of our queries.
+   */
   std::function<bool(session &)> onSuccess;
 };
 }

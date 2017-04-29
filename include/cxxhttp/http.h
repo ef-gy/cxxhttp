@@ -182,49 +182,22 @@ class session {
    */
   void start(void) { connection.processor.start(*this); }
 
-  /* Send reply
-   * @status The status to return.
-   * @header Any additional headers to be sent.
-   * @body The response body to send back to the client.
+  /* Send request.
+   * @method The request method.
+   * @resource Which request to get.
+   * @header Any headers to send.
+   * @body A request body, if applicable.
    *
-   * Used by the processing code once it is known how to answer the request
-   * contained in this object. Headers are not checked for validity.
-   * This function does not add a Content-Length, so the free-form header field
-   * will need to include this.
-   *
-   * The code will always reply with an HTTP/1.1 reply, regardless of the
-   * version in the request. If this is a concern for you, put the server behind
-   * an nginx instance, which should fix up the output as necessary.
+   * Sends a request to whatever this session is connected to. Only really makes
+   * sense if this is a client, but nobody's preventing you from doing your own
+   * thing.
    */
-  void replyFlat(int status, const std::string &header,
-                 const std::string &body) {
-    std::stringstream reply;
-    statusLine stat(status);
-
-    reply << std::string(stat) << header << "\r\n";
-
-    if (status == 100) {
-      // informational response, no body.
-    } else {
-      reply << body;
-    }
-
-    asio::async_write(socket, asio::buffer(reply.str()),
-                      [status, this](std::error_code ec, std::size_t length) {
-                        handleWrite(status, ec);
-                      });
-
-    connection.log << net::address(socket) << " - - [-] \"" << method << " "
-                   << resource << " " << protocol << "\" " << status << " "
-                   << body.length() << " \"-\" \"-\"\n";
-  }
-
   void request(const std::string &method, const std::string &resource,
                headers header, const std::string &body) {
     parser<headers> head{header};
     head.insert(defaultClientHeaders);
 
-    std::string req = method + " " + resource + " HTTP/1.1\r\n" +
+    std::string req = std::string(requestLine(method, resource)) +
                       std::string(head) + "\r\n" + body;
 
     if (status == stRequest) {
@@ -241,21 +214,27 @@ class session {
    * @header The headers to send.
    * @body The response body to send back to the client.
    *
+   * Used by the processing code once it is known how to answer the request
+   * contained in this object. Headers are not checked for validity.
+   * This function does not add a Content-Length, so the free-form header field
+   * will need to include this.
+   *
    * This function will automatically add a Content-Length header for the body,
    * and will also append to the Server header, if the agent string is set.
    *
    * Further headers may be added using the header parameter. Headers are not
    * checked for validity.
    *
-   * Actually sending the relpy is done via the flat-header form of this
-   * function.
+   * The code will always reply with an HTTP/1.1 reply, regardless of the
+   * version in the request. If this is a concern for you, put the server behind
+   * an nginx instance, which should fix up the output as necessary.
    */
   void reply(int status, const headers &header, const std::string &body) {
     parser<headers> head{{
         {"Content-Length", std::to_string(body.size())},
     }};
 
-    if (status == 100) {
+    if (status < 200) {
       // informational response, no body.
       head = {};
     }
@@ -272,7 +251,45 @@ class session {
       head.header["Connection"] = "close";
     }
 
-    replyFlat(status, std::string(head), body);
+    std::stringstream reply;
+
+    reply << std::string(statusLine(status)) << std::string(head) << "\r\n";
+
+    if (status < 200) {
+      // informational response, no body.
+    } else {
+      reply << body;
+    }
+
+    asio::async_write(socket, asio::buffer(reply.str()),
+                      [status, this](std::error_code ec, std::size_t length) {
+                        handleWrite(status, ec);
+                      });
+
+    static const std::regex URI("[\\w\\d%/.:;()+-]+|\\*");
+    static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
+    std::string referer = "-";
+    std::string userAgent = "-";
+    auto it = this->header.find("Referer");
+    if (it != this->header.end()) {
+      referer = it->second;
+      if (!std::regex_match(referer, URI)) {
+        referer = "(redacted)";
+      }
+    }
+
+    it = this->header.find("User-Agent");
+    if (it != this->header.end()) {
+      userAgent = it->second;
+      if (!std::regex_match(userAgent, agent)) {
+        userAgent = "(redacted)";
+      }
+    }
+
+    connection.log << net::address(socket) << " - - [-] \"" << method << " "
+                   << resource << " " << protocol << "\" " << status << " "
+                   << body.length() << " \"" << referer << "\" \"" << userAgent
+                   << "\"\n";
   }
 
   /* Send reply without custom headers

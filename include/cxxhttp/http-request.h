@@ -57,6 +57,20 @@ class requestLine {
     }
   }
 
+  /* Construct with method and resource.
+   * @pMethod The method to set.
+   * @pResource The resource to set.
+   *
+   * Used by code that wants to send out requests to generate a request line.
+   * Defaults the minor/major version of the protocol so that outbound replies
+   * are always HTTP/1.1.
+   */
+  requestLine(const std::string &pMethod, const std::string &pResource)
+      : method(pMethod),
+        resource(pResource),
+        majorVersion(1),
+        minorVersion(1) {}
+
   /* Did this request line parse correctly?
    *
    * Set to false, unless a successful parse happened (or the object has been

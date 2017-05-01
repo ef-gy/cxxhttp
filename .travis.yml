@@ -10,8 +10,7 @@ os:
   - linux
 
 env:
-  - CXX=clang++ CXX_STDLIB=-stdlib=libc++
-  - CXX=g++ CXX_STDLIB=
+  - CXX_STDLIB=-stdlib=libc++
 
 addons:
   apt:
@@ -20,7 +19,7 @@ addons:
       - libc++-dev
 
 script:
-  - make test CFLAGS="-O2 -coverage" CXX=${CXX} CXX_STDLIB=${CXX_STDLIB}
+  - make test CFLAGS="-O2 -coverage" CXX_STDLIB=${CXX_STDLIB}
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

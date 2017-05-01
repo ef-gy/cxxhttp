@@ -44,7 +44,7 @@ static const std::string digit = "[0-9]";
 static const std::string octet = "[\\\x00-\\\xff]";
 
 //          VCHAR          =  %x21-7E  ; visible (printing) characters
-static const std::string vchar = "[\\\x21-\\\x7e]";
+static const std::string vchar = "[!-\\\x7e]";
 
 //          WSP            =  SP / HTAB  ; white space
 static const std::string wsp = "[ \t]";
@@ -132,7 +132,7 @@ static const std::string obsText = "[\\\x80-\\\xff]";
  *                     / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
  *                     / DIGIT / ALPHA
  */
-static const std::string tchar = "[-!#$%&'*+.^_`|~0-9A-Za-z]";
+static const std::string tchar = "[---!#$%&'*+.^_`|~0-9A-Za-z]";
 
 /* An HTTP token.
  *
@@ -177,7 +177,7 @@ static const std::string statusCode = "[0-9]{3}";
  *
  *      reason-phrase  = *( HTAB / SP / VCHAR / obs-text )
  */
-static const std::string reasonPhrase = "[\t \\\x21-\\\x7e\\\x80-\\\xff]*";
+static const std::string reasonPhrase = "[\t !-\\\x7e\\\x80-\\\xff]*";
 
 // RFC 7230, section 3.2: header lines
 
@@ -187,7 +187,7 @@ static const std::string reasonPhrase = "[\t \\\x21-\\\x7e\\\x80-\\\xff]*";
  *
  *      quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
  */
-static const std::string quotedPair = "\\\\[\t \\\x21-\\\x7e\\\x80-\\\xff]";
+static const std::string quotedPair = "\\\\[\t !-\\\x7e\\\x80-\\\xff]";
 
 /* Quoted text.
  *
@@ -197,8 +197,7 @@ static const std::string quotedPair = "\\\\[\t \\\x21-\\\x7e\\\x80-\\\xff]";
  *
  *      qdtext         = HTAB / SP /%x21 / %x23-5B / %x5D-7E / obs-text
  */
-static const std::string qdtext =
-    "[\t \\\x21\\\x23-\\\x5b\\\x5d-\\\x7e\\\x80-\\\xff]";
+static const std::string qdtext = "[\t !#-,,-\\\x5b\\\x5d-\\\x7e\\\x80-\\\xff]";
 
 //      quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
 static const std::string quotedString =
@@ -211,7 +210,7 @@ static const std::string quotedString =
  *      ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
  */
 static const std::string ctext =
-    "[\t \\\x21-\\\x27\\\x2a-\\\x5b\\\x5d-\\\x7e\\\x80-\\\xff]";
+    "[\t !-\\\x27\\\x2a-\\\x5b\\\x5d-\\\x7e\\\x80-\\\xff]";
 
 /* Comment with parentheses.
  *
@@ -238,8 +237,8 @@ static const std::string fieldName = token;
 //      obs-fold       = CRLF 1*( SP / HTAB ) ; obsolete line folding
 
 //      field-vchar    = VCHAR / obs-text
-static const std::string fieldVchar = "[\\\x21-\\\x7e\\\x80-\\\xff]";
-static const std::string fieldVcharWS = "[ \t\\\x21-\\\x7e\\\x80-\\\xff]";
+static const std::string fieldVchar = "[!-\\\x7e\\\x80-\\\xff]";
+static const std::string fieldVcharWS = "[ \t!-\\\x7e\\\x80-\\\xff]";
 
 // I'm not sure this repeats as it was intended in the original grammar. I mean,
 // I think it does if it's unrolled, but not sure that was the intended way of

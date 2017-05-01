@@ -30,7 +30,7 @@ template <typename transport, typename requestProcessor,
 class server : public connection<requestProcessor> {
  public:
   using base = transport;
-  using connection = connection<requestProcessor>;
+  using connection = net::connection<requestProcessor>;
   using session = sessionTemplate<transport, requestProcessor>;
   using endpoint = typename base::endpoint;
 

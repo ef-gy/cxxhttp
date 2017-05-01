@@ -105,14 +105,16 @@ class endpoint {
 template <>
 class endpoint<transport::tcp> {
  public:
+  using service = cxxhttp::service;
+
   endpoint(const std::string &pHost, const std::string &pPort,
-           service &pService = efgy::global<cxxhttp::service>())
-      : host(pHost), port(pPort), service(pService) {}
+           service &pService = efgy::global<service>())
+      : host(pHost), port(pPort), activeService(pService) {}
 
   std::size_t with(std::function<bool(transport::tcp::endpoint &)> f) {
     std::size_t res = 0;
 
-    transport::tcp::resolver resolver(service);
+    transport::tcp::resolver resolver(activeService);
     transport::tcp::resolver::query query(host, port);
     transport::tcp::resolver::iterator endpoint_iterator =
         resolver.resolve(query);
@@ -133,7 +135,7 @@ class endpoint<transport::tcp> {
  protected:
   const std::string host;
   const std::string port;
-  service &service;
+  service &activeService;
 };
 
 /* Basic asynchronous connection wrapper

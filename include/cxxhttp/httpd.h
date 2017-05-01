@@ -250,7 +250,8 @@ using efgy::cli::hint;
 template <typename transport>
 static std::string describe(void) {
   std::string rv = "";
-  for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
+  const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
+  for (const auto &servlet : servlets) {
     rv += " * " + servlet->methodx + " " + servlet->resourcex + "\n" + "   " +
           servlet->description + "\n";
   }

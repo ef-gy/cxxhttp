@@ -55,7 +55,7 @@ namespace processor {
  * Used in the basic server processor to dispatch requests.
  */
 template <class session>
-struct subprocessor {
+struct handler {
   /* Compiled resource regex.
    *
    * Matched against the resource that the client is requesting.
@@ -109,7 +109,7 @@ class server {
    * This is the session type that the processor is intended for. This typedef
    * is mostly here for convenience.
    */
-  typedef session<transport, server> session;
+  using session = http::session<transport, server>;
 
   /* Maximum request content size
    *
@@ -284,7 +284,7 @@ class server {
    *
    * Assembled using the local session type.
    */
-  using processor = subprocessor<session>;
+  using processor = handler<session>;
 
   /* Map of request handlers
    *
@@ -319,7 +319,7 @@ class client {
    * This is the session type that the processor is intended for. This typedef
    * is mostly here for convenience.
    */
-  using session = session<transport, client>;
+  using session = http::session<transport, client>;
 
   void handle(session &sess) const {
     if (onSuccess) {

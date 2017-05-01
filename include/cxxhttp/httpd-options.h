@@ -31,7 +31,8 @@ static bool options(typename http::server<transport>::session &session,
   std::string allow = "";
   const std::string full = re[0];
 
-  for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
+  const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
+  for (const auto &servlet : servlets) {
     std::regex rx(servlet->resourcex);
     std::regex mx(servlet->methodx);
 

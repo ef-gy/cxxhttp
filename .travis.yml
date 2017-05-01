@@ -1,7 +1,6 @@
 language: cpp
 compiler:
   - clang
-  - gcc
 
 dist: trusty
 sudo: false
@@ -13,7 +12,6 @@ os:
 addons:
   apt:
     packages:
-      - g++-4.9
       - libc++1
       - libc++-dev
 

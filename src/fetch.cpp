@@ -14,47 +14,27 @@
  */
 #define ASIO_DISABLE_THREADS
 #define USE_DEFAULT_IO_MAIN
-#include <cxxhttp/http.h>
 
-using namespace cxxhttp;
+#include <cxxhttp/http-client.h>
 
-namespace client {
-template <class transport>
-static bool setup(net::endpoint<transport> lookup, std::string host,
-                  std::string resource,
-                  service &service = efgy::global<cxxhttp::service>()) {
-  return lookup.with([&service, host, resource](
-                         typename transport::endpoint &endpoint) -> bool {
-    http::client<transport> *s = new http::client<transport>(endpoint, service);
-
-    s->processor
-        .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}}, "")
-        .then([](typename http::client<transport>::session &session) -> bool {
-          std::cout << session.content;
-          return true;
-        });
-
-    return true;
-  });
-}
-
-namespace cli {
+using cxxhttp::http::fetch;
+using cxxhttp::net::endpoint;
+using cxxhttp::transport::unix;
+using cxxhttp::transport::tcp;
 using efgy::cli::option;
 
-static option socket("-{0,2}http:unix:(.+):(.+)",
-                     [](std::smatch &m) -> bool {
-                       return setup(net::endpoint<transport::unix>(m[1]), m[1],
-                                    m[2]);
-                     },
-                     "Fetch resource[2] via HTTP from unix socket[1].");
+namespace cli {
+static option UNIX("-{0,2}http:unix:(.+):(.+)",
+                   [](std::smatch &m) -> bool {
+                     return fetch(endpoint<unix>(m[1]), m[1], m[2]);
+                   },
+                   "Fetch resource[2] via HTTP from unix socket[1].");
 
-static option tcp("http://([^@:/]+)(:([0-9]+))?(/.*)",
+static option TCP("http://([^@:/]+)(:([0-9]+))?(/.*)",
                   [](std::smatch &m) -> bool {
                     const std::string port =
                         m[2] != "" ? std::string(m[3]) : std::string("80");
-                    return setup(net::endpoint<transport::tcp>(m[1], port),
-                                 m[1], m[4]);
+                    return fetch(endpoint<tcp>(m[1], port), m[1], m[4]);
                   },
                   "Fetch the given HTTP URL.");
-}
 }

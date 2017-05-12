@@ -89,6 +89,15 @@ static inline std::string address(const transport::tcp::socket &socket) {
   }
 }
 
+/* Endpoint type alias.
+ * @transport The ASIO transport type, e.g. asio::ip::tcp.
+ *
+ * This alias is only here for readability's sake, by cutting down on dependant
+ * and nested types.
+ */
+template <typename transport>
+using endpointType = typename transport::endpoint;
+
 /* ASIO endpoint wrapper.
  * @transport The ASIO transport type, e.g. asio::ip::tcp.
  *
@@ -96,43 +105,16 @@ static inline std::string address(const transport::tcp::socket &socket) {
  * interface between them slightly more similar for the setup stages.
  */
 template <typename transport = transport::unix>
-class endpoint {
+class endpoint : public std::array<endpointType<transport>, 1> {
  public:
-  /* Endpoint type.
-   *
-   * Endpoint type for the chosen transport type (which is most likely a UNIX
-   * socket).
-   */
-  using endpointType = typename transport::endpoint;
-
   /* Construct with socket name.
    * @pSocket A UNIX socket address.
    *
-   * This version of the constructor will simply remember a socket name, which
-   * is used later to open this socket.
+   * Initialses the endpoint given a socket name. This merely forwards
+   * construction to the base class.
    */
-  endpoint(const std::string &pSocket) : socket(pSocket) {}
-
-  /* Resolve endpoint and apply function.
-   * @f The function apply.
-   *
-   * Creates a UNIX socket endpoint with the stored socket address, and calls
-   * the fiven function with that.
-   *
-   * @return Reports whether f() succeeded.
-   */
-  bool with(std::function<bool(endpointType &)> f) const {
-    endpointType endpoint(socket);
-    return f(endpoint);
-  }
-
- protected:
-  /* Socket name.
-   *
-   * The verbatim, original string that was passed into the constructor as the
-   * socket address.
-   */
-  const std::string socket;
+  endpoint(const std::string &pSocket)
+      : std::array<endpointType<transport>, 1>{{pSocket}} {}
 };
 
 /* ASIO TCP endpoint wrapper.
@@ -189,31 +171,7 @@ class endpoint<transport::tcp> {
    *
    * @return An iterator pointing past the final element of resolved endpoints.
    */
-  resolver::iterator end(void) const {
-    return resolver::iterator();
-  }
-
-  /* Resolve endpoint and apply function.
-   * @f The function to apply.
-   *
-   * This creates a new DNS resolver with the stored IO object, looks up the
-   * host and port using that, and calls the given function for each of the
-   * resulting endpoints, until the function application returns 'true'.
-   *
-   * Calling this in a loop is necessary, as most addresses will likely have
-   * several valid endpoints.
-   *
-   * @return Reports whether any function application succeeded.
-   */
-  bool with(std::function<bool(endpointType &)> f) const {
-    for (endpointType endpoint : *this) {
-      if (f(endpoint)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
+  resolver::iterator end(void) const { return resolver::iterator(); }
 
  protected:
   /* Host name.
@@ -235,6 +193,28 @@ class endpoint<transport::tcp> {
    */
   cxxhttp::service &service;
 };
+
+/* Resolve endpoint and apply function.
+ * @transport Transport type, e.g. transport::tcp.
+ * @ep Endpoint wrapper.
+ * @f The function to apply.
+ *
+ * Performs the lookup operation for the endpoint, until one of the function
+ * applications returns true, then it stops.
+ *
+ * @return Reports whether f() succeeded once.
+ */
+template <typename transport>
+bool with(endpoint<transport> &ep,
+          std::function<bool(endpointType<transport> &)> f) {
+  for (endpointType<transport> endpoint : ep) {
+    if (f(endpoint)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /* Basic asynchronous connection wrapper
  * @requestProcessor The functor class to handle requests.

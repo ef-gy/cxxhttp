@@ -13,7 +13,7 @@ HTTP handling.
 Contains an HTTP server and templates for session management and processing by
 user code.
 
-#<cldoc:cxxhttp::grammar>
+#<cldoc:cxxhttp::http::grammar>
 
 HTTP grammar fragments.
 

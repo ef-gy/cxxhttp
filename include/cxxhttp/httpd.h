@@ -179,8 +179,8 @@ static std::size_t setup(net::endpoint<transport> lookup,
                          service &service = efgy::global<cxxhttp::service>(),
                          std::set<servlet<transport> *> &servlets =
                              efgy::global<std::set<servlet<transport> *>>()) {
-  return lookup.with([&service, &servlets](
-                         typename transport::endpoint &endpoint) -> bool {
+  return with(lookup, [&service, &servlets](
+                          typename transport::endpoint &endpoint) -> bool {
     http::server<transport> *s = new http::server<transport>(endpoint, service);
 
     for (const auto &sv : servlets) {

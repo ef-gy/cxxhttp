@@ -63,13 +63,16 @@ using unix = asio::local::stream_protocol;
 
 namespace net {
 /* Resolve UNIX socket address.
+ * @socket The UNIX socket wrapper; ignored.
  *
  * This is currently not supported, so will just return a string to indicate
  * that it's a UNIX socket and not something else.
  *
  * @return A fixed string that says that this is a UNIX socket.
  */
-std::string address(const transport::unix::socket &) { return "[UNIX]"; }
+static inline std::string address(const transport::unix::socket &socket) {
+  return "[UNIX]";
+}
 
 /* Resolve TCP socket address.
  * @socket The socket to examine.
@@ -78,7 +81,7 @@ std::string address(const transport::unix::socket &) { return "[UNIX]"; }
  *
  * @return The address of whatever the socket is connected to.
  */
-std::string address(const transport::tcp::socket &socket) {
+static inline std::string address(const transport::tcp::socket &socket) {
   try {
     return socket.remote_endpoint().address().to_string();
   } catch (...) {
@@ -86,14 +89,28 @@ std::string address(const transport::tcp::socket &socket) {
   }
 }
 
+/* ASIO endpoint wrapper.
+ * @transport The ASIO transport type, e.g. asio::ip::tcp.
+ *
+ * This is a wrapper class for ASIO transport types, primarily to make the
+ * interface between them slightly more similar for the setup stages.
+ */
 template <typename transport = transport::unix>
 class endpoint {
  public:
+  using endpointType = typename transport::endpoint;
+
+  /* Construct with socket name.
+   * @pSocket A UNIX socket address.
+   *
+   * This version of the constructor will simply remember a socket name, which
+   * is used later to open this socket.
+   */
   endpoint(const std::string &pSocket) : socket(pSocket) {}
 
-  std::size_t with(std::function<bool(typename transport::endpoint &)> f) {
-    typename transport::endpoint endpoint(socket);
-    return f(endpoint) ? 1 : 0;
+  bool with(std::function<bool(endpointType &)> f) {
+    endpointType endpoint(socket);
+    return f(endpoint);
   }
 
   const std::string &name(void) const { return socket; }
@@ -105,29 +122,27 @@ class endpoint {
 template <>
 class endpoint<transport::tcp> {
  public:
+  using endpointType = typename transport::tcp::endpoint;
   using service = cxxhttp::service;
+  using resolver = transport::tcp::resolver;
 
   endpoint(const std::string &pHost, const std::string &pPort,
            service &pService = efgy::global<service>())
       : host(pHost), port(pPort), activeService(pService) {}
 
-  std::size_t with(std::function<bool(transport::tcp::endpoint &)> f) {
-    std::size_t res = 0;
+  bool with(std::function<bool(endpointType &)> f) {
+    auto it = resolver(activeService).resolve(resolver::query(host, port));
 
-    transport::tcp::resolver resolver(activeService);
-    transport::tcp::resolver::query query(host, port);
-    transport::tcp::resolver::iterator endpoint_iterator =
-        resolver.resolve(query);
-    transport::tcp::resolver::iterator end;
-
-    if (endpoint_iterator != end) {
-      transport::tcp::endpoint endpoint = *endpoint_iterator;
+    while (it != resolver::iterator()) {
+      endpointType endpoint = *it;
       if (f(endpoint)) {
-        res++;
+        return true;
       }
+
+      it++;
     }
 
-    return res;
+    return false;
   }
 
   const std::string &name(void) const { return host; }

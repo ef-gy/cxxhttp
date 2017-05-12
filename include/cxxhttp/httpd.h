@@ -42,7 +42,7 @@ class servlet {
   using sessionType = typename http::server<transport>::session;
 
   /* Constructor.
-   * @pResourceX Regex for applicable resources.
+   * @pResourcex Regex for applicable resources.
    * @pHandler Function specification to handle incoming requests that match.
    * @pMethodx Optional method regex; defaults to only allowing GET.
    * @pNegotiations Map of content negotiations to perform for this servlet.

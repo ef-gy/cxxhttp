@@ -20,9 +20,9 @@ using namespace cxxhttp;
 
 namespace client {
 template <class transport>
-static std::size_t setup(net::endpoint<transport> lookup, std::string host,
-                         std::string resource,
-                         service &service = efgy::global<cxxhttp::service>()) {
+static bool setup(net::endpoint<transport> lookup, std::string host,
+                  std::string resource,
+                  service &service = efgy::global<cxxhttp::service>()) {
   return lookup.with([&service, host, resource](
                          typename transport::endpoint &endpoint) -> bool {
     http::client<transport> *s = new http::client<transport>(endpoint, service);
@@ -44,7 +44,7 @@ using efgy::cli::option;
 static option socket("-{0,2}http:unix:(.+):(.+)",
                      [](std::smatch &m) -> bool {
                        return setup(net::endpoint<transport::unix>(m[1]), m[1],
-                                    m[2]) > 0;
+                                    m[2]);
                      },
                      "Fetch resource[2] via HTTP from unix socket[1].");
 
@@ -53,7 +53,7 @@ static option tcp("http://([^@:/]+)(:([0-9]+))?(/.*)",
                     const std::string port =
                         m[2] != "" ? std::string(m[3]) : std::string("80");
                     return setup(net::endpoint<transport::tcp>(m[1], port),
-                                 m[1], m[4]) > 0;
+                                 m[1], m[4]);
                   },
                   "Fetch the given HTTP URL.");
 }

@@ -13,6 +13,13 @@ HTTP handling.
 Contains an HTTP server and templates for session management and processing by
 user code.
 
+#<cldoc:cxxhttp::grammar>
+
+HTTP grammar fragments.
+
+Contains grammar fragments used when parsing HTTP messages, mostly in the form
+of regular expressions.
+
 #<cldoc:cxxhttp::httpd>
 
 Servlet-based HTTP server.

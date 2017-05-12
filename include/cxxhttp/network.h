@@ -98,6 +98,11 @@ static inline std::string address(const transport::tcp::socket &socket) {
 template <typename transport = transport::unix>
 class endpoint {
  public:
+  /* Endpoint type.
+   *
+   * Endpoint type for the chosen transport type (which is most likely a UNIX
+   * socket).
+   */
   using endpointType = typename transport::endpoint;
 
   /* Construct with socket name.
@@ -108,49 +113,127 @@ class endpoint {
    */
   endpoint(const std::string &pSocket) : socket(pSocket) {}
 
-  bool with(std::function<bool(endpointType &)> f) {
+  /* Resolve endpoint and apply function.
+   * @f The function apply.
+   *
+   * Creates a UNIX socket endpoint with the stored socket address, and calls
+   * the fiven function with that.
+   *
+   * @return Reports whether f() succeeded.
+   */
+  bool with(std::function<bool(endpointType &)> f) const {
     endpointType endpoint(socket);
     return f(endpoint);
   }
 
-  const std::string &name(void) const { return socket; }
-
  protected:
+  /* Socket name.
+   *
+   * The verbatim, original string that was passed into the constructor as the
+   * socket address.
+   */
   const std::string socket;
 };
 
+/* ASIO TCP endpoint wrapper.
+ *
+ * The primary reason for specialising this wrapper is to allow for a somewhat
+ * more involved target lookup than for sockets.
+ */
 template <>
 class endpoint<transport::tcp> {
  public:
-  using endpointType = typename transport::tcp::endpoint;
-  using service = cxxhttp::service;
-  using resolver = transport::tcp::resolver;
+  /* Transport type.
+   *
+   * This type alias is for symmetry with the generic template.
+   */
+  using transport = cxxhttp::transport::tcp;
 
+  /* Endpoint type.
+   *
+   * Endpoint type for a TCP connection.
+   */
+  using endpointType = transport::endpoint;
+
+  /* DNS resolver type.
+   *
+   * A shorthand type name for the ASIO TCP DNS resolver.
+   */
+  using resolver = transport::resolver;
+
+  /* Construct with host and port.
+   * @pHost The target host for the endpoint.
+   * @pPort The target port for the endpoint. Can be a service name.
+   * @pService IO service, for use when resolving host and port names.
+   *
+   * Remembers a socket's host and port, but does not look them up just yet.
+   * with() does that.
+   */
   endpoint(const std::string &pHost, const std::string &pPort,
-           service &pService = efgy::global<service>())
-      : host(pHost), port(pPort), activeService(pService) {}
+           cxxhttp::service &pService = efgy::global<cxxhttp::service>())
+      : host(pHost), port(pPort), service(pService) {}
 
-  bool with(std::function<bool(endpointType &)> f) {
-    auto it = resolver(activeService).resolve(resolver::query(host, port));
+  /* Get first iterator for DNS resolution.
+   *
+   * To make DNS resolution work all nice and shiny with C++11 for loops.
+   *
+   * @return An interator pointing to the start of resolved endpoints.
+   */
+  resolver::iterator begin(void) const {
+    return resolver(service).resolve(resolver::query(host, port));
+  }
 
-    while (it != resolver::iterator()) {
-      endpointType endpoint = *it;
+  /* Get final iterator for DNS resolution.
+   *
+   * Basically an empty iterator, which is how ASIO works here.
+   *
+   * @return An iterator pointing past the final element of resolved endpoints.
+   */
+  resolver::iterator end(void) const {
+    return resolver::iterator();
+  }
+
+  /* Resolve endpoint and apply function.
+   * @f The function to apply.
+   *
+   * This creates a new DNS resolver with the stored IO object, looks up the
+   * host and port using that, and calls the given function for each of the
+   * resulting endpoints, until the function application returns 'true'.
+   *
+   * Calling this in a loop is necessary, as most addresses will likely have
+   * several valid endpoints.
+   *
+   * @return Reports whether any function application succeeded.
+   */
+  bool with(std::function<bool(endpointType &)> f) const {
+    for (endpointType endpoint : *this) {
       if (f(endpoint)) {
         return true;
       }
-
-      it++;
     }
 
     return false;
   }
 
-  const std::string &name(void) const { return host; }
-
  protected:
+  /* Host name.
+   *
+   * Passed into the constructor. Can be an IP address in string form, in which
+   * case the resolver will still get it right.
+   */
   const std::string host;
+
+  /* Port number.
+   *
+   * Can be a service name, in which case the resolver will look that up later.
+   */
   const std::string port;
-  service &activeService;
+
+  /* IO service reference.
+   *
+   * Used by with() to create a DNS resolver.
+   */
+  cxxhttp::service &service;
 };
 
 /* Basic asynchronous connection wrapper

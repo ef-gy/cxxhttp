@@ -321,12 +321,28 @@ class client {
    */
   using session = http::session<transport, client>;
 
-  void handle(session &sess) const {
+  /* Process result of request.
+   * @sess The session with the fully processed request.
+   *
+   * Called once a request has been fully processed. Will trigger further
+   * processing if anything is pending.
+   */
+  void handle(session &sess) {
     if (onSuccess) {
       onSuccess(sess);
     }
+
+    start(sess);
   }
 
+  /* Decide whether to expect content or not.
+   * @sess The session that just finished parsing headers.
+   *
+   * This function implements the logic necessary for determining whether there
+   * will be content to parse or not.
+   *
+   * @return The parser state to switch to.
+   */
   enum status afterHeaders(session &sess) const {
     const auto &cli = sess.header.find("Content-Length");
 
@@ -343,16 +359,38 @@ class client {
     return stContent;
   }
 
+  /* Start processing requests.
+   * @sess The session to process requests on.
+   *
+   * Pops a new request off the list of pending requests, and processes it, if
+   * there is something to process.
+   */
   void start(session &sess) {
+    if (requests.size() == 0) {
+      // nothing to do.
+      return;
+    }
+
     auto req = requests.front();
+
     requests.pop_front();
 
     sess.request(req.method, req.resource, req.header, req.body);
     sess.read();
   }
 
+  /* Queue up things to do on this connection.
+   * @method The method for the request. Use GET if you're not sure.
+   * @resource The resource to query from the server.
+   * @header Any additional headers to send.
+   * @body The body of the request to send. Optional.
+   *
+   * Enqueues a new query to run on this connection, as appropriate.
+   *
+   * @return A reference to this object, for easier pipelining of requests.
+   */
   client &query(const std::string &method, const std::string &resource,
-                const headers &header, const std::string &body) {
+                const headers &header, const std::string &body = "") {
     requests.push_back(request{method, resource, header, body});
     return *this;
   }

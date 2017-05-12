@@ -24,13 +24,16 @@ namespace http {
 template <class transport>
 static bool fetch(net::endpoint<transport> lookup, std::string host,
                   std::string resource,
+                  std::set<client<transport> *> clients =
+                      efgy::global<std::set<client<transport> *>>(),
                   service &service = efgy::global<cxxhttp::service>()) {
-  return with(lookup, [&service, host, resource](
+  return with(lookup, [&clients, &service, host, resource](
                           typename transport::endpoint &endpoint) -> bool {
     client<transport> *s = new client<transport>(endpoint, service);
+    clients.insert(s);
 
     s->processor
-        .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}}, "")
+        .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}})
         .then([](typename client<transport>::session &session) -> bool {
           std::cout << session.content;
           return true;

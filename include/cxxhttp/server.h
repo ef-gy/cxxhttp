@@ -29,10 +29,8 @@ template <typename transport, typename requestProcessor,
           template <typename, typename> class sessionTemplate>
 class server : public connection<requestProcessor> {
  public:
-  using base = transport;
   using connection = net::connection<requestProcessor>;
   using session = sessionTemplate<transport, requestProcessor>;
-  using endpoint = typename base::endpoint;
 
   /* Initialise with IO service
    * @endpoint Endpoint for the socket to bind.
@@ -42,7 +40,8 @@ class server : public connection<requestProcessor> {
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    */
-  server(endpoint &endpoint, service &pio = efgy::global<service>(),
+  server(endpointType<transport> &endpoint,
+         service &pio = efgy::global<service>(),
          std::ostream &logfile = std::cout)
       : connection(pio, logfile), acceptor(pio, endpoint) {
     startAccept();
@@ -85,7 +84,7 @@ class server : public connection<requestProcessor> {
    * This is the acceptor which has been bound to the socket specified in the
    * constructor.
    */
-  typename base::acceptor acceptor;
+  typename transport::acceptor acceptor;
 };
 }
 }

@@ -153,7 +153,9 @@ class session {
       : connection(pConnection),
         socket(pConnection.io),
         status(stRequest),
-        input() {}
+        input() {
+    connection.sessions.insert(this);
+  }
 
   /* Destructor.
    *
@@ -174,6 +176,8 @@ class session {
     } catch (std::system_error &e) {
       std::cerr << "exception while closing socket: " << e.what() << "\n";
     }
+
+    connection.sessions.erase(this);
   }
 
   /* Start processing.

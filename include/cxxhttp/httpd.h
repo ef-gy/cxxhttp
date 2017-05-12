@@ -175,13 +175,16 @@ using efgy::cli::option;
  * @return `true` if the setup was successful.
  */
 template <class transport>
-static std::size_t setup(net::endpoint<transport> lookup,
-                         service &service = efgy::global<cxxhttp::service>(),
-                         std::set<servlet<transport> *> &servlets =
-                             efgy::global<std::set<servlet<transport> *>>()) {
-  return with(lookup, [&service, &servlets](
+static bool setup(net::endpoint<transport> lookup,
+                  std::set<http::server<transport> *> servers =
+                      efgy::global<std::set<http::server<transport> *>>(),
+                  service &service = efgy::global<cxxhttp::service>(),
+                  std::set<servlet<transport> *> &servlets =
+                      efgy::global<std::set<servlet<transport> *>>()) {
+  return with(lookup, [&servers, &service, &servlets](
                           typename transport::endpoint &endpoint) -> bool {
     http::server<transport> *s = new http::server<transport>(endpoint, service);
+    servers.insert(s);
 
     for (const auto &sv : servlets) {
       sv->apply(s->processor);
@@ -202,7 +205,7 @@ static std::size_t setup(net::endpoint<transport> lookup,
  * @return 'true' if the setup was successful.
  */
 static inline bool setupTCP(std::smatch &match) {
-  return setup(net::endpoint<transport::tcp>(match[1], match[2])) > 0;
+  return setup(net::endpoint<transport::tcp>(match[1], match[2]));
 }
 
 /* Set up an HTTP server on a UNIX socket.
@@ -215,7 +218,7 @@ static inline bool setupTCP(std::smatch &match) {
  * @return 'true' if the setup was successful.
  */
 static inline bool setupUNIX(std::smatch &match) {
-  return setup(net::endpoint<transport::unix>(match[1])) > 0;
+  return setup(net::endpoint<transport::unix>(match[1]));
 }
 
 /* TCP HTTP server CLI option.

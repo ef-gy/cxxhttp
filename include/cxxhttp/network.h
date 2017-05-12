@@ -253,6 +253,17 @@ class connection {
    * by the session code, so that code determines the format of log lines.
    */
   std::ostream &log;
+
+  /* Active sessions.
+   *
+   * The sessions that are currently active. This list is added to by the
+   * session constructor, and removed from by the session destructor.
+   *
+   * Since we don't know the actual type of these, here, this is a void pointer
+   * and the only purpose is to keep track of whether there's any connections at
+   * all.
+   */
+  std::set<void *> sessions;
 };
 }
 }

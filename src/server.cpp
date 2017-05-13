@@ -43,7 +43,7 @@ using namespace cxxhttp;
  * @return 'true' (always, as we always reply).
  */
 template <class transport>
-static bool hello(typename http::server<transport>::session &session,
+static void hello(typename http::server<transport>::session &session,
                   std::smatch &) {
   using efgy::json::json;
   using efgy::json::tag;
@@ -51,7 +51,7 @@ static bool hello(typename http::server<transport>::session &session,
   if (session.method == "POST") {
     session.reply(200, {{"Content-Type", session.header["Content-Type"]}},
                   session.content);
-    return true;
+    return;
   }
 
   const std::string message = "Hello World!";
@@ -63,11 +63,7 @@ static bool hello(typename http::server<transport>::session &session,
     s << tag() << json(message);
 
     session.reply(200, s.str());
-  } else {
-    return false;
   }
-
-  return true;
 }
 
 static const char *resource = "/";

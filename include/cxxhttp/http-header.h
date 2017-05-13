@@ -86,9 +86,16 @@ class parser {
    */
   std::string lastHeader;
 
+  /* Whether headers have been read in completely.
+   *
+   * Set in the absorb() method, based on whether there was a final line or not.
+   */
+  bool complete = true;
+
   /* Append value to header map.
    * @key The key to append to, or set.
    * @value The new value.
+   * @lws Append with white-space instead of a comma.
    *
    * Appends 'value' to the element 'key' in the header map. The former and the
    * new value will be separated by a ',', which is used throughout HTTP/1.1
@@ -100,7 +107,8 @@ class parser {
    * @return 'true' if the value was appended, 'false' otherwise, i.e. if the
    * value was set instead.
    */
-  bool append(const std::string &key, const std::string &value) {
+  bool append(const std::string &key, const std::string &value,
+              bool lws = false) {
     if (!value.empty()) {
       std::string &v = header[key];
       if (v.empty()) {
@@ -108,7 +116,7 @@ class parser {
         return false;
       }
 
-      v += "," + value;
+      v += (lws ? " " : ",") + value;
     }
     return true;
   }
@@ -130,15 +138,25 @@ class parser {
                                          "\r?\n?");
     static const std::regex headerContinued(grammar::rws + captureValue +
                                             grammar::ows + "\r?\n?");
+    static const std::regex finalLine("\r?\n?");
+
+    bool matched = std::regex_match(line, finalLine);
+    complete = matched;
+
+    if (complete) {
+      return true;
+    }
 
     std::smatch matches;
 
-    bool matched =
+    matched =
         !lastHeader.empty() && std::regex_match(line, matches, headerContinued);
     std::string appendValue;
+    bool lws = false;
 
     if (matched) {
       appendValue = matches[1];
+      lws = true;
     } else {
       matched = std::regex_match(line, matches, headerProper);
 
@@ -156,7 +174,7 @@ class parser {
     }
 
     if (!appendValue.empty()) {
-      append(lastHeader, appendValue);
+      append(lastHeader, appendValue, lws);
     }
 
     return matched;
@@ -180,7 +198,7 @@ class parser {
    * @return A string, with all of the elements in the header parameter.
    */
   operator std::string(void) const {
-    std::string r = "";
+    std::string r;
     for (const auto &h : header) {
       r += h.first + ": " + h.second + "\r\n";
     }

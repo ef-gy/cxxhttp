@@ -54,7 +54,7 @@ class servlet {
    * per-transport set of servlets.
    */
   servlet(const std::string &pResourcex,
-          std::function<bool(sessionType &, std::smatch &)> pHandler,
+          std::function<void(sessionType &, std::smatch &)> pHandler,
           const std::string &pMethodx = "GET",
           const http::headers pNegotiations = {},
           const std::string &pDescription = "no description available",
@@ -131,7 +131,7 @@ class servlet {
    * then the processor will continue trying to look up matching handlers and
    * assume no reply has been sent, yet.
    */
-  const std::function<bool(sessionType &, std::smatch &)> handler;
+  const std::function<void(sessionType &, std::smatch &)> handler;
 
   /* Description of the servlet.
    *
@@ -181,8 +181,7 @@ static bool setup(net::endpoint<transport> lookup,
                   service &service = efgy::global<cxxhttp::service>(),
                   std::set<servlet<transport> *> &servlets =
                       efgy::global<std::set<servlet<transport> *>>()) {
-  return with(lookup, [&servers, &service, &servlets](
-                          typename transport::endpoint &endpoint) -> bool {
+  for (net::endpointType<transport> endpoint : lookup) {
     http::server<transport> *s = new http::server<transport>(endpoint, service);
     servers.insert(s);
 
@@ -191,7 +190,9 @@ static bool setup(net::endpoint<transport> lookup,
     }
 
     return true;
-  });
+  }
+
+  return false;
 }
 
 /* Set up an HTTP server on a TCP socket.
@@ -252,7 +253,7 @@ using efgy::cli::hint;
  */
 template <typename transport>
 static std::string describe(void) {
-  std::string rv = "";
+  std::string rv;
   const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
   for (const auto &servlet : servlets) {
     rv += " * " + servlet->methodx + " " + servlet->resourcex + "\n" + "   " +

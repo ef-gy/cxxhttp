@@ -27,8 +27,7 @@ static bool fetch(net::endpoint<transport> lookup, std::string host,
                   std::set<client<transport> *> clients =
                       efgy::global<std::set<client<transport> *>>(),
                   service &service = efgy::global<cxxhttp::service>()) {
-  return with(lookup, [&clients, &service, host, resource](
-                          typename transport::endpoint &endpoint) -> bool {
+  for (net::endpointType<transport> endpoint : lookup) {
     client<transport> *s = new client<transport>(endpoint, service);
     clients.insert(s);
 
@@ -40,7 +39,9 @@ static bool fetch(net::endpoint<transport> lookup, std::string host,
         });
 
     return true;
-  });
+  }
+
+  return false;
 }
 }
 }

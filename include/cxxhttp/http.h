@@ -144,6 +144,24 @@ class session {
    */
   connectionType &connection;
 
+  /* How many requests we've sent on this connection.
+   *
+   * Mostly for house-keeping purposes, and to keep track of whether a client
+   * processor actually sent a request.
+   *
+   * This variable must only increase in value.
+   */
+  std::size_t requests;
+
+  /* How many replies we've sent on this connection.
+   *
+   * Mostly for house-keeping purposes, and to keep track of whether a server
+   * processor actually sent a reply.
+   *
+   * This variable must only increase in value.
+   */
+  std::size_t replies;
+
   /* Construct with I/O connection
    * @pConnection The connection instance this session belongs to.
    *
@@ -153,7 +171,9 @@ class session {
       : connection(pConnection),
         socket(pConnection.io),
         status(stRequest),
-        input() {
+        input(),
+        requests(0),
+        replies(0) {
     connection.sessions.insert(this);
   }
 
@@ -197,7 +217,7 @@ class session {
    * thing.
    */
   void request(const std::string &method, const std::string &resource,
-               headers header, const std::string &body) {
+               headers header, const std::string &body = "") {
     parser<headers> head{header};
     head.insert(defaultClientHeaders);
 
@@ -211,6 +231,8 @@ class session {
     asio::async_write(
         socket, asio::buffer(req),
         [&](std::error_code ec, std::size_t length) { handleWrite(0, ec); });
+
+    requests++;
   }
 
   /* Send reply with custom header map.
@@ -294,6 +316,8 @@ class session {
                    << resource << " " << protocol << "\" " << status << " "
                    << body.length() << " \"" << referer << "\" \"" << userAgent
                    << "\"\n";
+
+    replies++;
   }
 
   /* Send reply without custom headers
@@ -321,16 +345,18 @@ class session {
         asio::async_read_until(
             socket, input, "\n",
             [&](const asio::error_code &error, std::size_t bytes_transferred) {
-              handleRead(error, bytes_transferred);
+              handleRead(error);
             });
         break;
       case stContent:
-        asio::async_read(
-            socket, input,
-            asio::transfer_at_least(contentLength - content.size()),
-            [&](const asio::error_code &error, std::size_t bytes_transferred) {
-              handleRead(error, bytes_transferred);
-            });
+        if (remainingBytes() > 0) {
+          asio::async_read(
+              socket, input, asio::transfer_at_least(remainingBytes()),
+              [&](const asio::error_code &error,
+                  std::size_t bytes_transferred) { handleRead(error); });
+        } else {
+          handleRead(std::error_code());
+        }
         break;
       case stProcessing:
       case stError:
@@ -339,10 +365,30 @@ class session {
     }
   }
 
+  /* Calculate number of queries from this session.
+   *
+   * Calculates the total number of queries that this session has sent. Inbound
+   * queries are not counted.
+   *
+   * @return The number of queries this session answered to.
+   */
+  std::size_t queries(void) const { return replies + requests; }
+
  protected:
+  /* How many bytes are left to read.
+   *
+   * Uses the known content length and the current content buffer's size to
+   * determine how much more to read.
+   *
+   * @return The number of bytes remaining that we'd expect in the current
+   * message.
+   */
+  std::size_t remainingBytes(void) const {
+    return contentLength - content.size();
+  }
+
   /* Read more data
    * @error Current error state.
-   * @bytes_transferred The amount of data that has been read.
    *
    * Called by ASIO to indicate that new data has been read and can now be
    * processed.
@@ -350,7 +396,7 @@ class session {
    * The actual processing for the header is done with a set of regexen, which
    * greatly simplifies the header parsing.
    */
-  void handleRead(const std::error_code &error, size_t bytes_transferred) {
+  void handleRead(const std::error_code &error) {
     if (status == stShutdown) {
       return;
     }
@@ -370,14 +416,16 @@ class session {
         std::getline(is, s);
         break;
       case stContent:
-        s = std::string(input.size(), '\0');
-        is.read(&s[0], input.size());
+        s = std::string(std::min(remainingBytes(), input.size()), 0);
+        is.read(&s[0], std::min(remainingBytes(), input.size()));
         break;
       case stProcessing:
       case stError:
       case stShutdown:
         break;
     }
+
+    bool doRead = true;
 
     switch (status) {
       case stRequest: {
@@ -390,6 +438,8 @@ class session {
           headerParser = {};
           status = stHeader;
         }
+        // this should have an else branch, in case the request line was not
+        // valid. In that case, we ought to raise an error against the sender.
       } break;
 
       case stStatus: {
@@ -401,53 +451,69 @@ class session {
           headerParser = {};
           status = stHeader;
         }
+        // this should also have an else branch, and if it's an invalid status
+        // line we should flag this to the library user.
       } break;
 
       case stHeader:
-        if ((s == "\r") || (s.empty())) {
+        headerParser.absorb(s);
+        // this may return false, and if it did then what the client sent was
+        // not valid HTTP and we should send back an error.
+        if (headerParser.complete) {
+          // we're done parsing headers, so change over to streaming in the
+          // results.
           header = headerParser.header;
           status = connection.processor.afterHeaders(*this);
-          if (contentLength > 0) {
+          content.clear();
+          if (remainingBytes() > 0) {
             // read in up to Content-Length bytes from the stream from what's
             // already available.
-            std::size_t readNow = std::min(input.size(), contentLength);
-            content = std::string(readNow, '\0');
+            std::size_t readNow = std::min(input.size(), remainingBytes());
+            content = std::string(readNow, 0);
             is.read(&content[0], readNow);
             break;
           } else {
-            content = "";
-            s = "";
+            s.clear();
           }
         } else {
-          headerParser.absorb(s);
           break;
         }
 
       case stContent:
-        content += s;
+        if (!s.empty()) {
+          content += s;
+        }
         status = stProcessing;
 
-        /* processing the request takes places here */
-        connection.processor.handle(*this);
+        {
+          std::size_t q = queries();
 
-        break;
+          /* processing the request takes place here */
+          connection.processor.handle(*this);
+
+          if (q == queries()) {
+            // the processor did not send anything, so give it another chance at
+            // deciding what to do with this session.
+            status = connection.processor.afterProcessing(*this);
+            if (status == stShutdown) {
+              delete this;
+              return;
+            }
+          }
+        }
+
+      // fall through, so as to set the doRead flag to false. If the processor
+      // needed an extra read, it would've queued one itself.
 
       case stProcessing:
       case stError:
       case stShutdown:
+        doRead = false;
         break;
     }
 
-    switch (status) {
-      case stRequest:
-      case stStatus:
-      case stHeader:
-      case stContent:
-        read();
-      case stProcessing:
-      case stError:
-      case stShutdown:
-        break;
+    if (doRead) {
+      read();
     }
   }
 
@@ -469,8 +535,10 @@ class session {
     if (error || (statusCode >= 400)) {
       delete this;
     } else if (status == stProcessing) {
-      status = stRequest;
-      read();
+      status = connection.processor.afterProcessing(*this);
+      if (status == stShutdown) {
+        delete this;
+      }
     }
   }
 

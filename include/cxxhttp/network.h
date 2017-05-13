@@ -14,7 +14,6 @@
 #if !defined(CXXHTTP_NETWORK_H)
 #define CXXHTTP_NETWORK_H
 
-#include <functional>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -193,28 +192,6 @@ class endpoint<transport::tcp> {
    */
   cxxhttp::service &service;
 };
-
-/* Resolve endpoint and apply function.
- * @transport Transport type, e.g. transport::tcp.
- * @ep Endpoint wrapper.
- * @f The function to apply.
- *
- * Performs the lookup operation for the endpoint, until one of the function
- * applications returns true, then it stops.
- *
- * @return Reports whether f() succeeded once.
- */
-template <typename transport>
-bool with(endpoint<transport> &ep,
-          std::function<bool(endpointType<transport> &)> f) {
-  for (endpointType<transport> endpoint : ep) {
-    if (f(endpoint)) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 /* Basic asynchronous connection wrapper
  * @requestProcessor The functor class to handle requests.

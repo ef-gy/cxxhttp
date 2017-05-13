@@ -147,22 +147,24 @@ bool testAbsorb(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string line, last, out, res;
-    bool match;
+    bool match, complete;
   };
 
   std::vector<sampleData> tests{
-      {{}, "a: b", "", "a: b\r\n", "a", true},
-      {{}, "a: b\r\n", "b", "a: b\r\n", "a", true},
-      {{{"a", "b"}}, "b:", "a", "a: b\r\n", "b", true},
-      {{{"a", "b"}}, "a: c", "a", "a: b,c\r\n", "a", true},
-      {{{"a", "b"}}, "\td\r\n", "a", "a: b,d\r\n", "a", true},
+      {{}, "a: b", "", "a: b\r\n", "a", true, false},
+      {{}, "a: b\r\n", "b", "a: b\r\n", "a", true, false},
+      {{{"a", "b"}}, "b:", "a", "a: b\r\n", "b", true, false},
+      {{{"a", "b"}}, "a: c", "a", "a: b,c\r\n", "a", true, false},
+      {{{"a", "b"}}, "\td\r\n", "a", "a: b d\r\n", "a", true, false},
       {{{"a", "b"}, {"c", "d"}},
        "a: e\r",
        "e",
        "a: b,e\r\nc: d\r\n",
        "a",
-       true},
-      {{}, "bad line", "", "", "", false},
+       true,
+       false},
+      {{}, "bad line", "", "", "", false, false},
+      {{{"a", "b"}}, "", "a", "a: b\r\n", "a", true, true},
   };
 
   for (const auto &tt : tests) {
@@ -182,6 +184,10 @@ bool testAbsorb(std::ostream &log) {
       log << "absorb(" << tt.out
           << ") did not have the expected matching state\n";
       return false;
+    }
+    if (p.complete != tt.complete) {
+      log << "absorb(" << tt.out
+          << ") had the wrong completeness flag value.\n";
     }
   }
 

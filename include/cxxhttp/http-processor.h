@@ -81,10 +81,10 @@ struct handler {
    * Called if the resource and method are a match and the negotiations, if
    * there were any, were successful.
    *
-   * If this returns false, then the code assumes you've not sent a reply and
-   * it will continue to perform matching with other handlers.
+   * After this handler is run, the processor examines the session to see if you
+   * sent out a reply. If so, it will stop future processing.
    */
-  std::function<bool(session &, std::smatch &)> handler;
+  std::function<void(session &, std::smatch &)> handler;
 };
 
 /* Basis server processor
@@ -169,9 +169,17 @@ class server {
 
           if (badNegotiation) {
             trigger406 = true;
-          } else if (subprocessor.handler(sess, matches)) {
-            return;
+          } else {
+            const std::size_t q = sess.queries();
+            subprocessor.handler(sess, matches);
+
+            if (sess.queries() > q) {
+              // we've sent something back to the client, so no need to process
+              // any further.
+              return;
+            }
           }
+
           methods.insert(sess.method);
         } else
           for (const auto &m : http::method) {
@@ -220,6 +228,14 @@ class server {
     sess.reply(404, "Sorry, this resource was not found.");
   }
 
+  /* Decide whether to expect content or not.
+   * @sess The session that just finished parsing headers.
+   *
+   * This function implements the logic necessary for determining whether there
+   * will be content to parse or not.
+   *
+   * @return The parser state to switch to.
+   */
   enum status afterHeaders(session &sess) const {
     const auto &cli = sess.header.find("Content-Length");
     const auto &exp = sess.header.find("Expect");
@@ -251,6 +267,20 @@ class server {
     return stContent;
   }
 
+  /* Decide what to do after handling a request.
+   * @sess The session, after a request was handled.
+   *
+   * Decides what to do with an open connection to a server after the request
+   * has been processed.
+   *
+   * @return The parser state to switch to.
+   */
+  enum status afterProcessing(session &sess) const {
+    sess.status = stRequest;
+    sess.read();
+    return stRequest;
+  }
+
   /* Add handler
    * @rx The regex that should trigger a given handler.
    * @handler The function to call.
@@ -262,7 +292,7 @@ class server {
    * alphabetic.
    */
   void add(const std::string &rx,
-           std::function<bool(session &, std::smatch &)> handler,
+           std::function<void(session &, std::smatch &)> handler,
            const std::string &methodx = "GET",
            const headers &negotiations = {}) {
     subprocessor[rx] = {std::regex(rx), std::regex(methodx), negotiations,
@@ -300,9 +330,30 @@ class server {
  * connected, anyway.
  */
 struct request {
+  /* The request method.
+   *
+   * I.e. GET, POST, OPTIONS, etc.
+   */
   std::string method;
+
+  /* The requested resource.
+   *
+   * Should be an absolute or relative URI, or "*".
+   */
   std::string resource;
+
+  /* Additional request headers.
+   *
+   * Will be sent along with any default headers that the library sends.
+   */
   headers header;
+
+  /* Request body.
+   *
+   * Any actual request body to send. Note that the library is not really going
+   * to want to send an empty (0-byte) request body and will instead just drop
+   * it.
+   */
   std::string body;
 };
 
@@ -358,6 +409,16 @@ class client {
 
     return stContent;
   }
+
+  /* Decide what to do after handling a request.
+   * @sess The session, after a request was handled.
+   *
+   * Decides what to do with an open connection to a server after the request
+   * has been processed.
+   *
+   * @return The parser state to switch to.
+   */
+  enum status afterProcessing(session &sess) const { return stShutdown; }
 
   /* Start processing requests.
    * @sess The session to process requests on.

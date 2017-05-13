@@ -25,7 +25,7 @@ namespace cxxhttp {
 namespace httpd {
 namespace trace {
 template <class transport>
-static bool trace(typename http::server<transport>::session &session,
+static void trace(typename http::server<transport>::session &session,
                   std::smatch &re) {
   std::string message =
       session.method + " " + session.resource + " " + session.protocol + "\r\n";
@@ -34,13 +34,7 @@ static bool trace(typename http::server<transport>::session &session,
     message += h.first + ": " + h.second + "\r\n";
   }
 
-  session.reply(200,
-                {
-                    {"Content-Type", "message/http"},
-                },
-                message);
-
-  return true;
+  session.reply(200, {{"Content-Type", "message/http"}}, message);
 }
 
 static const char *resource = ".*";

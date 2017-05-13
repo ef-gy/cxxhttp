@@ -23,12 +23,20 @@
 namespace cxxhttp {
 namespace httpd {
 namespace options {
+/* HTTP OPTIONS method implementation.
+ * @transport Transport type of the session.
+ * @session The HTTP session to reply to.
+ * @re Parsed resource match set.
+ *
+ * This function implements the HTTP OPTIONS method, which informs cliets of the
+ * methods available at a given resource.
+ */
 template <class transport>
-static bool options(typename http::server<transport>::session &session,
+static void options(typename http::server<transport>::session &session,
                     std::smatch &re) {
   std::string text = "# Applicable Resource Processors\n\n";
   std::set<std::string> methods{};
-  std::string allow = "";
+  std::string allow;
   const std::string full = re[0];
 
   const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
@@ -55,8 +63,6 @@ static bool options(typename http::server<transport>::session &session,
   }
 
   session.reply(200, p.header, text);
-
-  return true;
 }
 
 static const char *resource = "^\\*|/.*";

@@ -27,8 +27,7 @@ namespace trace {
 template <class transport>
 static void trace(typename http::server<transport>::session &session,
                   std::smatch &re) {
-  std::string message =
-      session.method + " " + session.resource + " " + session.protocol + "\r\n";
+  std::string message = session.inboundRequest;
 
   for (const auto &h : session.header) {
     message += h.first + ": " + h.second + "\r\n";

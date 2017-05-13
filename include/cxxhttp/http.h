@@ -68,32 +68,17 @@ class session {
    */
   socketType socket;
 
-  /* The request's HTTP method
+  /* The inbound request line.
    *
-   * Contains the HTTP method that was used in the request, e.g. GET, HEAD,
-   * POST, PUT, etc.
+   * Parsed version of the request line for the last request, if applicable.
    */
-  std::string method;
+  requestLine inboundRequest;
 
-  /* Requested HTTP resource location
+  /* The inbound status line.
    *
-   * This is the location that was requested, e.g. / or /fortune or something
-   * like that.
+   * Parsed version of the status line for the last request, if applicable.
    */
-  std::string resource;
-
-  /* Request protocol and version identifier
-   *
-   * The HTTP request line contains the protocol to use for communication, which
-   * is stored in this string.
-   */
-  std::string protocol;
-
-  /* The reply's status line.
-   *
-   * Only set if for an HTTP client, not a server.
-   */
-  statusLine replyStatus;
+  statusLine inboundStatus;
 
   /* HTTP request headers
    *
@@ -314,8 +299,10 @@ class session {
       }
     }
 
-    connection.log << net::address(socket) << " - - [-] \"" << method << " "
-                   << resource << " " << protocol << "\" " << status << " "
+    connection.log << net::address(socket) << " - - [-] \""
+                   << inboundRequest.method << " "
+                   << inboundRequest.resource.path() << " "
+                   << inboundRequest.protocol() << "\" " << status << " "
                    << body.length() << " \"" << referer << "\" \"" << userAgent
                    << "\"\n";
 
@@ -431,12 +418,8 @@ class session {
 
     switch (status) {
       case stRequest: {
-        const auto req = requestLine(s);
-        if (req.valid()) {
-          method = req.method;
-          resource = req.resource.path();
-          protocol = req.protocol();
-
+        inboundRequest = s;
+        if (inboundRequest.valid()) {
           headerParser = {};
           status = stHeader;
         }
@@ -445,11 +428,8 @@ class session {
       } break;
 
       case stStatus: {
-        const auto stat = statusLine(s);
-        if (stat.valid()) {
-          replyStatus = stat;
-          protocol = stat.protocol();
-
+        inboundStatus = s;
+        if (inboundStatus.valid()) {
           headerParser = {};
           status = stHeader;
         }

@@ -46,7 +46,7 @@ static void hello(typename http::server<transport>::session &session,
   using efgy::json::json;
   using efgy::json::tag;
 
-  if (session.method == "POST") {
+  if (session.inboundRequest.method == "POST") {
     session.reply(200, {{"Content-Type", session.header["Content-Type"]}},
                   session.content);
     return;

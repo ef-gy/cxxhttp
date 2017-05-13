@@ -132,13 +132,16 @@ class server {
     bool trigger406 = false;
     bool methodSupported = false;
 
+    const std::string resource = sess.inboundRequest.resource.path();
+    const std::string method = sess.inboundRequest.method;
+
     for (auto &proc : subprocessor) {
       const auto &subprocessor = proc.second;
       std::smatch matches;
 
       bool resourceMatch =
-          std::regex_match(sess.resource, matches, subprocessor.resource);
-      bool methodMatch = std::regex_match(sess.method, subprocessor.method);
+          std::regex_match(resource, matches, subprocessor.resource);
+      bool methodMatch = std::regex_match(method, subprocessor.method);
 
       methodSupported = methodSupported || methodMatch;
 
@@ -180,7 +183,7 @@ class server {
             }
           }
 
-          methods.insert(sess.method);
+          methods.insert(method);
         } else
           for (const auto &m : http::method) {
             if (std::regex_match(m, subprocessor.method)) {

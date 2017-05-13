@@ -35,7 +35,11 @@ bool testParsing(std::ostream &log) {
 
   std::vector<sampleData> tests{
       {"http://ef.gy/", true, "http", "ef.gy", "/", "", "", "http://ef.gy/"},
-      {"foo\%20bar", true, "", "", "foo bar", "", "", "foo\%20bar"},
+      {"foo%20bar", true, "", "", "foo bar", "", "", "foo%20bar"},
+      {"%frob", false, "", "", "", "", "", "%frob"},
+      {"%2aob", true, "", "", "*ob", "", "", "%2aob"},
+      {"%2Aob", true, "", "", "*ob", "", "", "%2Aob"},
+      {"%2", false, "", "", "", "", "", "%2"},
   };
 
   for (const auto &tt : tests) {

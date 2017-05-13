@@ -161,7 +161,7 @@ class uri {
         if (haveFirst) {
           isEncoded = false;
           haveFirst = false;
-          rv.push_back(decode(first, isValid) << 4 | decode(c, isValid));
+          rv.push_back((decode(first, isValid) << 4) | decode(c, isValid));
         } else {
           haveFirst = true;
           first = c;
@@ -249,14 +249,14 @@ class uri {
       case 'd':
       case 'e':
       case 'f':
-        return c - 'a';
+        return 10 + (c - 'a');
       case 'A':
       case 'B':
       case 'C':
       case 'D':
       case 'E':
       case 'F':
-        return c - 'A';
+        return 10 + (c - 'A');
       default:
         isValid = false;
         return 0;

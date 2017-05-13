@@ -12,7 +12,6 @@
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
-#include <iostream>
 
 #include <ef.gy/test-case.h>
 

@@ -166,11 +166,13 @@ using efgy::cli::option;
 /* Set up an endpoint as an HTTP server.
  * @transport The transport type of the endpoint, e.g. transport::tcp.
  * @lookup The endpoint to bind to.
+ * @servers The set of servers to add the newly set up instance to.
  * @service The I/O service to use, defaults to the global one.
  * @servlets The servlets to bind, defaults to the global set for the transport.
  *
  * This sets up an HTTP server on a new listening socket bound to whatever
- * `lookup` specifies.
+ * `lookup` specifies. If that ends up being several different sockets, then
+ * multiple servers are spawned.
  *
  * @return `true` if the setup was successful.
  */
@@ -181,18 +183,20 @@ static bool setup(net::endpoint<transport> lookup,
                   service &service = efgy::global<cxxhttp::service>(),
                   std::set<servlet<transport> *> &servlets =
                       efgy::global<std::set<servlet<transport> *>>()) {
+  bool rv = false;
+
   for (net::endpointType<transport> endpoint : lookup) {
-    http::server<transport> *s = new http::server<transport>(endpoint, service);
-    servers.insert(s);
+    http::server<transport> *s =
+        new http::server<transport>(endpoint, servers, service);
 
     for (const auto &sv : servlets) {
       sv->apply(s->processor);
     }
 
-    return true;
+    rv = rv || true;
   }
 
-  return false;
+  return rv;
 }
 
 /* Set up an HTTP server on a TCP socket.
@@ -256,7 +260,7 @@ static std::string describe(void) {
   std::string rv;
   const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
   for (const auto &servlet : servlets) {
-    rv += " * " + servlet->methodx + " " + servlet->resourcex + "\n" + "   " +
+    rv += " * " + servlet->methodx + " " + servlet->resourcex + "\n   " +
           servlet->description + "\n";
   }
   return rv;

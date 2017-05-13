@@ -20,7 +20,9 @@
 
 namespace cxxhttp {
 namespace http {
-/* Known HTTP Status codes.
+/* Known HTTP status codes.
+ *
+ * This is a list of all the status codes we know of.
  *
  * See also:
  * * https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10
@@ -75,10 +77,22 @@ static const std::map<unsigned, const char *> status{
     {505, "HTTP Version Not Supported"},
 };
 
+/* Known HTTP methods.
+ *
+ * These are all the known methods for the server code. You can use other
+ * methods as long as they're valid with the HTTP grammar, but the code will
+ * only incorporate these in automated responses using method names.
+ */
 static const std::set<std::string> method{
     "OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT",
 };
 
+/* HTTP methods that do not count against the 405 status.
+ *
+ * Handlers matching these methods will not count against a 405 status, meaning
+ * that if the only handlers available for a request only allow these methods,
+ * then this will result in a 404 (not found) as opposed to a 405 status code.
+ */
 static const std::set<std::string> non405method{
     "OPTIONS", "TRACE",
 };

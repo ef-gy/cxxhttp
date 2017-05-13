@@ -19,6 +19,7 @@
 #include <string>
 
 #include <cxxhttp/http-grammar.h>
+#include <cxxhttp/uri.h>
 
 namespace cxxhttp {
 namespace http {
@@ -49,7 +50,7 @@ class requestLine {
 
     if (matched) {
       method = matches[1];
-      resource = matches[2];
+      resource = std::string(matches[2]);
       const std::string maj = matches[3];
       const std::string min = matches[4];
       majorVersion = maj[0] - '0';
@@ -80,11 +81,15 @@ class requestLine {
    *
    * @return A boolean indicating whether or not this is a valid status line.
    */
-  bool valid(void) const { return (majorVersion > 0); }
+  bool valid(void) const { return (majorVersion > 0) && resource.valid(); }
 
   /* Protocol name.
    *
-   * HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion accepts.
+   * The value is reconstructed from the parsed value, because we only accept
+   * HTTP/x.x versions anyway.
+   *
+   * @return HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion
+   * accepts.
    */
   std::string protocol(void) const {
     std::ostringstream s("");
@@ -115,7 +120,7 @@ class requestLine {
    *
    * Does not have any post-processing done to it, just yet.
    */
-  std::string resource;
+  uri resource;
 
   /* Create request line.
    *
@@ -130,7 +135,7 @@ class requestLine {
     }
 
     std::ostringstream s("");
-    s << method << " " << resource << " " << protocol() << "\r\n";
+    s << method << " " << std::string(resource) << " " << protocol() << "\r\n";
     return s.str();
   }
 };

@@ -465,7 +465,7 @@ class client {
    * @return A reference to the object's instance, to allow for chaining of
    * function calls.
    */
-  client &then(std::function<bool(session &)> callback) {
+  client &then(std::function<void(session &)> callback) {
     onSuccess = callback;
     return *this;
   }
@@ -482,7 +482,7 @@ class client {
    *
    * Called when a server has returned something to one of our queries.
    */
-  std::function<bool(session &)> onSuccess;
+  std::function<void(session &)> onSuccess;
 };
 }
 }

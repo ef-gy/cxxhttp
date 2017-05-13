@@ -12,7 +12,6 @@
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
-#include <iostream>
 
 #include <ef.gy/test-case.h>
 
@@ -59,9 +58,9 @@ bool testParse(std::ostream &log) {
           << "', expected'" << tt.method << "'\n";
       return false;
     }
-    if (v.resource != tt.resource) {
-      log << "http::requestLine(" << tt.in << ").resource='" << v.resource
-          << "', expected'" << tt.resource << "'\n";
+    if (std::string(v.resource) != tt.resource) {
+      log << "http::requestLine(" << tt.in << ").resource='"
+          << std::string(v.resource) << "', expected'" << tt.resource << "'\n";
       return false;
     }
     if (std::string(v) != tt.out) {

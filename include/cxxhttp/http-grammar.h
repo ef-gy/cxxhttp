@@ -32,15 +32,31 @@ namespace grammar {
 //          LF             =  %x0A  ; linefeed
 //          SP             =  %x20
 
-//          ALPHA          =  %x41-5A / %x61-7A  ; A-Z / a-z
-// static const std::string alpha = "[\\\x41-\\\x5a\\\x61-\\\x7a]";
+/* Alphabet character.
+ *
+ * Any uppercase or lowercase character used in English, without diacritics.
+ *
+ * Original grammar rule:
+ *          ALPHA          =  %x41-5A / %x61-7A  ; A-Z / a-z
+ */
 static const std::string alpha = "[A-Za-z]";
 
-//          DIGIT          =  %x30-39  ; 0-9
-// static const std::string digit = "[\\\x30-\\\x39]";
+/* Numerical digit.
+ *
+ * Any of the 10 digits used in English.
+ *
+ * Original grammar rule:
+ *          DIGIT          =  %x30-39  ; 0-9
+ */
 static const std::string digit = "[0-9]";
 
-//          OCTET          =  %x00-FF  ; 8 bits of data
+/* Any 8-bit character.
+ *
+ * For when we're really not being picky.
+ *
+ * Original grammar rule:
+ *          OCTET          =  %x00-FF  ; 8 bits of data
+ */
 static const std::string octet = "[\\\x00-\\\xff]";
 
 //          VCHAR          =  %x21-7E  ; visible (printing) characters

@@ -292,15 +292,17 @@ class session {
                         handleWrite(status, ec);
                       });
 
-    static const std::regex URI("[\\w\\d%/.:;()+-]+|\\*");
     static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
     std::string referer = "-";
     std::string userAgent = "-";
     auto it = this->header.find("Referer");
     if (it != this->header.end()) {
       referer = it->second;
-      if (!std::regex_match(referer, URI)) {
-        referer = "(redacted)";
+      uri ref = referer;
+      if (!ref.valid()) {
+        referer = "(invalid)";
+      } else {
+        referer = ref;
       }
     }
 
@@ -432,7 +434,7 @@ class session {
         const auto req = requestLine(s);
         if (req.valid()) {
           method = req.method;
-          resource = req.resource;
+          resource = req.resource.path();
           protocol = req.protocol();
 
           headerParser = {};
@@ -555,10 +557,24 @@ class session {
   asio::streambuf input;
 };
 
+/* HTTP server template.
+ * @transport Transport type for the server.
+ * @requestProcessor The processor to use; default to processor::server.
+ *
+ * This is a template for an HTTP server, based on net::server and using the
+ * given processor.
+ */
 template <class transport,
           class requestProcessor = processor::server<transport>>
 using server = net::server<transport, requestProcessor, session>;
 
+/* HTTP client template.
+ * @transport Transport type for the server.
+ * @requestProcessor The processor to use; default to processor::client.
+ *
+ * This is a template for an HTTP client, based on net::client and using the
+ * given processor.
+ */
 template <class transport,
           class requestProcessor = processor::client<transport>>
 using client = net::client<transport, requestProcessor, session>;

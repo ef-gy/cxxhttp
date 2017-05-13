@@ -34,6 +34,7 @@ class server : public connection<requestProcessor> {
 
   /* Initialise with IO service
    * @endpoint Endpoint for the socket to bind.
+   * @pServers The set of servers to register with.
    * @pio IO service to use.
    * @logfile A stream to write log messages to.
    *
@@ -41,11 +42,19 @@ class server : public connection<requestProcessor> {
    * passed in. The socket is bound asynchronously.
    */
   server(endpointType<transport> &endpoint,
+         std::set<server *> &pServers = efgy::global<std::set<server *>>(),
          service &pio = efgy::global<service>(),
          std::ostream &logfile = std::cout)
-      : connection(pio, logfile), acceptor(pio, endpoint) {
+      : connection(pio, logfile), servers(pServers), acceptor(pio, endpoint) {
+    servers.insert(this);
     startAccept();
   }
+
+  /* Destructor.
+   *
+   * Removes the instance from the global set of servers.
+   */
+  ~server(void) { servers.erase(this); }
 
  protected:
   /* Accept the next incoming connection
@@ -85,6 +94,13 @@ class server : public connection<requestProcessor> {
    * constructor.
    */
   typename transport::acceptor acceptor;
+
+  /* The set of servers we're part of.
+   *
+   * We register ourselves here in the constructor, and remove ourselves in the
+   * destructor.
+   */
+  std::set<server *> &servers;
 };
 }
 }

@@ -190,7 +190,6 @@ class parser {
   void insert(const headers &map) { header.insert(map.begin(), map.end()); }
 
   /* Turn a header map into a string.
-   * @header The header map to turn into a string.
    *
    * This function takes a header map and converts it into the form used in the
    * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".

@@ -97,7 +97,11 @@ class statusLine {
 
   /* Protocol name.
    *
-   * HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion accepts.
+   * Reconstructed from the parsed value. We only accept HTTP/x.x protocol
+   * versions, so this is easy-ish.
+   *
+   * @return HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion
+   * accepts.
    */
   std::string protocol(void) const {
     std::ostringstream s("");

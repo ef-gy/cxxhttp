@@ -36,9 +36,8 @@ A very trivial sample server would be this (see src/server.cpp):
     using namespace cxxhttp;
 
     template <class transport>
-    static bool hello(typename http::server<transport>::session &session, std::smatch &) {
+    static void hello(typename http::server<transport>::session &session, std::smatch &) {
       session.reply(200, "Hello World!");
-      return true;
     }
 
     namespace tcp {

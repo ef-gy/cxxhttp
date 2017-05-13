@@ -39,8 +39,6 @@ using namespace cxxhttp;
  * @session The HTTP session to answer on.
  *
  * This function serves the familiar "Hello World!" when called.
- *
- * @return 'true' (always, as we always reply).
  */
 template <class transport>
 static void hello(typename http::server<transport>::session &session,

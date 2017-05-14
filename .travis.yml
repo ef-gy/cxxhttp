@@ -15,6 +15,7 @@ addons:
     packages:
       - libc++1
       - libc++-dev
+      - g++-4.9
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then eval "$(pyenv init -)"; fi

@@ -15,6 +15,8 @@
 #if !defined(CXXHTTP_HTTP_SESSION_H)
 #define CXXHTTP_HTTP_SESSION_H
 
+#include <cxxhttp/network.h>
+
 #include <cxxhttp/http-header.h>
 #include <cxxhttp/http-request.h>
 #include <cxxhttp/http-status.h>

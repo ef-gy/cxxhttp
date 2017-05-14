@@ -1,6 +1,59 @@
 # CXXHTTP
 
+[![Build Status](https://travis-ci.org/ef-gy/cxxhttp.svg?branch=master)](https://travis-ci.org/ef-gy/cxxhttp)
+[![Coverage Status](https://coveralls.io/repos/github/ef-gy/cxxhttp/badge.svg?branch=master)](https://coveralls.io/github/ef-gy/cxxhttp?branch=master)
+
 A C++ library implementing an asynchronous HTTP server and client.
+
+To clone this library, make sure you also clone the submodules. The --recursive
+flag should do this for you:
+
+    git clone --recursive https://github.com/ef-gy/cxxhttp.git
+
+## Compiler Requirements
+
+You must have a GNU make and a C++ compiler that supports C++14. On most
+modern-ish Linux distributions that's pretty easy: just update your PMS and
+install clang++ or g++. Preferrably clang++. No reason.
+
+### OSX
+
+On OSX, you'll be fine if you just install a current version of XCode.
+
+### Ubuntu (LTS)
+
+On Ubuntu, you're in for a bit of a rough ride. The only reliable way I've found
+of getting things to compile, at least on 14.04, is to install this PPA and use
+g++ 4.9:
+
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+    sudo apt-get update
+    sudo apt-get install g++-4.9
+
+To compile things, add CXX=g++-4.9 to your make commands, like this:
+
+    make test CXX=g++-4.9
+
+This may not be necessary if you haven't installed clang++ and if there's no
+other versions of g++ installed. clang++ doesn't work on Ubuntu in c++14 mode,
+because libc++ hasn't been updated past an ancient SVN snapshot.
+
+### Debian/Raspbian
+
+On Debian and Raspbian it should be sufficient to just update your package
+sources and isntall clang++ and libc++:
+
+    apt-get update
+    apt-get install clang++ libc++1 libc++-dev
+
+## Test suite
+
+The library has a test suite, which you can run like this:
+
+    make test
+
+If this fails, something is wrong. Please open an issue at GitHub with the log:
+https://github.com/ef-gy/cxxhttp/issues
 
 ## Getting Started
 

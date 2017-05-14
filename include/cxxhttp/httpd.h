@@ -178,7 +178,7 @@ using efgy::cli::option;
  */
 template <class transport>
 static bool setup(net::endpoint<transport> lookup,
-                  std::set<http::server<transport> *> servers =
+                  std::set<http::server<transport> *> &servers =
                       efgy::global<std::set<http::server<transport> *>>(),
                   service &service = efgy::global<cxxhttp::service>(),
                   std::set<servlet<transport> *> &servlets =

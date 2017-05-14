@@ -41,7 +41,7 @@ because libc++ hasn't been updated past an ancient SVN snapshot.
 ### Debian/Raspbian
 
 On Debian and Raspbian it should be sufficient to just update your package
-sources and isntall clang++ and libc++:
+sources and install clang++ and libc++:
 
     apt-get update
     apt-get install clang++ libc++1 libc++-dev

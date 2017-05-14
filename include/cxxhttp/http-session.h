@@ -151,6 +151,8 @@ class sessionData {
    * The code will always reply with an HTTP/1.1 reply, regardless of the
    * version in the request. If this is a concern for you, put the server behind
    * an nginx instance, which should fix up the output as necessary.
+   *
+   * @return The raw HTTP message to be sent.
    */
   std::string generateReply(int status, const headers &header,
                             const std::string &body) {

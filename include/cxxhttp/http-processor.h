@@ -29,7 +29,7 @@
 
 namespace cxxhttp {
 namespace http {
-template <typename base, typename requestProcessor>
+template <typename transport, typename requestProcessor>
 class session;
 
 static const headers sendNegotiatedAs{

@@ -24,9 +24,19 @@
 namespace cxxhttp {
 namespace httpd {
 namespace trace {
+/* HTTP TRACE implementation.
+ * @transport The transport type of the session.
+ * @session The session to reply to, with all the data we need.
+ *
+ * Implements the HTTP TRACE method. This method responds with the more-or-less
+ * verbatim request as a request body.
+ *
+ * This method is not really subject to negotiation, so we haven't specified any
+ * of those.
+ */
 template <class transport>
 static void trace(typename http::server<transport>::session &session,
-                  std::smatch &re) {
+                  std::smatch &) {
   std::string message = session.inboundRequest;
 
   for (const auto &h : session.header) {
@@ -36,12 +46,31 @@ static void trace(typename http::server<transport>::session &session,
   session.reply(200, {{"Content-Type", "message/http"}}, message);
 }
 
+/* TRACE location regex.
+ *
+ * We accept a TRACE method for literally any location.
+ */
 static const char *resource = ".*";
+
+/* TRACE method regex.
+ *
+ * We accept TRACE queries only for the TRACE method. This is to make it not
+ * interfere with other requests.
+ */
 static const char *method = "TRACE";
 
 #if !defined(NO_DEFAULT_TRACE)
+/* TRACE servlet on TCP sockets.
+ *
+ * Sets up the servlet for the default TCP processor.
+ */
 static httpd::servlet<transport::tcp> TCP(resource, trace<transport::tcp>,
                                           method);
+
+/* TRACE servlet on UNIX sockets.
+ *
+ * Same as the TCP variant, just for local UNIX sockets.
+ */
 static httpd::servlet<transport::unix> UNIX(resource, trace<transport::unix>,
                                             method);
 #endif

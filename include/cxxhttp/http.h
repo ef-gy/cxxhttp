@@ -31,42 +31,18 @@
 
 namespace cxxhttp {
 namespace http {
-/* Session wrapper
- * @transport The connection type, e.g. transport::tcp.
- * @requestProcessor The functor class to handle requests.
+/* Transport-agnostic HTTP session data.
  *
- * Used by the server to keep track of all the data associated with a single,
- * asynchronous client connection.
+ * For all the bits in an HTTP session object that do not rely on knowing the
+ * correct transport type.
  */
-template <typename transport, typename requestProcessor>
-class session {
+class data {
  public:
-  /* Connection type.
-   *
-   * This is the type of the server or client that the session is being served
-   * on; used when instantiating a session, as we need to use some of the data
-   * the server or client may have to offer.
-   */
-  using connectionType = net::connection<requestProcessor>;
-
-  /* Connection socket type.
-   *
-   * The type of socket we're talking to, which is the transport's socket type.
-   */
-  using socketType = typename transport::socket;
-
   /* Current status of the session.
    *
    * Used to determine what sort of communication to expect next.
    */
   enum status status;
-
-  /* Stream socket
-   *
-   * This is the asynchronous I/O socket that is used to communicate with the
-   * client.
-   */
-  socketType socket;
 
   /* The inbound request line.
    *
@@ -121,14 +97,6 @@ class session {
    */
   std::size_t contentLength;
 
-  /* Connection instance
-   *
-   * A reference to the server or client that this session belongs to and was
-   * spawned from. Used to process requests and potentially for general
-   * maintenance.
-   */
-  connectionType &connection;
-
   /* How many requests we've sent on this connection.
    *
    * Mostly for house-keeping purposes, and to keep track of whether a client
@@ -147,18 +115,94 @@ class session {
    */
   std::size_t replies;
 
+  /* Default constructor
+   *
+   * Sets up an empty data object with default values for the members that need
+   * that.
+   */
+  data(void) : status(stRequest), contentLength(0), requests(0), replies(0) {}
+
+  /* Calculate number of queries from this session.
+   *
+   * Calculates the total number of queries that this session has sent. Inbound
+   * queries are not counted.
+   *
+   * @return The number of queries this session answered to.
+   */
+  std::size_t queries(void) const { return replies + requests; }
+
+ protected:
+  /* Header parser instance.
+   *
+   * Constains all the state we need to parse headers.
+   */
+  parser<headers> headerParser;
+
+  /* ASIO input stream buffer
+   *
+   * This is the stream buffer that the object is reading from.
+   */
+  asio::streambuf input;
+
+  /* How many bytes are left to read.
+   *
+   * Uses the known content length and the current content buffer's size to
+   * determine how much more to read.
+   *
+   * @return The number of bytes remaining that we'd expect in the current
+   * message.
+   */
+  std::size_t remainingBytes(void) const {
+    return contentLength - content.size();
+  }
+};
+
+/* Session wrapper
+ * @transport The connection type, e.g. transport::tcp.
+ * @requestProcessor The functor class to handle requests.
+ *
+ * Used by the server to keep track of all the data associated with a single,
+ * asynchronous client connection.
+ */
+template <typename transport, typename requestProcessor>
+class session : public data {
+ public:
+  /* Connection type.
+   *
+   * This is the type of the server or client that the session is being served
+   * on; used when instantiating a session, as we need to use some of the data
+   * the server or client may have to offer.
+   */
+  using connectionType = net::connection<requestProcessor>;
+
+  /* Connection socket type.
+   *
+   * The type of socket we're talking to, which is the transport's socket type.
+   */
+  using socketType = typename transport::socket;
+
+  /* Stream socket
+   *
+   * This is the asynchronous I/O socket that is used to communicate with the
+   * client.
+   */
+  socketType socket;
+
+  /* Connection instance
+   *
+   * A reference to the server or client that this session belongs to and was
+   * spawned from. Used to process requests and potentially for general
+   * maintenance.
+   */
+  connectionType &connection;
+
   /* Construct with I/O connection
    * @pConnection The connection instance this session belongs to.
    *
    * Constructs a session with the given asynchronous connection.
    */
   session(connectionType &pConnection)
-      : connection(pConnection),
-        socket(pConnection.io),
-        status(stRequest),
-        input(),
-        requests(0),
-        replies(0) {
+      : connection(pConnection), socket(pConnection.io), data() {
     connection.sessions.insert(this);
   }
 
@@ -300,9 +344,7 @@ class session {
     }
 
     connection.log << net::address(socket) << " - - [-] \""
-                   << inboundRequest.method << " "
-                   << inboundRequest.resource.path() << " "
-                   << inboundRequest.protocol() << "\" " << status << " "
+                   << trim(inboundRequest) << "\" " << status << " "
                    << body.length() << " \"" << referer << "\" \"" << userAgent
                    << "\"\n";
 
@@ -354,28 +396,7 @@ class session {
     }
   }
 
-  /* Calculate number of queries from this session.
-   *
-   * Calculates the total number of queries that this session has sent. Inbound
-   * queries are not counted.
-   *
-   * @return The number of queries this session answered to.
-   */
-  std::size_t queries(void) const { return replies + requests; }
-
  protected:
-  /* How many bytes are left to read.
-   *
-   * Uses the known content length and the current content buffer's size to
-   * determine how much more to read.
-   *
-   * @return The number of bytes remaining that we'd expect in the current
-   * message.
-   */
-  std::size_t remainingBytes(void) const {
-    return contentLength - content.size();
-  }
-
   /* Read more data
    * @error Current error state.
    *
@@ -523,18 +544,6 @@ class session {
       }
     }
   }
-
-  /* Header parser instance.
-   *
-   * Constains all the state we need to parse headers.
-   */
-  parser<headers> headerParser;
-
-  /* ASIO input stream buffer
-   *
-   * This is the stream buffer that the object is reading from.
-   */
-  asio::streambuf input;
 };
 
 /* HTTP server template.

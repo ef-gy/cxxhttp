@@ -202,6 +202,14 @@ class endpoint<transport::tcp> {
 template <typename requestProcessor>
 class connection {
  public:
+  /* The session type.
+   *
+   * The request processor needs to know about the kinds of sessions it's
+   * dealing with, so we grab that type here because we're keeping track of the
+   * sessions ourselves, below.
+   */
+  using session = typename requestProcessor::session;
+
   /* Initialise with IO service
    * @pio IO service to use.
    * @logfile A stream to write log messages to.
@@ -235,12 +243,8 @@ class connection {
    *
    * The sessions that are currently active. This list is added to by the
    * session constructor, and removed from by the session destructor.
-   *
-   * Since we don't know the actual type of these, here, this is a void pointer
-   * and the only purpose is to keep track of whether there's any connections at
-   * all.
    */
-  std::set<void *> sessions;
+  std::set<session *> sessions;
 };
 }
 }

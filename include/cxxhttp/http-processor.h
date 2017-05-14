@@ -107,7 +107,8 @@ class server {
   /* Session type
    *
    * This is the session type that the processor is intended for. This typedef
-   * is mostly here for convenience.
+   * is mostly here for convenience, but it also helps the connection type to
+   * figure out what session this processor needs.
    */
   using session = http::session<transport, server>;
 

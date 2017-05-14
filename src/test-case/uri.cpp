@@ -40,6 +40,7 @@ bool testParsing(std::ostream &log) {
       {"%2aob", true, "", "", "*ob", "", "", "%2aob"},
       {"%2Aob", true, "", "", "*ob", "", "", "%2Aob"},
       {"%2", false, "", "", "", "", "", "%2"},
+      {"#foo", true, "", "", "", "", "foo", "#foo"},
   };
 
   for (const auto &tt : tests) {

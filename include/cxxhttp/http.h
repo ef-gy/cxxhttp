@@ -136,83 +136,21 @@ class session : public sessionData {
    * @body The response body to send back to the client.
    *
    * Used by the processing code once it is known how to answer the request
-   * contained in this object. Headers are not checked for validity.
-   * This function does not add a Content-Length, so the free-form header field
-   * will need to include this.
+   * contained in this object.
    *
-   * This function will automatically add a Content-Length header for the body,
-   * and will also append to the Server header, if the agent string is set.
-   *
-   * Further headers may be added using the header parameter. Headers are not
-   * checked for validity.
-   *
-   * The code will always reply with an HTTP/1.1 reply, regardless of the
-   * version in the request. If this is a concern for you, put the server behind
-   * an nginx instance, which should fix up the output as necessary.
+   * The actual message to send is generated using the generateReply() function,
+   * which receives all the parameters passed in.
    */
   void reply(int status, const headers &header, const std::string &body) {
-    parser<headers> head{{
-        {"Content-Length", std::to_string(body.size())},
-    }};
+    std::string reply = generateReply(status, header, body);
 
-    if (status < 200) {
-      // informational response, no body.
-      head = {};
-    }
-
-    // Add the headers the client wanted to send.
-    head.insert(header);
-
-    // take over outbound headers that have been negotiated, or similar, iff
-    // they haven't been overridden.
-    head.insert(outbound.header);
-
-    // we automatically close connections when an error code is sent.
-    if (status >= 400) {
-      head.header["Connection"] = "close";
-    }
-
-    std::stringstream reply;
-
-    reply << std::string(statusLine(status)) << std::string(head) << "\r\n";
-
-    if (status < 200) {
-      // informational response, no body.
-    } else {
-      reply << body;
-    }
-
-    asio::async_write(socket, asio::buffer(reply.str()),
+    asio::async_write(socket, asio::buffer(reply),
                       [status, this](std::error_code ec, std::size_t length) {
                         handleWrite(status, ec);
                       });
 
-    static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
-    std::string referer = "-";
-    std::string userAgent = "-";
-    auto it = this->header.find("Referer");
-    if (it != this->header.end()) {
-      referer = it->second;
-      uri ref = referer;
-      if (!ref.valid()) {
-        referer = "(invalid)";
-      } else {
-        referer = ref;
-      }
-    }
-
-    it = this->header.find("User-Agent");
-    if (it != this->header.end()) {
-      userAgent = it->second;
-      if (!std::regex_match(userAgent, agent)) {
-        userAgent = "(redacted)";
-      }
-    }
-
-    connection.log << net::address(socket) << " - - [-] \""
-                   << trim(inboundRequest) << "\" " << status << " "
-                   << body.length() << " \"" << referer << "\" \"" << userAgent
-                   << "\"\n";
+    connection.log << logMessage(net::address(socket), status, body.size())
+                   << "\n";
 
     replies++;
   }
@@ -282,25 +220,9 @@ class session : public sessionData {
       return;
     }
 
+    std::string s = buffer();
+
     std::istream is(&input);
-    std::string s;
-
-    switch (status) {
-      case stRequest:
-      case stStatus:
-      case stHeader:
-        std::getline(is, s);
-        break;
-      case stContent:
-        s = std::string(std::min(remainingBytes(), input.size()), 0);
-        is.read(&s[0], std::min(remainingBytes(), input.size()));
-        break;
-      case stProcessing:
-      case stError:
-      case stShutdown:
-        break;
-    }
-
     bool doRead = true;
 
     switch (status) {

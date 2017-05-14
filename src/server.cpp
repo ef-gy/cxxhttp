@@ -23,6 +23,7 @@
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
+
 #define ASIO_DISABLE_THREADS
 #define USE_DEFAULT_IO_MAIN
 #include <cxxhttp/httpd.h>

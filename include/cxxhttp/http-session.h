@@ -124,6 +124,18 @@ class sessionData {
    */
   std::size_t queries(void) const { return replies + requests; }
 
+  /* How many bytes are left to read.
+   *
+   * Uses the known content length and the current content buffer's size to
+   * determine how much more to read.
+   *
+   * @return The number of bytes remaining that we'd expect in the current
+   * message.
+   */
+  std::size_t remainingBytes(void) const {
+    return contentLength - content.size();
+  }
+
  protected:
   /* Header parser instance.
    *
@@ -136,18 +148,6 @@ class sessionData {
    * This is the stream buffer that the object is reading from.
    */
   asio::streambuf input;
-
-  /* How many bytes are left to read.
-   *
-   * Uses the known content length and the current content buffer's size to
-   * determine how much more to read.
-   *
-   * @return The number of bytes remaining that we'd expect in the current
-   * message.
-   */
-  std::size_t remainingBytes(void) const {
-    return contentLength - content.size();
-  }
 };
 }
 }

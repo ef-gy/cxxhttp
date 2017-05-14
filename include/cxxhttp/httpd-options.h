@@ -65,12 +65,32 @@ static void options(typename http::server<transport>::session &session,
   session.reply(200, p.header, text);
 }
 
+/* HTTP OPTIONS location regex.
+ *
+ * We allow pretty much everything, but we're explicitly saying that a * is
+ * acceptable as well.
+ */
 static const char *resource = "^\\*|/.*";
+
+/* HTTP OPTIONS method regex.
+ *
+ * We only care for the OPTIONS method. Since we already allow every resource
+ * location, this prevents this handler from interfering with other servlets.
+ */
 static const char *method = "OPTIONS";
 
 #if !defined(NO_DEFAULT_OPTIONS)
+/* HTTP OPTIONS servlet on TCP.
+ *
+ * Sets up a servlet to respond to OPTIONS queries on TCP sockets.
+ */
 static httpd::servlet<transport::tcp> TCP(resource, options<transport::tcp>,
                                           method);
+
+/* HTTP OPTIONS servlet on UNIX sockets.
+ *
+ * Sets up a servlet for OPTIONS queries on UNIX sockets.
+ */
 static httpd::servlet<transport::unix> UNIX(resource, options<transport::unix>,
                                             method);
 #endif

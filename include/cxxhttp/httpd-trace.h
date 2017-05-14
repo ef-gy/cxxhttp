@@ -27,6 +27,7 @@ namespace trace {
 /* HTTP TRACE implementation.
  * @transport The transport type of the session.
  * @session The session to reply to, with all the data we need.
+ * @re The regex match fragments; ignored since we just respond to everything.
  *
  * Implements the HTTP TRACE method. This method responds with the more-or-less
  * verbatim request as a request body.
@@ -36,7 +37,7 @@ namespace trace {
  */
 template <class transport>
 static void trace(typename http::server<transport>::session &session,
-                  std::smatch &) {
+                  std::smatch &re) {
   std::string message = session.inboundRequest;
 
   for (const auto &h : session.header) {

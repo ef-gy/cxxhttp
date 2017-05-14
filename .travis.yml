@@ -28,7 +28,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then pyenv rehash; fi
 
 script:
-  - if [ ( "$TRAVIS_OS_NAME" != "osx" ) -a ( "$CXX" = "g++" ) ]; then export CXX="g++-4.9"; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" -a "$CXX" = "g++" ]; then export CXX="g++-4.9"; fi
   - make test CFLAGS="-O2 -coverage" CXX=${CXX}
 
 after_success:

@@ -198,7 +198,7 @@ class parser {
   /* Turn a header map into a string.
    *
    * This function takes a header map and converts it into the form used in the
-   * HTTP protocol. This form is, essentially, "Key: Value<CR><LN>".
+   * HTTP protocol. This form is, essentially, "Key: ValueCRLN".
    *
    * @return A string, with all of the elements in the header parameter.
    */

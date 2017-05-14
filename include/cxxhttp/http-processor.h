@@ -32,14 +32,27 @@ namespace http {
 template <typename transport, typename requestProcessor>
 class session;
 
+/* HTTP header negotiation map.
+ *
+ * Maps input header names to their equivalent outbound version.
+ */
 static const headers sendNegotiatedAs{
     {"Accept", "Content-Type"},
 };
 
+/* Default servers headers.
+ *
+ * These headers are sent by default with every server reply, unless overriden.
+ */
 static const headers defaultServerHeaders{
     {"Server", identifier},
 };
 
+/* Default client headers.
+ *
+ * These headers are sent by default with every client request, unless
+ * overriden.
+ */
 static const headers defaultClientHeaders{
     {"User-Agent", identifier},
 };

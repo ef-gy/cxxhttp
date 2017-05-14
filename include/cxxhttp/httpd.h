@@ -228,7 +228,7 @@ static inline bool setupUNIX(std::smatch &match) {
 
 /* TCP HTTP server CLI option.
  *
- * The format is `http:<interface-address>:<port>`. The server that is set up
+ * The format is `http:(interface-address):(port)`. The server that is set up
  * will have all available servlets registered.
  */
 static option TCP(
@@ -237,7 +237,7 @@ static option TCP(
 
 /* UNIX socket HTTP server CLI option.
  *
- * The format is `http:unix:<socket-file>`. The server that is set up will have
+ * The format is `http:unix:(socket-file)`. The server that is set up will have
  * all available servlets registered.
  */
 static option UNIX("-{0,2}http:unix:(.+)", setupUNIX,

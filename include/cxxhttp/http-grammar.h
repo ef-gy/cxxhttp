@@ -92,7 +92,6 @@ static const std::string wsp = "[ \t]";
  * for getting the actual version digits.
  *
  * Original grammar rule:
- *
  *      HTTP-name     = %x48.54.54.50 ; "HTTP", case-sensitive
  */
 static const std::string httpName = "HTTP";
@@ -105,7 +104,6 @@ static const std::string httpName = "HTTP";
  * information only while parsing a status line.
  *
  * Original grammar rule:
- *
  *      HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
  */
 static const std::string httpVersion = "HTTP/([0-9])\\.([0-9])";
@@ -132,7 +130,6 @@ static const std::string bws = "[ \t]*";
  * rolled into other character classes nearby.
  *
  * Original grammar rule:
- *
  *      obs-text       = %x80-FF
  */
 static const std::string obsText = "[\\\x80-\\\xff]";
@@ -143,7 +140,6 @@ static const std::string obsText = "[\\\x80-\\\xff]";
  * class to make it easy to capture with regex subexpressions.
  *
  * Original grammar rule:
- *
  *      tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
  *                     / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
  *                     / DIGIT / ALPHA
@@ -158,7 +154,6 @@ static const std::string tchar = "[---!#$%&'*+.^_`|~0-9A-Za-z]";
  * This has no subexpressions to make it easy to capture.
  *
  * Original grammar rule:
- *
  *      token          = 1*tchar
  */
 static const std::string token = tchar + "+";
@@ -178,7 +173,6 @@ static const std::string token = tchar + "+";
  * This has no subexpressions, because we want this easily captured.
  *
  * Original grammar rule:
- *
  *      status-code    = 3DIGIT
  */
 static const std::string statusCode = "[0-9]{3}";
@@ -201,6 +195,7 @@ static const std::string reasonPhrase = "[\t !-\\\x7e\\\x80-\\\xff]*";
  *
  * Basically any VCHAR or obs-text, but prefixed by a backslash.
  *
+ * Original grammar rule:
  *      quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
  */
 static const std::string quotedPair = "\\\\[\t !-\\\x7e\\\x80-\\\xff]";
@@ -211,11 +206,18 @@ static const std::string quotedPair = "\\\\[\t !-\\\x7e\\\x80-\\\xff]";
  * is important for quoted-string to work as expected as that in turn allows
  * those characters but only when prefixed with a backspace.
  *
+ * Original grammar rule:
  *      qdtext         = HTAB / SP /%x21 / %x23-5B / %x5D-7E / obs-text
  */
 static const std::string qdtext = "[\t !#-,,-\\\x5b\\\x5d-\\\x7e\\\x80-\\\xff]";
 
-//      quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+/* Quoted string.
+ *
+ * Matches a properly-quoted string, where quotes within are escaped.
+ *
+ * Original grammar rule:
+ *      quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+ */
 static const std::string quotedString =
     "(\"((" + qdtext + "|" + quotedPair + ")*)\")";
 
@@ -223,6 +225,7 @@ static const std::string quotedString =
  *
  * Same avoidances as qdtext, but also avoids parentheses.
  *
+ * Original grammar rule:
  *      ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
  */
 static const std::string ctext =
@@ -236,31 +239,57 @@ static const std::string ctext =
  * correct result.
  * Let's hope it won't bite us in any critical headers that aren't User-Agent.
  *
+ * Original grammar rule:
  *      comment        = "(" *( ctext / quoted-pair / comment ) ")"
  */
 static const std::string comment =
     "(\\(((" + ctext + "|" + quotedPair + "|[()])*)\\))";
 
-//      header-field   = field-name ":" OWS field-value OWS
+// Header field definition.
 //
-//      field-name     = token
+// This is the syntax for a header field. This isn't in a separate grammar rule
+// here, but we use this in the header parser so it's here for reference.
+//
+//      header-field   = field-name ":" OWS field-value OWS
+
+/* Header field name.
+ *
+ * Field names are normal HTTP tokens.
+ *
+ * Original grammar rule:
+ *      field-name     = token
+ */
 static const std::string fieldName = token;
 
-// This involves newlines, so we need to do this in actual code. Because it's
-// easier to just pre-split per line and go from there.
-//
-//      field-value    = *( field-content / obs-fold )
-//      obs-fold       = CRLF 1*( SP / HTAB ) ; obsolete line folding
-
-//      field-vchar    = VCHAR / obs-text
+/* Header field visisble character.
+ *
+ * This involves newlines, so we need to do this in actual code. Because it's
+ * easier to just pre-split per line and go from there.
+ *
+ * Original grammar rule:
+ *      field-value    = *( field-content / obs-fold )
+ *      obs-fold       = CRLF 1*( SP / HTAB ) ; obsolete line folding
+ *      field-vchar    = VCHAR / obs-text
+ */
 static const std::string fieldVchar = "[!-\\\x7e\\\x80-\\\xff]";
+
+/* Header field character, including whitespace.
+ *
+ * Not actually in the grammar, but it comes up often enough.
+ */
 static const std::string fieldVcharWS = "[ \t!-\\\x7e\\\x80-\\\xff]";
 
-// I'm not sure this repeats as it was intended in the original grammar. I mean,
-// I think it does if it's unrolled, but not sure that was the intended way of
-// writing it.
-//
-//      field-content  = field-vchar [ 1*( SP / HTAB ) field-vchar ]
+/* Field content.
+ *
+ * Contents of header fields.
+ *
+ * I'm not sure this repeats as it was intended in the original grammar. I mean,
+ * I think it does if it's unrolled, but not sure that was the intended way of
+ * writing it.
+ *
+ * Original grammar rule:
+ *      field-content  = field-vchar [ 1*( SP / HTAB ) field-vchar ]
+ */
 static const std::string fieldContent = fieldVchar + fieldVcharWS + "*";
 }
 }

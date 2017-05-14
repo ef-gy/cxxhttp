@@ -27,4 +27,4 @@ script:
   - make test CFLAGS="-O2 -coverage" CXX=${CXX}
 
 after_success:
-  - coveralls -t DcluU4eNb0fYJrVslE8kUyEOnl9sMMrSE --gcov-options '\-lp'
+  - coveralls  -t DcluU4eNb0fYJrVslE8kUyEOnl9sMMrSE --exclude dependencies --gcov-options '\-lp'

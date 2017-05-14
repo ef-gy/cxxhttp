@@ -12,6 +12,8 @@ os:
 
 addons:
   apt:
+    sources:
+      - sourceline: 'ppa:ubuntu-toolchain-r/test'
     packages:
       - libc++1
       - libc++-dev

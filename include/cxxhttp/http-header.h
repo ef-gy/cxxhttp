@@ -96,7 +96,7 @@ class parser {
    *
    * Set in the absorb() method, based on whether there was a final line or not.
    */
-  bool complete = true;
+  bool complete;
 
   /* Append value to header map.
    * @key The key to append to, or set.

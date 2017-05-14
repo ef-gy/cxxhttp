@@ -20,11 +20,12 @@
 #include <map>
 #include <regex>
 
+#include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
 #include <cxxhttp/version.h>
 
 #include <cxxhttp/http-constants.h>
-#include <cxxhttp/http-header.h>
+#include <cxxhttp/http-session.h>
 
 namespace cxxhttp {
 namespace http {
@@ -87,6 +88,81 @@ struct handler {
   std::function<void(session &, std::smatch &)> handler;
 };
 
+/* Transport-agnostic parts of the server processor.
+ *
+ * These are transport-agnostic bits of data and functions that are used by the
+ * server processor, so as to deduplicate some of the functions that would
+ * otherwise be expanded per target transport type.
+ * target transport type.
+ */
+class serverData {
+ public:
+  /* Maximum request content size
+   *
+   * The maximum number of octets supported for a request body. Requests larger
+   * than this are cancelled with an error.
+   */
+  std::size_t maxContentLength = (1024 * 1024 * 12);
+
+  /* Negotiate headers for request.
+   * @sess Basic session data, which is modified and initialised in-place.
+   * @negotiations The set of negotiations to perform, from the subprocessor.
+   *
+   * Uses the global header negotiation facilities to set actual inbound and
+   * outbound headers based on what the input request looks like.
+   *
+   * @return Whether or not negotiations were successful.
+   */
+  bool negotiateHeaders(sessionData &sess, const headers &negotiations) const {
+    bool badNegotiation = false;
+    // reset, and perform, header value negotiation based on the
+    // subprocessor's specs and the client data.
+    sess.negotiated = {};
+    sess.outbound = {defaultServerHeaders};
+    for (const auto &n : negotiations) {
+      const std::string cv =
+          sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
+      const std::string v = negotiate(cv, n.second);
+
+      // modify the Vary value to indicate we used this header.
+      sess.outbound.append("Vary", n.first);
+
+      sess.negotiated[n.first] = v;
+
+      const auto it = sendNegotiatedAs.find(n.first);
+      if (it != sendNegotiatedAs.end()) {
+        sess.outbound.header[it->second] = v;
+      }
+
+      badNegotiation = badNegotiation || v.empty();
+    }
+
+    return !badNegotiation;
+  }
+
+  /* Decide whether to trigger a 405.
+   * @methods The methods we've seen as allowed during processing.
+   *
+   * To trigger the 405 response, we want the list of allowed methods to
+   * be non-empty, but we also don't want the list to only consist of methods
+   * which are expected to be valid for every resource in the first place.
+   * (Though this would technically be correct as well, it would be unexpected
+   * of an HTTP server since everyone else seems to be ignoring the OPTIONS
+   * method and people don't commonly allow TRACE.)
+   *
+   * @return Whether or not a 405 is more appropriate than a 404.
+   */
+  bool trigger405(const std::set<std::string> &methods) const {
+    for (const auto &m : methods) {
+      if (non405method.find(m) == non405method.end()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
 /* Basis server processor
  * @transport The socket class for the request, e.g. transport::tcp
  *
@@ -102,7 +178,7 @@ struct handler {
  * is kept around for as long as the server object is.
  */
 template <class transport>
-class server {
+class server : public serverData {
  public:
   /* Session type
    *
@@ -111,13 +187,6 @@ class server {
    * figure out what session this processor needs.
    */
   using session = http::session<transport, server>;
-
-  /* Maximum request content size
-   *
-   * The maximum number of octets supported for a request body. Requests larger
-   * than this are cancelled with an error.
-   */
-  std::size_t maxContentLength = (1024 * 1024 * 12);
 
   /* Handle request
    * @sess The session object where the request was made.
@@ -128,8 +197,7 @@ class server {
    * returns true.
    */
   void handle(session &sess) const {
-    std::set<std::string> methods{};
-    bool trigger405 = false;
+    std::set<std::string> methods;
     bool trigger406 = false;
     bool methodSupported = false;
 
@@ -148,28 +216,8 @@ class server {
 
       if (resourceMatch) {
         if (methodMatch) {
-          bool badNegotiation = false;
-          // reset, and perform, header value negotiation based on the
-          // subprocessor's specs and the client data.
-          sess.negotiated = {};
-          sess.outbound = {defaultServerHeaders};
-          for (const auto &n : subprocessor.negotiations) {
-            const std::string cv =
-                sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
-            const std::string v = negotiate(cv, n.second);
-
-            // modify the Vary value to indicate we used this header.
-            sess.outbound.append("Vary", n.first);
-
-            sess.negotiated[n.first] = v;
-
-            const auto it = sendNegotiatedAs.find(n.first);
-            if (it != sendNegotiatedAs.end()) {
-              sess.outbound.header[it->second] = v;
-            }
-
-            badNegotiation = badNegotiation || v.empty();
-          }
+          bool badNegotiation =
+              !negotiateHeaders(sess, subprocessor.negotiations);
 
           if (badNegotiation) {
             trigger406 = true;
@@ -199,26 +247,13 @@ class server {
       return;
     }
 
-    // To trigger the 405 response, we want the list of allowed methods to
-    // be non-empty, but we also don't want the list to only consist of methods
-    // which are expected to be valid for every resource in the first place.
-    // (Though this would technically be correct as well, it would be unexpected
-    // of an HTTP server since everyone else seems to be ignoring the OPTIONS
-    // method and people don't commonly allow TRACE.)
-    for (const auto &m : methods) {
-      if (non405method.find(m) == non405method.end()) {
-        trigger405 = true;
-        break;
-      }
-    }
-
     if (trigger406) {
       sess.reply(406,
                  "Sorry, negotiating the resource's representation failed.");
       return;
     }
 
-    if (trigger405 && (methods.size() > 0)) {
+    if (trigger405(methods) && (methods.size() > 0)) {
       parser<headers> p{};
       for (const auto &m : methods) {
         p.append("Allow", m);

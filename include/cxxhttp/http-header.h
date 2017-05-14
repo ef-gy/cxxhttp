@@ -70,6 +70,12 @@ class headerNameLT
  */
 using headers = std::map<std::string, std::string, headerNameLT>;
 
+/* Header parser functionality.
+ * @headers The map-like type to use when parsing headers.
+ *
+ * Contains the state needed to parse a header block, and to determine what the
+ * current status of that is.
+ */
 template <class headers>
 class parser {
  public:

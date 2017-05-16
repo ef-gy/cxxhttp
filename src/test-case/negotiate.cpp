@@ -71,6 +71,12 @@ bool testSplit(std::ostream &log) {
       {"", {}, {}},
       {"x", {"x"}, {"x"}},
       {"x, y, z;q=0", {"x", "y", "z;q=0"}, {"x, y, z", "q=0"}},
+      {"x;c=\"foo,bar\", y",
+       {"x;c=\"foo,bar\"", "y"},
+       {"x", "c=\"foo,bar\", y"}},
+      {"x;c=\"foo,\\\"bar\", y",
+       {"x;c=\"foo,\\\"bar\"", "y"},
+       {"x", "c=\"foo,\\\"bar\", y"}},
   };
 
   for (const auto &tt : tests) {

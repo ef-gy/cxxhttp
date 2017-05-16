@@ -15,7 +15,6 @@
 #define CXXHTTP_HTTP_STATUS_H
 
 #include <regex>
-#include <sstream>
 #include <string>
 
 #include <cxxhttp/http-constants.h>
@@ -104,9 +103,8 @@ class statusLine {
    * accepts.
    */
   std::string protocol(void) const {
-    std::ostringstream s("");
-    s << "HTTP/" << majorVersion << "." << minorVersion;
-    return s.str();
+    return "HTTP/" + std::to_string(majorVersion) + "." +
+           std::to_string(minorVersion);
   }
 
   /* Major protocol version.
@@ -141,9 +139,7 @@ class statusLine {
       return "HTTP/1.1 500 Bad Status Line\r\n";
     }
 
-    std::ostringstream s("");
-    s << protocol() << " " << code << " " << description << "\r\n";
-    return s.str();
+    return protocol() + " " + std::to_string(code) + " " + description + "\r\n";
   }
 
   /* Get status code text description.

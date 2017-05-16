@@ -177,17 +177,16 @@ class sessionData {
       head.header["Connection"] = "close";
     }
 
-    std::stringstream reply;
-
-    reply << std::string(statusLine(status)) << std::string(head) << "\r\n";
+    std::string reply =
+        std::string(statusLine(status)) + std::string(head) + "\r\n";
 
     if (status < 200) {
       // informational response, no body.
     } else {
-      reply << body;
+      reply += body;
     }
 
-    return reply.str();
+    return reply;
   }
 
   /* Create a log message.
@@ -202,8 +201,6 @@ class sessionData {
    */
   std::string logMessage(const std::string &address, int status,
                          std::size_t length) const {
-    std::stringstream msg;
-
     static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
     std::string referer = "-";
     std::string userAgent = "-";
@@ -226,10 +223,9 @@ class sessionData {
       }
     }
 
-    msg << address << " - - [-] \"" << trim(inboundRequest) << "\" " << status
-        << " " << length << " \"" << referer << "\" \"" << userAgent << "\"";
-
-    return msg.str();
+    return address + " - - [-] \"" + trim(inboundRequest) + "\" " +
+           std::to_string(status) + +" " + std::to_string(length) + " \"" +
+           referer + "\" \"" + userAgent + "\"";
   }
 
   /* Extract partial data from the session.

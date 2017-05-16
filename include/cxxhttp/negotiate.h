@@ -181,9 +181,9 @@ class qvalue {
    * @return A string of the form 'value(;attribute)*;q=D.DDD(;ext)*'.
    */
   std::string full(void) const {
-    std::stringstream qv;
     std::string rv = *this;
     if (!rv.empty()) {
+      std::stringstream qv;
       qv << (q / 1000.);
       rv += ";q=" + qv.str();
       for (const auto &a : extensions) {

@@ -15,7 +15,6 @@
 #define CXXHTTP_NETWORK_H
 
 #include <iostream>
-#include <sstream>
 #include <string>
 
 #define ASIO_STANDALONE

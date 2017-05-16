@@ -166,13 +166,22 @@ class sessionData {
    */
   std::string generateReply(int status, const headers &header,
                             const std::string &body) {
-    parser<headers> head{{
-        {"Content-Length", std::to_string(body.size())},
-    }};
+    // informational responses have no message body.
+    bool allowBody = status >= 200;
+    // we automatically close connections when an error code is sent.
+    bool allowKeepAlive = status < 400;
 
-    if (status < 200) {
-      // informational response, no body.
-      head = {};
+    parser<headers> head;
+
+    if (allowBody) {
+      head.insert({
+          {"Content-Length", std::to_string(body.size())},
+      });
+    }
+    if (!allowKeepAlive) {
+      head.insert({
+          {"Connection", "close"},
+      });
     }
 
     // Add the headers the client wanted to send.
@@ -182,17 +191,10 @@ class sessionData {
     // they haven't been overridden.
     head.insert(outbound.header);
 
-    // we automatically close connections when an error code is sent.
-    if (status >= 400) {
-      head.header["Connection"] = "close";
-    }
-
     std::string reply =
         std::string(statusLine(status)) + std::string(head) + "\r\n";
 
-    if (status < 200) {
-      // informational response, no body.
-    } else {
+    if (allowBody) {
       reply += body;
     }
 
@@ -214,8 +216,8 @@ class sessionData {
     static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
     std::string referer = "-";
     std::string userAgent = "-";
-    auto it = this->inbound.header.find("Referer");
-    if (it != this->inbound.header.end()) {
+    auto it = inbound.header.find("Referer");
+    if (it != inbound.header.end()) {
       referer = it->second;
       uri ref = referer;
       if (!ref.valid()) {
@@ -225,8 +227,8 @@ class sessionData {
       }
     }
 
-    it = this->inbound.header.find("User-Agent");
-    if (it != this->inbound.header.end()) {
+    it = inbound.header.find("User-Agent");
+    if (it != inbound.header.end()) {
       userAgent = it->second;
       if (!std::regex_match(userAgent, agent)) {
         userAgent = "(redacted)";

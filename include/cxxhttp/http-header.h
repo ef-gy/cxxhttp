@@ -105,26 +105,22 @@ class parser {
    *
    * Appends 'value' to the element 'key' in the header map. The former and the
    * new value will be separated by a ',', which is used throughout HTTP/1.1
-   * header fields for when lists need to be represented.
+   * header fields for when lists need to be represented, unless the lws flag is
+   * set, in which case separator is a single space.
    *
    * If the key was not originally set, then the value is simply set instead of
    * appended. This keeps the HTTP/1.1 header list syntax happy.
-   *
-   * @return 'true' if the value was appended, 'false' otherwise, i.e. if the
-   * value was set instead.
    */
-  bool append(const std::string &key, const std::string &value,
+  void append(const std::string &key, const std::string &value,
               bool lws = false) {
     if (!value.empty()) {
       std::string &v = header[key];
       if (v.empty()) {
         v = value;
-        return false;
+      } else {
+        v += (lws ? " " : ",") + value;
       }
-
-      v += (lws ? " " : ",") + value;
     }
-    return true;
   }
 
   /* Parse and append header line.
@@ -149,37 +145,30 @@ class parser {
     bool matched = std::regex_match(line, finalLine);
     complete = matched;
 
-    if (complete) {
-      return true;
-    }
+    if (!complete) {
+      std::smatch matches;
 
-    std::smatch matches;
-
-    matched =
-        !lastHeader.empty() && std::regex_match(line, matches, headerContinued);
-    std::string appendValue;
-    bool lws = false;
-
-    if (matched) {
-      appendValue = matches[1];
-      lws = true;
-    } else {
-      matched = std::regex_match(line, matches, headerProper);
+      matched = !lastHeader.empty() &&
+                std::regex_match(line, matches, headerContinued);
+      std::string appendValue;
+      bool lws = matched;
 
       if (matched) {
-        lastHeader = matches[1];
+        appendValue = matches[1];
+      } else {
+        matched = std::regex_match(line, matches, headerProper);
 
-        // RFC 2616, section 4.2:
-        // Header fields that occur multiple times must be combinable into a
-        // single
-        // value by appending the fields in the order they occur, using commas
-        // to
-        // separate the individual values.
-        appendValue = matches[2];
+        if (matched) {
+          lastHeader = matches[1];
+
+          // RFC 2616, section 4.2:
+          // Header fields that occur multiple times must be combinable into a
+          // single value by appending the fields in the order they occur, using
+          // commas to separate the individual values.
+          appendValue = matches[2];
+        }
       }
-    }
 
-    if (!appendValue.empty()) {
       append(lastHeader, appendValue, lws);
     }
 

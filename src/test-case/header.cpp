@@ -106,26 +106,21 @@ bool testAppend(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string key, value, out;
-    bool res;
   };
 
   std::vector<sampleData> tests{
-      {{}, "a", "b", "a: b\r\n", false},
-      {{{"a", "b"}}, "a", "c", "a: b,c\r\n", true},
-      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n", true},
-      {{{"a", "b"}, {"c", "d"}}, "a", "e", "a: b,e\r\nc: d\r\n", true},
+      {{}, "a", "b", "a: b\r\n"},
+      {{{"a", "b"}}, "a", "c", "a: b,c\r\n"},
+      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n"},
+      {{{"a", "b"}, {"c", "d"}}, "a", "e", "a: b,e\r\nc: d\r\n"},
   };
 
   for (const auto &tt : tests) {
     parser<headers> p{tt.in, ""};
-    const auto a = p.append(tt.key, tt.value);
+    p.append(tt.key, tt.value);
     const std::string v = p;
     if (v != tt.out) {
       log << "string()='" << v << "', expected '" << tt.out << "'\n";
-      return false;
-    }
-    if (a != tt.res) {
-      log << "append(" << tt.out << ") had the wrong return value\n";
       return false;
     }
   }

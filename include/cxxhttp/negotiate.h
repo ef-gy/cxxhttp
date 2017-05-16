@@ -18,7 +18,6 @@
 #include <cmath>
 #include <regex>
 #include <set>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -52,16 +51,49 @@ static inline std::string trim(const std::string &s) {
  * This splits up a string based on the given delimiter. The resulting strings
  * are also trimmed.
  *
+ * This function does respect quotes, so a delimiter within a quoted substring
+ * doesn't count. Backslashes allow for escaping quotes as they normally do, at
+ * least within quotes.
+ *
+ * Empty list items are ignored.
+ *
  * @return A vector of list elements in 'list', split by 'sep'.
  */
 static inline std::vector<std::string> split(const std::string &list,
                                              const char sep = ',') {
+  bool inQuotedString = false;
+  bool escapedCharacter = false;
+
   std::vector<std::string> rv;
-  std::istringstream stream(list);
   std::string item;
-  while (std::getline(stream, item, sep)) {
+
+  for (const auto &c : list) {
+    if (inQuotedString) {
+      if (escapedCharacter) {
+        escapedCharacter = false;
+      } else if (c == '"') {
+        inQuotedString = false;
+      } else if (c == '\\') {
+        escapedCharacter = true;
+      }
+      item.push_back(c);
+    } else if (c == '\"') {
+      inQuotedString = true;
+      item.push_back(c);
+    } else if (c == sep) {
+      if (!item.empty()) {
+        rv.push_back(trim(item));
+        item.clear();
+      }
+    } else {
+      item.push_back(c);
+    }
+  }
+
+  if (!item.empty()) {
     rv.push_back(trim(item));
   }
+
   return rv;
 }
 
@@ -183,9 +215,26 @@ class qvalue {
   std::string full(void) const {
     std::string rv = *this;
     if (!rv.empty()) {
-      std::stringstream qv;
-      qv << (q / 1000.);
-      rv += ";q=" + qv.str();
+      std::string qv = std::to_string(q);
+      // left-pad to the maximum range
+      while (qv.size() < 4) {
+        qv = "0" + qv;
+      }
+
+      // turn into a floating point number
+      qv.insert(qv.begin() + 1, '.');
+
+      // remove trailing zeroes
+      while (qv[qv.size() - 1] == '0') {
+        qv = qv.substr(0, qv.size() - 1);
+      }
+
+      // remove trailing '.'
+      if (qv[qv.size() - 1] == '.') {
+        qv = qv.substr(0, qv.size() - 1);
+      }
+
+      rv += ";q=" + qv;
       for (const auto &a : extensions) {
         rv += ";" + a;
       }

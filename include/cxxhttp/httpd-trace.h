@@ -40,7 +40,7 @@ static void trace(typename http::server<transport>::session &session,
                   std::smatch &re) {
   session.reply(
       200, {{"Content-Type", "message/http"}},
-      std::string(session.inboundRequest) + std::string(session.inbound));
+      session.inboundRequest.assemble() + std::string(session.inbound));
 }
 
 /* TRACE location regex.

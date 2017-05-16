@@ -116,7 +116,7 @@ class session : public sessionData {
     parser<headers> head{header};
     head.insert(defaultClientHeaders);
 
-    std::string req = std::string(requestLine(method, resource)) +
+    std::string req = requestLine(method, resource).assemble() +
                       std::string(head) + "\r\n" + body;
 
     if (status == stRequest) {

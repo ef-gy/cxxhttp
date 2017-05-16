@@ -121,18 +121,21 @@ class requestLine {
   uri resource;
 
   /* Create request line.
+   * @newline Whether to include a trailing CRLF.
    *
    * Uses whatever data we have to create a status line. In case the input would
    * not be valid, a generic status line is created.
    *
    * @return Returns the status line in a form that could be used in HTTP.
    */
-  operator std::string(void) const {
+  std::string assemble(const bool newline = true) const {
+    const std::string trailer = newline ? "\r\n" : "";
+
     if (!valid()) {
-      return "FAIL * HTTP/0.0\r\n";
+      return "FAIL * HTTP/0.0" + trailer;
     }
 
-    return method + " " + std::string(resource) + " " + protocol() + "\r\n";
+    return method + " " + std::string(resource) + " " + protocol() + trailer;
   }
 };
 }

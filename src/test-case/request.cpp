@@ -63,8 +63,8 @@ bool testParse(std::ostream &log) {
           << std::string(v.resource) << "', expected'" << tt.resource << "'\n";
       return false;
     }
-    if (std::string(v) != tt.out) {
-      log << "http::requestLine(" << tt.in << ").out='" << std::string(v)
+    if (v.assemble() != tt.out) {
+      log << "http::requestLine(" << tt.in << ").assemble='" << v.assemble()
           << "', expected'" << tt.out << "'\n";
       return false;
     }

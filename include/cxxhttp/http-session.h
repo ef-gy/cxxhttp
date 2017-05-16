@@ -235,7 +235,7 @@ class sessionData {
       }
     }
 
-    return address + " - - [-] \"" + trim(inboundRequest) + "\" " +
+    return address + " - - [-] \"" + inboundRequest.assemble(false) + "\" " +
            std::to_string(status) + +" " + std::to_string(length) + " \"" +
            referer + "\" \"" + userAgent + "\"";
   }

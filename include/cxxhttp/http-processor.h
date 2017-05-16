@@ -133,8 +133,9 @@ class serverData {
     sess.negotiated = {};
     sess.outbound = {defaultServerHeaders};
     for (const auto &n : negotiations) {
-      const std::string cv =
-          sess.header.count(n.first) > 0 ? sess.header[n.first] : "";
+      const std::string cv = sess.inbound.header.count(n.first) > 0
+                                 ? sess.inbound.header[n.first]
+                                 : "";
       const std::string v = negotiate(cv, n.second);
 
       // modify the Vary value to indicate we used this header.
@@ -289,10 +290,10 @@ class server : public serverData {
    * @return The parser state to switch to.
    */
   enum status afterHeaders(session &sess) const {
-    const auto &cli = sess.header.find("Content-Length");
-    const auto &exp = sess.header.find("Expect");
+    const auto &cli = sess.inbound.header.find("Content-Length");
+    const auto &exp = sess.inbound.header.find("Expect");
 
-    if (exp != sess.header.end()) {
+    if (exp != sess.inbound.header.end()) {
       if (exp->second == "100-continue") {
         sess.reply(100, "");
       } else {
@@ -301,7 +302,7 @@ class server : public serverData {
       }
     }
 
-    if (cli != sess.header.end()) {
+    if (cli != sess.inbound.header.end()) {
       try {
         sess.contentLength = std::stoi(cli->second);
       } catch (...) {
@@ -447,9 +448,9 @@ class client {
    * @return The parser state to switch to.
    */
   enum status afterHeaders(session &sess) const {
-    const auto &cli = sess.header.find("Content-Length");
+    const auto &cli = sess.inbound.header.find("Content-Length");
 
-    if (cli != sess.header.end()) {
+    if (cli != sess.inbound.header.end()) {
       try {
         sess.contentLength = std::stoi(cli->second);
       } catch (...) {

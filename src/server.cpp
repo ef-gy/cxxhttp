@@ -48,7 +48,8 @@ static void hello(typename http::server<transport>::session &session,
   using efgy::json::tag;
 
   if (session.inboundRequest.method == "POST") {
-    session.reply(200, {{"Content-Type", session.header["Content-Type"]}},
+    session.reply(200,
+                  {{"Content-Type", session.inbound.header["Content-Type"]}},
                   session.content);
     return;
   }

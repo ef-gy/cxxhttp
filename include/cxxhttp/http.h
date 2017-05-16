@@ -229,7 +229,7 @@ class session : public sessionData {
       case stRequest: {
         inboundRequest = s;
         if (inboundRequest.valid()) {
-          headerParser = {};
+          inbound = {};
           status = stHeader;
         }
         // this should have an else branch, in case the request line was not
@@ -239,7 +239,7 @@ class session : public sessionData {
       case stStatus: {
         inboundStatus = s;
         if (inboundStatus.valid()) {
-          headerParser = {};
+          inbound = {};
           status = stHeader;
         }
         // this should also have an else branch, and if it's an invalid status
@@ -247,13 +247,12 @@ class session : public sessionData {
       } break;
 
       case stHeader:
-        headerParser.absorb(s);
+        inbound.absorb(s);
         // this may return false, and if it did then what the client sent was
         // not valid HTTP and we should send back an error.
-        if (headerParser.complete) {
+        if (inbound.complete) {
           // we're done parsing headers, so change over to streaming in the
           // results.
-          header = headerParser.header;
           status = connection.processor.afterHeaders(*this);
           content.clear();
           if (remainingBytes() > 0) {

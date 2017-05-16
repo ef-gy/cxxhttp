@@ -49,15 +49,6 @@ class sessionData {
    */
   statusLine inboundStatus;
 
-  /* HTTP request headers
-   *
-   * Contains all the headers that were sent along with the request. Things
-   * like Host: or DNT:. Uses a special case-insensitive sorting function for
-   * the map, so that you can query the contents without having to know the case
-   * of the headers as they were sent.
-   */
-  headers header;
-
   /* Automatically negotiated headers.
    *
    * Set with the value of automatically negotiated headers, if such
@@ -65,6 +56,21 @@ class sessionData {
    * "Accept" instead of "Content-Type".
    */
   headers negotiated;
+
+  /* Inbound header parser instance.
+   *
+   * Contains all the headers that were sent along with the request. Things
+   * like Host: or DNT:. Uses a special case-insensitive sorting function for
+   * the map, so that you can query the contents without having to know the case
+   * of the headers as they were sent.
+   *
+   * This object also has all the facilities to actually parse headers.
+   *
+   * This is for inbound headers, i.e. sent to this instance, as opposed to
+   * outbound headers, i.e. those we'll be sending to a client, or server. See
+   * <outbound> for those.
+   */
+  parser<headers> inbound;
 
   /* Contains headers that will automatically be sent.
    *
@@ -74,6 +80,10 @@ class sessionData {
    *
    * For negotiated headers, this uses the output header name, e.g.
    * "Content-Type" for when the client used "Accept".
+   *
+   * This is for outbound headers, i.e. those we'll be sending to the client
+   * that connected to us, or the server we connected to. For the opposite
+   * direction, see <inbound>.
    */
   parser<headers> outbound;
 
@@ -204,8 +214,8 @@ class sessionData {
     static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
     std::string referer = "-";
     std::string userAgent = "-";
-    auto it = this->header.find("Referer");
-    if (it != this->header.end()) {
+    auto it = this->inbound.header.find("Referer");
+    if (it != this->inbound.header.end()) {
       referer = it->second;
       uri ref = referer;
       if (!ref.valid()) {
@@ -215,8 +225,8 @@ class sessionData {
       }
     }
 
-    it = this->header.find("User-Agent");
-    if (it != this->header.end()) {
+    it = this->inbound.header.find("User-Agent");
+    if (it != this->inbound.header.end()) {
       userAgent = it->second;
       if (!std::regex_match(userAgent, agent)) {
         userAgent = "(redacted)";
@@ -261,12 +271,6 @@ class sessionData {
   }
 
  protected:
-  /* Header parser instance.
-   *
-   * Constains all the state we need to parse headers.
-   */
-  parser<headers> headerParser;
-
   /* ASIO input stream buffer
    *
    * This is the stream buffer that the object is reading from.

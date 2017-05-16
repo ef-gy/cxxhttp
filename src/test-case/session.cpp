@@ -132,7 +132,7 @@ bool testLog(std::ostream &log) {
     http::sessionData s;
 
     s.inboundRequest = tt.request;
-    s.header = tt.header;
+    s.inbound.header = tt.header;
 
     const auto &v = s.logMessage(tt.address, tt.status, tt.length);
 

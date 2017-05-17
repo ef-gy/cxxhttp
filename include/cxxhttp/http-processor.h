@@ -17,14 +17,13 @@
 #include <algorithm>
 #include <deque>
 #include <functional>
-#include <map>
-#include <regex>
 
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
 #include <cxxhttp/version.h>
 
 #include <cxxhttp/http-constants.h>
+#include <cxxhttp/http-servlet.h>
 #include <cxxhttp/http-session.h>
 
 namespace cxxhttp {
@@ -63,44 +62,6 @@ static const headers defaultClientHeaders{
  * actually handle an HTTP request after it has been parsed.
  */
 namespace processor {
-/* Subprocessor type.
- * @session The session type for the subprocessor.
- *
- * Used in the basic server processor to dispatch requests.
- */
-template <class session>
-struct handler {
-  /* Compiled resource regex.
-   *
-   * Matched against the resource that the client is requesting.
-   */
-  std::regex resource;
-
-  /* Compiled method regex.
-   *
-   * Matched against the method that the client used.
-   */
-  std::regex method;
-
-  /* List of applicable server-side content negotiations.
-   *
-   * If present, these automatically get resolved against what the client sends
-   * and the outbound headers are updated accordingly. Will also generate a Vary
-   * header to go along with it.
-   */
-  headers negotiations;
-
-  /* Handling function.
-   *
-   * Called if the resource and method are a match and the negotiations, if
-   * there were any, were successful.
-   *
-   * After this handler is run, the processor examines the session to see if you
-   * sent out a reply. If so, it will stop future processing.
-   */
-  std::function<void(session &, std::smatch &)> handler;
-};
-
 /* Transport-agnostic parts of the server processor.
  *
  * These are transport-agnostic bits of data and functions that are used by the
@@ -119,7 +80,7 @@ class serverData {
 
   /* Negotiate headers for request.
    * @sess Basic session data, which is modified and initialised in-place.
-   * @negotiations The set of negotiations to perform, from the subprocessor.
+   * @negotiations The set of negotiations to perform, from the servlet.
    *
    * Uses the global header negotiation facilities to set actual inbound and
    * outbound headers based on what the input request looks like.
@@ -128,8 +89,8 @@ class serverData {
    */
   bool negotiateHeaders(sessionData &sess, const headers &negotiations) const {
     bool badNegotiation = false;
-    // reset, and perform, header value negotiation based on the
-    // subprocessor's specs and the client data.
+    // reset, and perform, header value negotiation based on the servlet's specs
+    // and the client data.
     sess.negotiated = {};
     sess.outbound = {defaultServerHeaders};
     for (const auto &n : negotiations) {
@@ -202,6 +163,20 @@ class server : public serverData {
    */
   using session = http::session<transport, server>;
 
+  /* Servlet type.
+   *
+   * This is what processes actual inbound requests. We need to sort through
+   * those to do anything.
+   */
+  using servlet = http::servlet<transport, session>;
+
+  /* Bound servlets.
+   *
+   * A reference to the set of servlets we support, which is to say this is the
+   * list of server-side request handlers we'll be using.
+   */
+  std::set<servlet *> servlets;
+
   /* Handle request
    * @sess The session object where the request was made.
    *
@@ -218,26 +193,24 @@ class server : public serverData {
     const std::string resource = sess.inboundRequest.resource.path();
     const std::string method = sess.inboundRequest.method;
 
-    for (auto &proc : subprocessor) {
-      const auto &subprocessor = proc.second;
+    for (const auto &servlet : servlets) {
       std::smatch matches;
 
       bool resourceMatch =
-          std::regex_match(resource, matches, subprocessor.resource);
-      bool methodMatch = std::regex_match(method, subprocessor.method);
+          std::regex_match(resource, matches, servlet->resource);
+      bool methodMatch = std::regex_match(method, servlet->method);
 
       methodSupported = methodSupported || methodMatch;
 
       if (resourceMatch) {
         if (methodMatch) {
-          bool badNegotiation =
-              !negotiateHeaders(sess, subprocessor.negotiations);
+          bool badNegotiation = !negotiateHeaders(sess, servlet->negotiations);
 
           if (badNegotiation) {
             trigger406 = true;
           } else {
             const std::size_t q = sess.queries();
-            subprocessor.handler(sess, matches);
+            servlet->handler(sess, matches);
 
             if (sess.queries() > q) {
               // we've sent something back to the client, so no need to process
@@ -249,7 +222,7 @@ class server : public serverData {
           methods.insert(method);
         } else
           for (const auto &m : http::method) {
-            if (std::regex_match(m, subprocessor.method)) {
+            if (std::regex_match(m, servlet->method)) {
               methods.insert(m);
             }
           }
@@ -334,24 +307,6 @@ class server : public serverData {
     return stRequest;
   }
 
-  /* Add handler
-   * @rx The regex that should trigger a given handler.
-   * @handler The function to call.
-   * @methodx Regex for allowed methods.
-   * @negotiations q-value lists for server-side content negotiation.
-   *
-   * This function adds a handler for a specific regex. Currently this is stored
-   * in a map, so the order is probably unpredictable - but also probably just
-   * alphabetic.
-   */
-  void add(const std::string &rx,
-           std::function<void(session &, std::smatch &)> handler,
-           const std::string &methodx = "GET",
-           const headers &negotiations = {}) {
-    subprocessor[rx] = {std::regex(rx), std::regex(methodx), negotiations,
-                        handler};
-  }
-
   /* Begin handling requests
    * @sess The session that's just been established.
    *
@@ -361,20 +316,6 @@ class server : public serverData {
    * In the HTTP server case, we begin by reading.
    */
   void start(session &sess) const { sess.read(); }
-
- protected:
-  /* The subprocessor type.
-   *
-   * Assembled using the local session type.
-   */
-  using processor = handler<session>;
-
-  /* Map of request handlers
-   *
-   * This is the map that holds the request handlers. It maps regex strings to
-   * handler functions, which is fairly straightforward.
-   */
-  std::map<std::string, processor> subprocessor;
 };
 
 /* Client request data.

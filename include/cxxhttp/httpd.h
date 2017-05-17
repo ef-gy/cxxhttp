@@ -16,7 +16,6 @@
 #define CXXHTTP_HTTPD_H
 
 #include <ef.gy/cli.h>
-#include <ef.gy/global.h>
 
 #include <cxxhttp/http.h>
 
@@ -30,135 +29,14 @@ namespace httpd {
  * resource and the method invoked, as well as a handler for a succsseful match.
  *
  * For advanced usage, it is possible to provide data or content negotiation.
+ *
+ * This alias makes initialisation slightly more convenient, by removing the
+ * need to specify the session type. Instead, this just uses the session type
+ * for a default HTTP server.
  */
 template <class transport>
-class servlet {
- public:
-  /* Session type alias.
-   *
-   * This shortens a few lines below, as the type is surprisingly long to write
-   * out.
-   */
-  using sessionType = typename http::server<transport>::session;
-
-  /* Constructor.
-   * @pResourcex Regex for applicable resources.
-   * @pHandler Function specification to handle incoming requests that match.
-   * @pMethodx Optional method regex; defaults to only allowing GET.
-   * @pNegotiations Map of content negotiations to perform for this servlet.
-   * @pDescription Optional API description string. URL recommended.
-   * @pSet Where to register the servlet; defaults to the global set.
-   *
-   * Initialisation allows setting all the available options. The only reason
-   * this isn't a POD type is that we also need to register with the
-   * per-transport set of servlets.
-   */
-  servlet(const std::string &pResourcex,
-          std::function<void(sessionType &, std::smatch &)> pHandler,
-          const std::string &pMethodx = "GET",
-          const http::headers pNegotiations = {},
-          const std::string &pDescription = "no description available",
-          std::set<servlet *> &pSet = efgy::global<std::set<servlet *>>())
-      : resourcex(pResourcex),
-        methodx(pMethodx),
-        handler(pHandler),
-        negotiations(pNegotiations),
-        description(pDescription),
-        root(pSet) {
-    root.insert(this);
-  }
-
-  /* Destructor.
-   *
-   * Unregisters from the global set this servlet was registered to.
-   */
-  ~servlet(void) { root.erase(this); }
-
-  /* Resource regex.
-   *
-   * A regex that is matched, in full, against any incoming requests. The
-   * matches structure that results is passed into the handler function, so it
-   * is recommended that interesting parts of the URL are captured using
-   * parentheses to indicate subexpressions.
-   */
-  const std::string resourcex;
-
-  /* Method regex.
-   *
-   * Similar to the resource regex, but for the method that is used by the
-   * client. The matches struct here is not provided to the handler, but the
-   * original method name is provided as part of the session object.
-   */
-  const std::string methodx;
-
-  /* Content negotiation data.
-   *
-   * This is a map of the form `header: valid options`. Any header specified
-   * will be automatically negotiated against what the client specifies during
-   * the request, while allowing q-values on either side.
-   *
-   * If there's no matches between what both sides provide, then this is
-   * considered a bad match, and a reply is sent to the client indicating that
-   * content negotiation has failed.
-   *
-   * As an example, suppose this is set to:
-   *
-   *     {
-   *       {"Accept": "text/plain, application/json;q=0.9"}
-   *     }
-   *
-   * If the client sent no `Accept` header, the negotiated value would be
-   * `text/plain`. If it sent the value `application/json` then this would pick
-   * `application/json`. If it sent `foo/blargh` then that would be a bad match,
-   * resulting in a client error unless a different servlet that is applicable
-   * matches successfully.
-   *
-   * Also note that `Accept` in particular will cause an appropriate
-   * `Content-Type` header with the correct negotiation to be sent back
-   * automatically. This is configured in one of the constants in
-   * `http-constants.h`. Also, each match will add the original header to the
-   * `Vary` header that will also be added to the output automatically.
-   */
-  const http::headers negotiations;
-
-  /* Handler function.
-   *
-   * Will be invoked if the resource and method match the provided regexen, and
-   * content negotiation was successful.
-   *
-   * The return type is a boolean, and returning `true` indicates that the
-   * request has been adequately processed. If this function returns `false`,
-   * then the processor will continue trying to look up matching handlers and
-   * assume no reply has been sent, yet.
-   */
-  const std::function<void(sessionType &, std::smatch &)> handler;
-
-  /* Description of the servlet.
-   *
-   * Help texts may use this to provide more details on what a servlet does and
-   * how to invoke it correctly. A URL with an API description si recommended.
-   */
-  const std::string description;
-
-  /* Add servlet to processor.
-   * @processor The HTTP processor type. Most likely http::processor::server.
-   * @proc The HTTP processor instance to add to.
-   *
-   * Adds the servlet as a subprocessor to the given processor, allowing that
-   * processor to use it.
-   */
-  template <class processor>
-  void apply(processor &proc) const {
-    proc.add(resourcex, handler, methodx, negotiations);
-  }
-
- protected:
-  /* The servlet set we're registered with.
-   *
-   * Used in the destructor to unregister the servlet.
-   */
-  std::set<servlet *> &root;
-};
+using servlet =
+    http::servlet<transport, typename http::server<transport>::session>;
 
 namespace cli {
 using efgy::cli::option;
@@ -189,9 +67,7 @@ static bool setup(net::endpoint<transport> lookup,
     http::server<transport> *s =
         new http::server<transport>(endpoint, servers, service);
 
-    for (const auto &sv : servlets) {
-      sv->apply(s->processor);
-    }
+    s->processor.servlets = servlets;
 
     rv = rv || true;
   }

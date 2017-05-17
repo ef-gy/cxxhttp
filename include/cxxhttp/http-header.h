@@ -1,4 +1,4 @@
-/* asio.hpp HTTP header type.
+/* HTTP header type.
  *
  * The headers data type is a basic map, but with a case-insensitive comparator,
  * which is necessary for processing HTTP/1.1 headers as this makes keys that
@@ -16,59 +16,22 @@
 #if !defined(CXXHTTP_HTTP_HEADER_H)
 #define CXXHTTP_HTTP_HEADER_H
 
-#include <locale>
 #include <map>
 #include <regex>
 #include <set>
-#include <string>
 
 #include <cxxhttp/http-grammar.h>
+#include <cxxhttp/string.h>
 
 namespace cxxhttp {
 namespace http {
-/* Case-insensitive comparison functor
- *
- * A simple functor used by the attribute map to compare strings without
- * caring for the letter case.
- */
-class headerNameLT
-    : private std::binary_function<std::string, std::string, bool> {
- public:
-  /* Case-insensitive string comparison
-   * @a The first of the two strings to compare.
-   * @b The second of the two strings to compare.
-   *
-   * Compares two strings case-insensitively.
-   *
-   * @return 'true' if the first string is "less than" the second.
-   */
-  bool operator()(const std::string &a, const std::string &b) const {
-    return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end(),
-                                        compare);
-  }
-
- protected:
-  /* Lower-case comparison function.
-   * @c1 The left-hand side of the comparison.
-   * @c2 The right-hand side of the comparison.
-   *
-   * Used by the operator() as the comparator for std::lexicographical_compare.
-   *
-   * @return true, if c1 comes before c2 after converting both to lower-case.
-   */
-  static bool compare(unsigned char c1, unsigned char c2) {
-    return std::tolower(c1) < std::tolower(c2);
-  }
-};
-
 /* HTTP header type.
  *
  * This is a basic string-to-string map, but with the case-insensitive
- * comparison operator from above. Usage is the same as any other map, except
- * that keys are effectively considered the same if they only differ in their
- * case.
+ * comparison operator. Usage is the same as any other map, except that keys are
+ * effectively considered the same if they only differ in their case.
  */
-using headers = std::map<std::string, std::string, headerNameLT>;
+using headers = std::map<std::string, std::string, caseInsensitiveLT>;
 
 /* Header parser functionality.
  * @headers The map-like type to use when parsing headers.

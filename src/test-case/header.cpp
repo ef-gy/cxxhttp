@@ -54,45 +54,6 @@ bool testToString(std::ostream &log) {
   return true;
 }
 
-/* Test case-insensitive comparator.
- * @log Test output stream.
- *
- * HTTP requires headers to be case-insensitive, so this test makes sure that
- * the function we implemented for that works as intended. This is a table based
- * test where the test data is used for the comparison both back and forward.
- *
- * @return 'true' on success, 'false' otherwise.
- */
-bool testCompare(std::ostream &log) {
-  struct sampleData {
-    std::string a, b;
-    bool res, rev;
-  };
-
-  std::vector<sampleData> tests{
-      {"a", "b", true, false},    {"a", "a", false, false},
-      {"a", "A", false, false},   {"aa", "ab", true, false},
-      {"aA", "Aa", false, false},
-  };
-
-  for (const auto &tt : tests) {
-    const auto v = headerNameLT()(tt.a, tt.b);
-    if (v != tt.res) {
-      log << "headerNameLT('" << tt.a << "' < '" << tt.b << "')='" << v
-          << "', expected '" << tt.res << "'\n";
-      return false;
-    }
-    const auto v2 = headerNameLT()(tt.b, tt.a);
-    if (v2 != tt.rev) {
-      log << "headerNameLT('" << tt.b << "' < '" << tt.a << "')='" << v2
-          << "', expected '" << tt.rev << "'\n";
-      return false;
-    }
-  }
-
-  return true;
-}
-
 /* Test header append function.
  * @log Test output stream.
  *
@@ -259,7 +220,6 @@ namespace test {
 using efgy::test::function;
 
 static function toString(testToString);
-static function compare(testCompare);
 static function append(testAppend);
 static function absorb(testAbsorb);
 static function clear(testClear);

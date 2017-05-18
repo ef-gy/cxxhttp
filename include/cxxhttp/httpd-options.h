@@ -38,7 +38,7 @@ static void options(typename http::server<transport>::session &session,
   std::set<std::string> methods{};
   const std::string full = re[0];
 
-  for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
+  for (const auto &servlet : session.connection.processor.servlets) {
     if ((full == "*") || std::regex_match(full, servlet->resource)) {
       text += servlet->describe();
       for (const auto &m : http::method) {

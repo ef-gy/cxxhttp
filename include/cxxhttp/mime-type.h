@@ -68,8 +68,17 @@ class mimeType {
    */
   bool valid(void) const { return isValid; }
 
+  /* Default Constructor.
+   *
+   * Produces a MIME type instance that is tagged as invalid.
+   */
+  mimeType() : isValid(false) {}
+
   /* Parse MIME type.
    * @pType The string serialisation of a MIME type to parse.
+   *
+   * Does a proper parse of the given media type. The <isValid> member will be
+   * set afterwards to indicate whether the input string was a valid MIME type.
    */
   mimeType(const std::string &pType) : isValid(true) {
     enum {
@@ -165,6 +174,50 @@ class mimeType {
     return rv;
   }
 
+  /* Less-than comparator.
+   * @b Right-hand side of the comparison.
+   *
+   * Compares the value in `b` to this value, and returns `true` if this value
+   * is considered to come before the `b` value in a lexical sort.
+   *
+   * This is implemented using the normalised string form of the two types in
+   * question.
+   *
+   * @return Whether this value is less than `b`.
+   */
+  bool operator<(const mimeType &b) const {
+    return std::string(*this) < std::string(b);
+  }
+
+  /* Equality operator.
+   * @b The instance to compare to.
+   *
+   * Matching is performed based on the full attribute values. Full wildcards
+   * for either the type or subtype are allowed as well.
+   *
+   * Two types do not match if both sides have wildcards.
+   *
+   * @return Whether or not the two mime types match.
+   */
+  bool operator==(const mimeType &b) const {
+    return valid() && b.valid() && (!wildcard() || !b.wildcard()) &&
+           (type == "*" || b.type == "*" || type == b.type) &&
+           (subtype == "*" || b.subtype == "*" || subtype == b.subtype) &&
+           (attributes == b.attributes);
+  }
+
+  /* Does this media type contain wildcards?
+   *
+   * `haveWildcards()` checks if either the type or the subtype is a literal
+   * asterisk character, which is normally used to denote wildcards for media
+   * type matching.
+   *
+   * @return Whether either of the components is a wildcard character.
+   */
+  bool wildcard(void) const {
+    return valid() && (type == "*" || subtype == "*");
+  }
+
  protected:
   /* Is this type valid?
    *
@@ -231,8 +284,8 @@ class mimeType {
    * RFC 2045, section 5.1.
    *
    * Original grammar rule:
-   *     token := 1*<any (US-ASCII) CHAR except SPACE, CTLs,
-   *                 or tspecials>
+   *     token := 1*(any (US-ASCII) CHAR except SPACE, CTLs,
+   *                 or tspecials)
    *
    * @return Reports whether the character is a valid character in a token.
    */

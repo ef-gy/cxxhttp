@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include <cxxhttp/mime-type.h>
+
 namespace cxxhttp {
 /* std::isspace wrapper for trim().
  * @c The character to check.
@@ -104,6 +106,52 @@ static inline std::vector<std::string> split(const std::string &list,
  */
 class qvalue {
  public:
+  /* Value
+   *
+   * This is the main value with which the quality value below is associated. In
+   * HTTP/1.1, this would be a single element in a list of MIME types, or a
+   * language code or similar.
+   */
+  std::string value;
+
+  /* Attributes for value.
+   *
+   * If 'value' is a MIME type, then this would be additional attributes for
+   * this MIME type. RFC 2616 has an example of 'level=1' for type 'text/html',
+   * which would be written as 'text/html;level=1'.
+   */
+  std::set<std::string> attributes;
+
+  /* Quality value.
+   *
+   * This is the 'quality' value, or q-value associated with the entry. See RFC
+   * 2616, section 3.9 for a summary. The range of these is 0.000 - 1.000, with
+   * 3 digits max after the decimal point, so the're represented here as an int
+   * with a range of 0 - 1000, defaulting to 1000.
+   *
+   * See: https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
+   */
+  int q;
+
+  /* Extensions
+   *
+   * Fields like "Accept" allow for extension attributes, which come after the
+   * q= attribute and would not be part of the MIME type or similar value. There
+   * were no examples in the standard, so this is pretty generous in what it
+   * allows.
+   *
+   * It was also unclear in the standard if the order of these parameters would
+   * matter and whether deduplication was allowed, so this is using a std::set
+   * which violates both of these properties, since it didn't seem otherwise.
+   */
+  std::set<std::string> extensions;
+
+  /* Parsed MIME media type.
+   *
+   * Set in the constructor, if the qvalue parse was valid.
+   */
+  mimeType mime;
+
   /* Construct from encoded string
    * @val The value to parse.
    *
@@ -140,47 +188,10 @@ class qvalue {
 
     // limit q-values between 0 and 1000.
     q = std::max(std::min(q, 1000), 0);
+
+    // try parsing the contents as a MIME type.
+    mime = std::string(*this);
   }
-
-  /* Value
-   *
-   * This is the main value with which the quality value below is associated. In
-   * HTTP/1.1, this would be a single element in a list of MIME types, or a
-   * language code or similar.
-   */
-  std::string value;
-
-  /* Attributes for value.
-   *
-   * If 'value' is a MIME type, then this would be additional attributes for
-   * this MIME type. RFC 2616 has an example of 'level=1' for type 'text/html',
-   * which would be written as 'text/html;level=1'.
-   */
-  std::set<std::string> attributes;
-
-  /* Extensions
-   *
-   * Fields like "Accept" allow for extension attributes, which come after the
-   * q= attribute and would not be part of the MIME type or similar value. There
-   * were no examples in the standard, so this is pretty generous in what it
-   * allows.
-   *
-   * It was also unclear in the standard if the order of these parameters would
-   * matter and whether deduplication was allowed, so this is using a std::set
-   * which violates both of these properties, since it didn't seem otherwise.
-   */
-  std::set<std::string> extensions;
-
-  /* Quality value.
-   *
-   * This is the 'quality' value, or q-value associated with the entry. See RFC
-   * 2616, section 3.9 for a summary. The range of these is 0.000 - 1.000, with
-   * 3 digits max after the decimal point, so the're represented here as an int
-   * with a range of 0 - 1000, defaulting to 1000.
-   *
-   * See: https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
-   */
-  int q;
 
   /* Recombined value.
    *
@@ -263,52 +274,14 @@ class qvalue {
       return false;
     }
 
+    if (mime.valid() && b.mime.valid()) {
+      return mime < b.mime;
+    }
+
     if (value == b.value) {
       if (attributes.size() < b.attributes.size()) {
         return true;
       }
-    }
-
-    // split the values by the '/' character - this is for mime types.
-    auto sa = split(value, '/');
-    auto sb = split(b.value, '/');
-
-    if (sa.size() != sb.size()) {
-      // this is technically an error, but we'll roll with it and assume the
-      // side with fewer components wins.
-      return sa.size() < sb.size();
-    }
-
-    if (sa.size() == 2) {
-      // we're most likely looking at MIME types. Carry on.
-      if (sa[0] == "*") {
-        // only allowed if sa[1] == "*" as well. We'll just assume that's true.
-        // In that case, if b is not also */* then b is greater than this.
-        return sb[0] != "*";
-      } else if (sb[0] == "*") {
-        // if b has a value of */*, then that one is less than this one.
-        return false;
-      } else if (sa[0] == sb[0]) {
-        // if the main type of both is the same, see if either is *.
-        return sa[1] == "*";
-      }
-    } else if (sa.size() == 1) {
-      // the two values have no '/' characters, so are most likely not mime
-      // types. The only other kind of value where we care about sub-parts in
-      // the standard is language tags, which can have an arbitrary number of
-      // sub-tags on either side.
-      auto sa = split(value, '-');
-      auto sb = split(b.value, '-');
-
-      for (unsigned i = 0; i < std::min(sa.size(), sb.size()); i++) {
-        if (sa[i] != sb[i]) {
-          return sa[i] < sb[i];
-        }
-      }
-      // if we get here, that means that up until the shortest sub-tag the two
-      // were identical. So the the longer one is more specific, thus the
-      // shorter one is less than the longer one.
-      return sa.size() < sb.size();
     }
 
     // We couldn't find out which is less than the other, so just default to
@@ -324,10 +297,6 @@ class qvalue {
    * a match. This also allows MIME-type matching, if both sides have a / in
    * them.
    *
-   * For fuzzy matches (with *), the attributes are ignored. Otherwise they have
-   * to match precisely. The logic here is that the fuzzy matching already
-   * implies that we can't know the valid attributes anyway, so we ignore them.
-   *
    * @return true if the values are equal, allowing for wildcards.
    */
   bool operator==(const qvalue &b) const {
@@ -338,29 +307,19 @@ class qvalue {
       return true;
     }
 
-    bool aw = hasWildcard();
-    bool bw = b.hasWildcard();
-
-    if (aw == bw) {
-      // if both sides are, or have, a wildcard, then this can't match.
+    // the two sides can't be a match if one is a MIME type and the other isn't.
+    if (mime.valid() != b.mime.valid()) {
       return false;
     }
 
-    auto sa = split(value, '/');
-    auto sb = split(b.value, '/');
+    if (mime.valid() && b.mime.valid()) {
+      return mime == b.mime;
+    }
 
-    if ((sa.size() == sb.size()) && !sa.empty()) {
-      // if both sides have the same number of /-es (we really assume there's
-      // only two components here) then we have a match if the subcomponents are
-      // all the same or a wild card.
-      for (unsigned i = 0; i < sa.size(); i++) {
-        if ((sa[i] != sb[i]) && (sa[i] != "*") && (sb[i] != "*")) {
-          return false;
-        }
-      }
-
-      // if we get here, then each component has matched one way or another.
-      return true;
+    // since the two items aren't MIME types, if either of the two is a wildcard
+    // then we only need the attributes to match.
+    if (wildcard() != b.wildcard()) {
+      return attributesMatch;
     }
 
     return false;
@@ -374,10 +333,7 @@ class qvalue {
    *
    * @return 'true' if the value has a wildcard.
    */
-  bool hasWildcard(void) const {
-    auto a = split(value, '/');
-    return std::find(a.begin(), a.end(), "*") != a.end();
-  }
+  bool wildcard(void) const { return value == "*" || mime.wildcard(); }
 };
 
 /* Negotiate with quality-value.
@@ -415,7 +371,7 @@ static inline std::string negotiate(std::set<qvalue> theirs,
     // our side.
     std::vector<qvalue> rev(mine.rbegin(), mine.rend());
     for (const auto &v : rev) {
-      if (!v.hasWildcard()) {
+      if (!v.wildcard()) {
         // only return a value if there's no wildcards.
         return v;
       }
@@ -437,11 +393,11 @@ static inline std::string negotiate(std::set<qvalue> theirs,
         // influences.
         int q = a.q * b.q / 1000;
 
-        if (a.hasWildcard()) {
+        if (a.wildcard()) {
           auto qv = b;
           qv.q = q;
           is.insert(qv);
-        } else if (b.hasWildcard()) {
+        } else if (b.wildcard()) {
           auto qv = a;
           qv.q = q;
           is.insert(qv);

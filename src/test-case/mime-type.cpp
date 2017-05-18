@@ -130,9 +130,62 @@ bool testNormalise(std::ostream &log) {
   return true;
 }
 
+/* Test MIME type comparisons.
+ * @log Test output stream.
+ *
+ * Parses pairs of MIME types, and tests the various comparators and predicates
+ * defined on them.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testCompare(std::ostream &log) {
+  struct sampleData {
+    std::string a, b;
+    bool less, rless, equal, awildcard, bwildcard;
+  };
+
+  std::vector<sampleData> tests{
+      {"a/b", "a/b", false, false, true, false, false},
+      {"a/b", "c/d", true, false, false, false, false},
+      {"a/*", "c/d", true, false, false, true, false},
+      {"foo/bar", "foo/*", false, true, true, false, true},
+      {"foo/bar; a=b", "foo/* ; a =b", false, true, true, false, true},
+      {"foo/bar ;a= b", "foo/bar; a =c", true, false, false, false, false},
+  };
+
+  for (const auto &tt : tests) {
+    const mimeType a = tt.a;
+    const mimeType b = tt.b;
+
+    if ((a < b) != tt.less) {
+      log << "('" << tt.a << "' < '" << tt.b << "') = '" << (a < b) << "'\n";
+      return false;
+    }
+    if ((b < a) != tt.rless) {
+      log << "('" << tt.a << "' > '" << tt.b << "') = '" << (b < a) << "'\n";
+      return false;
+    }
+    if ((a == b) != tt.equal) {
+      log << "('" << tt.a << "' == '" << tt.b << "') = '" << (a == b) << "'\n";
+      return false;
+    }
+    if (a.wildcard() != tt.awildcard) {
+      log << "w('" << tt.a << "').wildcard() = '" << a.wildcard() << "'\n";
+      return false;
+    }
+    if (b.wildcard() != tt.bwildcard) {
+      log << "w('" << tt.b << "').wildcard() = '" << b.wildcard() << "'\n";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 namespace test {
 using efgy::test::function;
 
 static function parser(testParser);
 static function normalise(testNormalise);
+static function compare(testCompare);
 }

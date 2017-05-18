@@ -303,12 +303,12 @@ bool testQvalueMatch(std::ostream &log) {
       {"a", "foo", false, false, false},
       {"a", "a;q=0.1", true, false, false},
       {"a", "b;q=0.2", false, false, false},
-      {"*", "foo;bar", true, true, false},
-      {"*;baz", "foo", true, true, false},
+      {"*", "foo;bar", false, true, false},
+      {"*;baz", "foo", false, true, false},
       {"a/b", "*/*", true, false, true},
       {"a/b", "a/b;c=d", false, false, false},
-      {"a/*", "a/b;c=d", true, true, false},
-      {"*/*", "a/b;c=d", true, true, false},
+      {"a/*;c=d", "a/b;c=d", true, true, false},
+      {"*/*;c=d", "a/b;c=d", true, true, false},
   };
 
   for (const auto &tt : tests) {
@@ -319,13 +319,13 @@ bool testQvalueMatch(std::ostream &log) {
           << "') has unexpected value.\n";
       return false;
     }
-    if (a.hasWildcard() != tt.aWildcard) {
-      log << "qvalue('" << tt.a << "').hasWildcard()=" << tt.aWildcard
+    if (a.wildcard() != tt.aWildcard) {
+      log << "qvalue('" << tt.a << "').wildcard()=" << tt.aWildcard
           << " has unexpected value.\n";
       return false;
     }
-    if (b.hasWildcard() != tt.bWildcard) {
-      log << "qvalue('" << tt.b << "').hasWildcard()=" << tt.bWildcard
+    if (b.wildcard() != tt.bWildcard) {
+      log << "qvalue('" << tt.b << "').wildcard()=" << tt.bWildcard
           << " has unexpected value.\n";
       return false;
     }
@@ -365,7 +365,7 @@ bool testFullNegotiation(std::ostream &log) {
        "text/plain", "text/plain", "text/plain"},
       {"text/*;q=0.3, text/html;q=0.7, text/html;level=1,"
        "text/html;level=2;q=0.4, */*;q=0.5",
-       "text/*", "text/html;level=1", "text/html;level=1"},
+       "text/*, text/*;level=1", "text/html;level=1", "text/html;level=1"},
       {"text/*;q=0.3, text/html;q=0.7, text/html;level=1,"
        "text/html;level=2;q=0.4, */*;q=0.5",
        "text/*;q=0.1, text/html", "text/html", "text/html"},

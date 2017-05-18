@@ -121,6 +121,7 @@ class session : public sessionData {
 
     if (status == stRequest) {
       status = stStatus;
+      readLine();
     }
 
     asio::async_write(
@@ -165,31 +166,6 @@ class session : public sessionData {
    */
   void reply(int status, const std::string &body) { reply(status, {}, body); }
 
-  /* Asynchronouse read handler
-   *
-   * Decides if things need to be read in and - if so - what needs to be read.
-   *
-   * Automatically deletes the object on errors - which also closes the
-   * connection automagically.
-   */
-  void read(void) {
-    switch (status) {
-      case stRequest:
-      case stStatus:
-      case stHeader:
-        readLine();
-        break;
-      case stContent:
-        readRemainingContent();
-        break;
-      case stProcessing:
-      case stError:
-      case stShutdown:
-        break;
-    }
-  }
-
- protected:
   /* Read enough off the input socket to fill a line.
    *
    * Issue a read that will make sure there's at least one full line available
@@ -205,20 +181,16 @@ class session : public sessionData {
 
   /* Read remainder of the request body.
    *
-   * Issues a read for anything left to read in the request body.
+   * Issues a read for anything left to read in the request body, if there's
+   * anything left to read.
    */
   void readRemainingContent(void) {
-    if (remainingBytes() > 0) {
-      asio::async_read(
-          socket, input, asio::transfer_at_least(remainingBytes()),
-          [&](const asio::error_code &error, std::size_t bytes_transferred) {
-            handleRead(error);
-          });
-    } else {
-      handleRead(std::error_code());
-    }
+    asio::async_read(socket, input, asio::transfer_at_least(remainingBytes()),
+                     [&](const asio::error_code &error,
+                         std::size_t bytes_transferred) { handleRead(error); });
   }
 
+ protected:
   /* Callback after more data has been read.
    * @error Current error state.
    *
@@ -265,7 +237,9 @@ class session : public sessionData {
       reply(400, "Sorry, you sent an invalid start line.");
     }
 
-    if (status == stContent) {
+    if (status == stHeader) {
+      readLine();
+    } else if (status == stContent) {
       content += buffer();
       if (remainingBytes() == 0) {
         status = stProcessing;
@@ -284,13 +258,13 @@ class session : public sessionData {
             return;
           }
         }
+      } else {
+        readRemainingContent();
       }
     }
 
     if (status == stError) {
       delete this;
-    } else if (status == stHeader || status == stContent) {
-      read();
     }
   }
 

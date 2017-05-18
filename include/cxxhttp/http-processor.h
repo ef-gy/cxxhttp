@@ -302,8 +302,7 @@ class server : public serverData {
    * @return The parser state to switch to.
    */
   enum status afterProcessing(session &sess) const {
-    sess.status = stRequest;
-    sess.read();
+    sess.readLine();
     return stRequest;
   }
 
@@ -315,7 +314,10 @@ class server : public serverData {
    *
    * In the HTTP server case, we begin by reading.
    */
-  void start(session &sess) const { sess.read(); }
+  void start(session &sess) const {
+    sess.status = stRequest;
+    sess.readLine();
+  }
 };
 
 /* Client request data.
@@ -431,7 +433,6 @@ class client {
     requests.pop_front();
 
     sess.request(req.method, req.resource, req.header, req.body);
-    sess.read();
   }
 
   /* Queue up things to do on this connection.

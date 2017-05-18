@@ -214,25 +214,14 @@ class sessionData {
   std::string logMessage(const std::string &address, int status,
                          std::size_t length) const {
     static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
-    std::string referer = "-";
-    std::string userAgent = "-";
-    auto it = inbound.header.find("Referer");
-    if (it != inbound.header.end()) {
-      referer = it->second;
-      uri ref = referer;
-      if (!ref.valid()) {
-        referer = "(invalid)";
-      } else {
-        referer = ref;
-      }
-    }
+    std::string userAgent = inbound.get("User-Agent", "-");
 
-    it = inbound.header.find("User-Agent");
-    if (it != inbound.header.end()) {
-      userAgent = it->second;
-      if (!std::regex_match(userAgent, agent)) {
-        userAgent = "(redacted)";
-      }
+    uri ref = inbound.get("Referer", "-");
+    std::string referer =
+        ref.valid() ? std::string(ref) : std::string("(invalid)");
+
+    if (!std::regex_match(userAgent, agent)) {
+      userAgent = "(redacted)";
     }
 
     return address + " - - [-] \"" + inboundRequest.assemble(false) + "\" " +
@@ -253,20 +242,11 @@ class sessionData {
     std::istream is(&input);
     std::string s;
 
-    switch (status) {
-      case stRequest:
-      case stStatus:
-      case stHeader:
-        std::getline(is, s);
-        break;
-      case stContent:
-        s = std::string(std::min(remainingBytes(), input.size()), 0);
-        is.read(&s[0], std::min(remainingBytes(), input.size()));
-        break;
-      case stProcessing:
-      case stError:
-      case stShutdown:
-        break;
+    if (status == stRequest || status == stStatus || status == stHeader) {
+      std::getline(is, s);
+    } else if (status == stContent && remainingBytes() > 0) {
+      s = std::string(std::min(remainingBytes(), input.size()), 0);
+      is.read(&s[0], std::min(remainingBytes(), input.size()));
     }
 
     return s;

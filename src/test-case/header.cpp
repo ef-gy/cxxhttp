@@ -66,14 +66,14 @@ bool testToString(std::ostream &log) {
 bool testAppend(std::ostream &log) {
   struct sampleData {
     headers in;
-    std::string key, value, out;
+    std::string key, value, out, get, res;
   };
 
   std::vector<sampleData> tests{
-      {{}, "a", "b", "a: b\r\n"},
-      {{{"a", "b"}}, "a", "c", "a: b,c\r\n"},
-      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n"},
-      {{{"a", "b"}, {"c", "d"}}, "a", "e", "a: b,e\r\nc: d\r\n"},
+      {{}, "a", "b", "a: b\r\n", "a", "b"},
+      {{{"a", "b"}}, "a", "c", "a: b,c\r\n", "a", "b,c"},
+      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n", "q", ""},
+      {{{"a", "b"}, {"c", "d"}}, "a", "e", "a: b,e\r\nc: d\r\n", "q", ""},
   };
 
   for (const auto &tt : tests) {
@@ -82,6 +82,11 @@ bool testAppend(std::ostream &log) {
     const std::string v = p;
     if (v != tt.out) {
       log << "string()='" << v << "', expected '" << tt.out << "'\n";
+      return false;
+    }
+    const auto &w = p.get(tt.get);
+    if (w != tt.res) {
+      log << "('" << v << "').get='" << w << "', expected '" << tt.res << "'\n";
       return false;
     }
   }

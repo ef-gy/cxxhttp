@@ -158,6 +158,19 @@ class servlet {
    */
   const std::string description;
 
+  /* Generate a description of the servlets.
+   *
+   * Creates a Markdown snippet using the method and resource regexen, along
+   * with the description string. This is used by the default implementation of
+   * the OPTIONS method or the CLI usage hint.
+   *
+   * @return A Markdown snippet describing the servlet.
+   */
+  std::string describe(void) const {
+    return " * _" + methodx + "_ `" + resourcex + "`\n" + "   " + description +
+           "\n";
+  }
+
  protected:
   /* The servlet set we're registered with.
    *

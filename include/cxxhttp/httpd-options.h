@@ -36,19 +36,13 @@ static void options(typename http::server<transport>::session &session,
                     std::smatch &re) {
   std::string text = "# Applicable Resource Processors\n\n";
   std::set<std::string> methods{};
-  std::string allow;
   const std::string full = re[0];
 
-  const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
-  for (const auto &servlet : servlets) {
-    std::regex rx(servlet->resourcex);
-    std::regex mx(servlet->methodx);
-
-    if ((full == "*") || std::regex_match(full, rx)) {
-      text += "* _" + servlet->methodx + "_ `" + servlet->resourcex + "`\n" +
-              "  " + servlet->description + "\n";
+  for (const auto &servlet : efgy::global<std::set<servlet<transport> *>>()) {
+    if ((full == "*") || std::regex_match(full, servlet->resource)) {
+      text += servlet->describe();
       for (const auto &m : http::method) {
-        if (std::regex_match(m, mx)) {
+        if (std::regex_match(m, servlet->method)) {
           methods.insert(m);
         }
       }

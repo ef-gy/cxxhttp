@@ -61,6 +61,24 @@ class parser {
    */
   bool complete;
 
+  /* Get header a value, possibly substituting a default.
+   * @name The name of the header to fetch.
+   * @def The default, if the header was not set.
+   *
+   * `get()` retrieves a header value and returns it; if the header wasn't set
+   * then the `def` value is returned instead.
+   *
+   * @return The header, or the default.
+   */
+  std::string get(const std::string &name, const std::string &def = "") const {
+    const auto &it = header.find(name);
+    if (it == header.end()) {
+      return def;
+    } else {
+      return it->second;
+    }
+  }
+
   /* Append value to header map.
    * @key The key to append to, or set.
    * @value The new value.

@@ -136,8 +136,7 @@ static std::string describe(void) {
   std::string rv;
   const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
   for (const auto &servlet : servlets) {
-    rv += " * " + servlet->methodx + " " + servlet->resourcex + "\n   " +
-          servlet->description + "\n";
+    rv += servlet->describe();
   }
   return rv;
 }

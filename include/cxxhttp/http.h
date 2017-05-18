@@ -177,21 +177,10 @@ class session : public sessionData {
       case stRequest:
       case stStatus:
       case stHeader:
-        asio::async_read_until(
-            socket, input, "\n",
-            [&](const asio::error_code &error, std::size_t bytes_transferred) {
-              handleRead(error);
-            });
+        readLine();
         break;
       case stContent:
-        if (remainingBytes() > 0) {
-          asio::async_read(
-              socket, input, asio::transfer_at_least(remainingBytes()),
-              [&](const asio::error_code &error,
-                  std::size_t bytes_transferred) { handleRead(error); });
-        } else {
-          handleRead(std::error_code());
-        }
+        readRemainingContent();
         break;
       case stProcessing:
       case stError:
@@ -201,7 +190,36 @@ class session : public sessionData {
   }
 
  protected:
-  /* Read more data
+  /* Read enough off the input socket to fill a line.
+   *
+   * Issue a read that will make sure there's at least one full line available
+   * for processing in the input buffer.
+   */
+  void readLine(void) {
+    asio::async_read_until(
+        socket, input, "\n",
+        [&](const asio::error_code &error, std::size_t bytes_transferred) {
+          handleRead(error);
+        });
+  }
+
+  /* Read remainder of the request body.
+   *
+   * Issues a read for anything left to read in the request body.
+   */
+  void readRemainingContent(void) {
+    if (remainingBytes() > 0) {
+      asio::async_read(
+          socket, input, asio::transfer_at_least(remainingBytes()),
+          [&](const asio::error_code &error, std::size_t bytes_transferred) {
+            handleRead(error);
+          });
+    } else {
+      handleRead(std::error_code());
+    }
+  }
+
+  /* Callback after more data has been read.
    * @error Current error state.
    *
    * Called by ASIO to indicate that new data has been read and can now be
@@ -216,93 +234,62 @@ class session : public sessionData {
     }
 
     if (error) {
-      delete this;
-      return;
+      status = stError;
     }
 
-    std::string s = buffer();
+    bool wasStart = status == stRequest || status == stStatus;
 
-    std::istream is(&input);
-    bool doRead = true;
+    if (status == stRequest) {
+      inboundRequest = buffer();
+      status = inboundRequest.valid() ? stHeader : stError;
+    } else if (status == stStatus) {
+      inboundStatus = buffer();
+      status = inboundStatus.valid() ? stHeader : stError;
+    } else if (status == stHeader) {
+      inbound.absorb(buffer());
+      // this may return false, and if it did then what the client sent was
+      // not valid HTTP and we should send back an error.
+      if (inbound.complete) {
+        // we're done parsing headers, so change over to streaming in the
+        // results.
+        status = connection.processor.afterHeaders(*this);
+        content.clear();
+      }
+    }
 
-    switch (status) {
-      case stRequest: {
-        inboundRequest = s;
-        if (inboundRequest.valid()) {
-          inbound = {};
-          status = stHeader;
-        }
-        // this should have an else branch, in case the request line was not
-        // valid. In that case, we ought to raise an error against the sender.
-      } break;
+    if (wasStart && status == stHeader) {
+      inbound = {};
+    } else if (wasStart && status == stError) {
+      // We had an edge from trying to read a start line to an error, so send a
+      // message to the other end about this.
+      reply(400, "Sorry, you sent an invalid start line.");
+    }
 
-      case stStatus: {
-        inboundStatus = s;
-        if (inboundStatus.valid()) {
-          inbound = {};
-          status = stHeader;
-        }
-        // this should also have an else branch, and if it's an invalid status
-        // line we should flag this to the library user.
-      } break;
-
-      case stHeader:
-        inbound.absorb(s);
-        // this may return false, and if it did then what the client sent was
-        // not valid HTTP and we should send back an error.
-        if (inbound.complete) {
-          // we're done parsing headers, so change over to streaming in the
-          // results.
-          status = connection.processor.afterHeaders(*this);
-          content.clear();
-          if (remainingBytes() > 0) {
-            // read in up to Content-Length bytes from the stream from what's
-            // already available.
-            std::size_t readNow = std::min(input.size(), remainingBytes());
-            content = std::string(readNow, 0);
-            is.read(&content[0], readNow);
-            break;
-          } else {
-            s.clear();
-          }
-        } else {
-          break;
-        }
-
-      case stContent:
-        if (!s.empty()) {
-          content += s;
-        }
+    if (status == stContent) {
+      content += buffer();
+      if (remainingBytes() == 0) {
         status = stProcessing;
 
-        {
-          std::size_t q = queries();
+        const auto q = queries();
 
-          /* processing the request takes place here */
-          connection.processor.handle(*this);
+        /* processing the request takes place here */
+        connection.processor.handle(*this);
 
-          if (q == queries()) {
-            // the processor did not send anything, so give it another chance at
-            // deciding what to do with this session.
-            status = connection.processor.afterProcessing(*this);
-            if (status == stShutdown) {
-              delete this;
-              return;
-            }
+        if (q == queries()) {
+          // the processor did not send anything, so give it another chance at
+          // deciding what to do with this session.
+          status = connection.processor.afterProcessing(*this);
+          if (status == stShutdown) {
+            delete this;
+            return;
           }
         }
-
-      // fall through, so as to set the doRead flag to false. If the processor
-      // needed an extra read, it would've queued one itself.
-
-      case stProcessing:
-      case stError:
-      case stShutdown:
-        doRead = false;
-        break;
+      }
     }
 
-    if (doRead) {
+    if (status == stError) {
+      delete this;
+    } else if (status == stHeader || status == stContent) {
       read();
     }
   }
@@ -318,16 +305,14 @@ class session : public sessionData {
    * connection automagically.
    */
   void handleWrite(int statusCode, const std::error_code error) {
-    if (status == stShutdown) {
-      return;
-    }
-
-    if (error || (statusCode >= 400)) {
-      delete this;
-    } else if (status == stProcessing) {
-      status = connection.processor.afterProcessing(*this);
-      if (status == stShutdown) {
+    if (status != stShutdown) {
+      if (error || (statusCode >= 400)) {
         delete this;
+      } else if (status == stProcessing) {
+        status = connection.processor.afterProcessing(*this);
+        if (status == stShutdown) {
+          delete this;
+        }
       }
     }
   }

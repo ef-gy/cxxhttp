@@ -189,7 +189,7 @@ bool testQvalueLessThan(std::ostream &log) {
       {"b", "a", false},
       {"a;q=0.3", "b;q=0.2", false},
       {"b;q=0.2", "a;q=0.3", true},
-      {"a;q=0.2", "a;c;q=0.3", true},
+      {"a", "a;c", true},
   };
 
   for (const auto &tt : tests) {

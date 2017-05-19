@@ -19,37 +19,6 @@
 
 using namespace cxxhttp;
 
-/* Test string trim function.
- * @log Test output stream.
- *
- * Header fields need to ignore a lot of white space; the trim() function
- * removes that from both ends of a string, so this is a simple test to make
- * sure that works.
- *
- * @return 'true' on success, 'false' otherwise.
- */
-bool testTrim(std::ostream &log) {
-  struct sampleData {
-    std::string in, out;
-  };
-
-  std::vector<sampleData> tests{
-      {"", ""},    {"a", "a"},   {" a", "a"},
-      {"a ", "a"}, {" a ", "a"}, {" a b ", "a b"},
-  };
-
-  for (const auto &tt : tests) {
-    const auto v = trim(tt.in);
-    if (v != tt.out) {
-      log << "trim('" << tt.in << "')='" << v << "', expected '" << tt.out
-          << "'\n";
-      return false;
-    }
-  }
-
-  return true;
-}
-
 /* Test list splitting.
  * @log Test output stream.
  *
@@ -70,13 +39,14 @@ bool testSplit(std::ostream &log) {
   std::vector<sampleData> tests{
       {"", {}, {}},
       {"x", {"x"}, {"x"}},
-      {"x, y, z;q=0", {"x", "y", "z;q=0"}, {"x, y, z", "q=0"}},
+      {"x,,,;;", {"x", ";;"}, {"x,,,"}},
+      {"x, y, z;q=0", {"x", "y", "z;q=0"}, {"x,y,z", "q=0"}},
       {"x;c=\"foo,bar\", y",
        {"x;c=\"foo,bar\"", "y"},
-       {"x", "c=\"foo,bar\", y"}},
+       {"x", "c=\"foo,bar\",y"}},
       {"x;c=\"foo,\\\"bar\", y",
        {"x;c=\"foo,\\\"bar\"", "y"},
-       {"x", "c=\"foo,\\\"bar\", y"}},
+       {"x", "c=\"foo,\\\"bar\",y"}},
   };
 
   for (const auto &tt : tests) {
@@ -219,6 +189,7 @@ bool testQvalueLessThan(std::ostream &log) {
       {"b", "a", false},
       {"a;q=0.3", "b;q=0.2", false},
       {"b;q=0.2", "a;q=0.3", true},
+      {"a;q=0.2", "a;c;q=0.3", true},
   };
 
   for (const auto &tt : tests) {
@@ -350,6 +321,7 @@ bool testFullNegotiation(std::ostream &log) {
   std::vector<sampleData> tests{
       {"", "", "", ""},
       {"", "a", "a", ""},
+      {"a", "b", "", ""},
       {"", "a/*", "", ""},
       {"", "a/*, a/b;q=0.1", "a/b", ""},
       {"", "a;q=0.1, b;q=0.2", "b", ""},
@@ -392,7 +364,6 @@ bool testFullNegotiation(std::ostream &log) {
 namespace test {
 using efgy::test::function;
 
-static function trim(testTrim);
 static function split(testSplit);
 static function qValue(testQvalue);
 static function qValueLessThan(testQvalueLessThan);

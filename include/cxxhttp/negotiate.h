@@ -24,34 +24,12 @@
 #include <cxxhttp/mime-type.h>
 
 namespace cxxhttp {
-/* std::isspace wrapper for trim().
- * @c The character to check.
- *
- * Reports whether 'c' is a whitespace character.
- *
- * @return true if c is a whitepace character.
- */
-static inline bool isspace(int c) { return std::isspace(c); }
-
-/* Trim whitespace on either side of string.
- * @s The string to trim.
- *
- * This function creates a new copy of a string that has whitespace on either
- * side of it removed.
- *
- * @return 's', without whitespace on either side.
- */
-static inline std::string trim(const std::string &s) {
-  return std::string(std::find_if_not(s.begin(), s.end(), isspace),
-                     std::find_if_not(s.rbegin(), s.rend(), isspace).base());
-}
-
 /* Split string by delimiter.
  * @list The string to split.
  * @sep The separator to use.
  *
- * This splits up a string based on the given delimiter. The resulting strings
- * are also trimmed.
+ * This splits up a string based on the given delimiter. Whitespace is discared,
+ * unless it's within quotes.
  *
  * This function does respect quotes, so a delimiter within a quoted substring
  * doesn't count. Backslashes allow for escaping quotes as they normally do, at
@@ -84,16 +62,17 @@ static inline std::vector<std::string> split(const std::string &list,
       item.push_back(c);
     } else if (c == sep) {
       if (!item.empty()) {
-        rv.push_back(trim(item));
+        rv.push_back(item);
         item.clear();
       }
-    } else {
+    } else if (c != ' ' && c != '\t') {
+      // ignore whitespace, unless it's within quotes.
       item.push_back(c);
     }
   }
 
   if (!item.empty()) {
-    rv.push_back(trim(item));
+    rv.push_back(item);
   }
 
   return rv;

@@ -68,9 +68,10 @@ class session : public sessionData {
    * Constructs a session with the given asynchronous connection.
    */
   session(connectionType &pConnection)
-      : connection(pConnection), socket(pConnection.io), sessionData() {
-    connection.sessions.insert(this);
-  }
+      : connection(pConnection),
+        socket(pConnection.io),
+        sessionData(),
+        beacon(*this, connection.sessions) {}
 
   /* Destructor.
    *
@@ -91,8 +92,6 @@ class session : public sessionData {
     } catch (std::system_error &e) {
       std::cerr << "exception while closing socket: " << e.what() << "\n";
     }
-
-    connection.sessions.erase(this);
   }
 
   /* Start processing.
@@ -191,6 +190,13 @@ class session : public sessionData {
   }
 
  protected:
+  /* Session beacon.
+   *
+   * We want to keep track of how all of the sessions, so that we can do stats
+   * over the lot of them.
+   */
+  efgy::beacon<session> beacon;
+
   /* Callback after more data has been read.
    * @error Current error state.
    *

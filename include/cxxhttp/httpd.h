@@ -56,11 +56,11 @@ using efgy::cli::option;
  */
 template <class transport>
 static bool setup(net::endpoint<transport> lookup,
-                  std::set<http::server<transport> *> &servers =
-                      efgy::global<std::set<http::server<transport> *>>(),
+                  efgy::beacons<http::server<transport>> &servers =
+                      efgy::global<efgy::beacons<http::server<transport>>>(),
                   service &service = efgy::global<cxxhttp::service>(),
-                  std::set<servlet<transport> *> &servlets =
-                      efgy::global<std::set<servlet<transport> *>>()) {
+                  efgy::beacons<servlet<transport>> &servlets =
+                      efgy::global<efgy::beacons<servlet<transport>>>()) {
   bool rv = false;
 
   for (net::endpointType<transport> endpoint : lookup) {
@@ -134,7 +134,7 @@ using efgy::cli::hint;
 template <typename transport>
 static std::string describe(void) {
   std::string rv;
-  const auto &servlets = efgy::global<std::set<servlet<transport> *>>();
+  const auto &servlets = efgy::global<efgy::beacons<servlet<transport>>>();
   for (const auto &servlet : servlets) {
     rv += servlet->describe();
   }

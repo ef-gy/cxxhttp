@@ -172,10 +172,11 @@ class server : public serverData {
 
   /* Bound servlets.
    *
-   * A reference to the set of servlets we support, which is to say this is the
-   * list of server-side request handlers we'll be using.
+   * This is the list of server-side request handlers we'll be using.
+   * Deliberately not a reference, so that different servers can have different
+   * servlets.
    */
-  std::set<servlet *> servlets;
+  efgy::beacons<servlet> servlets;
 
   /* Handle request
    * @sess The session object where the request was made.

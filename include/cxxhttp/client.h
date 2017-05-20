@@ -41,22 +41,21 @@ class client : public connection<requestProcessor> {
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    */
-  client(endpointType<transport> &endpoint,
-         std::set<client *> &pClients = efgy::global<std::set<client *>>(),
-         service &pio = efgy::global<service>(),
-         std::ostream &logfile = std::cout)
-      : connection(pio, logfile), clients(pClients), target(endpoint) {
-    clients.insert(this);
+  client(
+      endpointType<transport> &endpoint,
+      efgy::beacons<client> &pClients = efgy::global<efgy::beacons<client>>(),
+      service &pio = efgy::global<service>(), std::ostream &logfile = std::cout)
+      : connection(pio, logfile), target(endpoint), beacon(*this, pClients) {
     startConnect();
   }
 
-  /* Destructor.
-   *
-   * Removes this instance from the global set of clients.
-   */
-  ~client(void) { clients.erase(this); }
-
  protected:
+  /* Client beacon.
+   *
+   * Registration in this set is handled automatically in the constructor.
+   */
+  efgy::beacon<client> beacon;
+
   /* Connect to the socket.
    *
    * This function creates a new, blank session and attempts to connect to the
@@ -90,13 +89,6 @@ class client : public connection<requestProcessor> {
    * This is where we want to connect to.
    */
   endpointType<transport> target;
-
-  /* The set of clients we're part of.
-   *
-   * We register ourselves here in the constructor, and remove ourselves in the
-   * destructor.
-   */
-  std::set<client *> &clients;
 };
 }
 }

@@ -62,7 +62,7 @@ class servlet {
           const std::string &pMethodx = "GET",
           const http::headers pNegotiations = {},
           const std::string &pDescription = "no description available",
-          std::set<servlet *> &pSet = efgy::global<std::set<servlet *>>())
+          efgy::beacons<servlet> &pSet = efgy::global<efgy::beacons<servlet>>())
       : resourcex(pResourcex),
         resource(pResourcex),
         methodx(pMethodx),
@@ -70,15 +70,7 @@ class servlet {
         handler(pHandler),
         negotiations(pNegotiations),
         description(pDescription),
-        root(pSet) {
-    root.insert(this);
-  }
-
-  /* Destructor.
-   *
-   * Unregisters from the global set this servlet was registered to.
-   */
-  ~servlet(void) { root.erase(this); }
+        beacon(*this, pSet) {}
 
   /* Resource regex.
    *
@@ -172,11 +164,12 @@ class servlet {
   }
 
  protected:
-  /* The servlet set we're registered with.
+  /* Servlet beacon.
    *
-   * Used in the destructor to unregister the servlet.
+   * We need to keep track of all servlets in a central place, so that the
+   * processing code knows to apply them where necessary.
    */
-  std::set<servlet *> &root;
+  efgy::beacon<servlet> beacon;
 };
 }
 }

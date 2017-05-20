@@ -41,8 +41,8 @@ namespace http {
 template <class transport>
 static bool fetch(net::endpoint<transport> lookup, std::string host,
                   std::string resource, std::ostream &stream = std::cout,
-                  std::set<client<transport> *> &clients =
-                      efgy::global<std::set<client<transport> *>>(),
+                  efgy::beacons<client<transport>> &clients =
+                      efgy::global<efgy::beacons<client<transport>>>(),
                   service &service = efgy::global<cxxhttp::service>()) {
   for (net::endpointType<transport> endpoint : lookup) {
     client<transport> *s = new client<transport>(endpoint, clients, service);

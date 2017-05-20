@@ -41,22 +41,23 @@ class server : public connection<requestProcessor> {
    * Default constructor which binds an IO service to a socket endpoint that was
    * passed in. The socket is bound asynchronously.
    */
-  server(endpointType<transport> &endpoint,
-         std::set<server *> &pServers = efgy::global<std::set<server *>>(),
-         service &pio = efgy::global<service>(),
-         std::ostream &logfile = std::cout)
-      : connection(pio, logfile), servers(pServers), acceptor(pio, endpoint) {
-    servers.insert(this);
+  server(
+      endpointType<transport> &endpoint,
+      efgy::beacons<server> &pServers = efgy::global<efgy::beacons<server>>(),
+      service &pio = efgy::global<service>(), std::ostream &logfile = std::cout)
+      : connection(pio, logfile),
+        acceptor(pio, endpoint),
+        beacon(*this, pServers) {
     startAccept();
   }
 
-  /* Destructor.
-   *
-   * Removes the instance from the global set of servers.
-   */
-  ~server(void) { servers.erase(this); }
-
  protected:
+  /* Server beacon.
+   *
+   * Registration in this set is handled automatically in the constructor.
+   */
+  efgy::beacon<server> beacon;
+
   /* Accept the next incoming connection
    *
    * This function creates a new, blank session to handle the next incoming
@@ -94,13 +95,6 @@ class server : public connection<requestProcessor> {
    * constructor.
    */
   typename transport::acceptor acceptor;
-
-  /* The set of servers we're part of.
-   *
-   * We register ourselves here in the constructor, and remove ourselves in the
-   * destructor.
-   */
-  std::set<server *> &servers;
 };
 }
 }

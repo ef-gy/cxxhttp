@@ -240,10 +240,10 @@ class connection {
 
   /* Active sessions.
    *
-   * The sessions that are currently active. This list is added to by the
-   * session constructor, and removed from by the session destructor.
+   * The sessions that are currently active. This list is maintained using a
+   * beaon in the session object.
    */
-  std::set<session *> sessions;
+  efgy::beacons<session> sessions;
 };
 }
 }

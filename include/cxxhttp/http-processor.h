@@ -30,15 +30,6 @@ namespace cxxhttp {
 namespace http {
 template <typename transport, typename requestProcessor>
 class session;
-
-/* HTTP header negotiation map.
- *
- * Maps input header names to their equivalent outbound version.
- */
-static const headers sendNegotiatedAs{
-    {"Accept", "Content-Type"},
-};
-
 /* Default servers headers.
  *
  * These headers are sent by default with every server reply, unless overriden.
@@ -77,43 +68,6 @@ class serverData {
    * than this are cancelled with an error.
    */
   std::size_t maxContentLength = (1024 * 1024 * 12);
-
-  /* Negotiate headers for request.
-   * @sess Basic session data, which is modified and initialised in-place.
-   * @negotiations The set of negotiations to perform, from the servlet.
-   *
-   * Uses the global header negotiation facilities to set actual inbound and
-   * outbound headers based on what the input request looks like.
-   *
-   * @return Whether or not negotiations were successful.
-   */
-  bool negotiateHeaders(sessionData &sess, const headers &negotiations) const {
-    bool badNegotiation = false;
-    // reset, and perform, header value negotiation based on the servlet's specs
-    // and the client data.
-    sess.negotiated = {};
-    sess.outbound = {defaultServerHeaders};
-    for (const auto &n : negotiations) {
-      const std::string cv = sess.inbound.header.count(n.first) > 0
-                                 ? sess.inbound.header[n.first]
-                                 : "";
-      const std::string v = negotiate(cv, n.second);
-
-      // modify the Vary value to indicate we used this header.
-      sess.outbound.append("Vary", n.first);
-
-      sess.negotiated[n.first] = v;
-
-      const auto it = sendNegotiatedAs.find(n.first);
-      if (it != sendNegotiatedAs.end()) {
-        sess.outbound.header[it->second] = v;
-      }
-
-      badNegotiation = badNegotiation || v.empty();
-    }
-
-    return !badNegotiation;
-  }
 
   /* Decide whether to trigger a 405.
    * @methods The methods we've seen as allowed during processing.
@@ -205,7 +159,8 @@ class server : public serverData {
 
       if (resourceMatch) {
         if (methodMatch) {
-          bool badNegotiation = !negotiateHeaders(sess, servlet->negotiations);
+          sess.outbound = {defaultServerHeaders};
+          bool badNegotiation = !sess.negotiate(servlet->negotiations);
 
           if (badNegotiation) {
             trigger406 = true;

@@ -185,10 +185,69 @@ bool testReply(std::ostream &log) {
   return true;
 }
 
+/* Test server-side session header negotiation.
+ * @log Test output stream.
+ *
+ * Creates sample sessions and tries to negotiate headers.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testNegotiate(std::ostream &log) {
+  struct sampleData {
+    http::headers inbound, negotiations, outbound, negotiated;
+    bool success;
+  };
+
+  std::vector<sampleData> tests{
+      {{{"Foo", "Bar"}},
+       {{"Baz", "blorb"}},
+       {{"Vary", "Baz"}},
+       {{"Baz", "blorb"}},
+       true},
+      {{{"Accept", "foo/*"}},
+       {{"Accept", "foo/bar, frob/blorgh"}},
+       {{"Content-Type", "foo/bar"}, {"Vary", "Accept"}},
+       {{"Accept", "foo/bar"}},
+       true},
+      {{},
+       {{"Accept", "foo/bar, frob/blorgh;q=0.9"}},
+       {{"Content-Type", "foo/bar"}, {"Vary", "Accept"}},
+       {{"Accept", "foo/bar"}},
+       true},
+      {{{"Accept", "bar/*"}},
+       {{"Accept", "foo/bar, frob/blorgh"}},
+       {{"Vary", "Accept"}},
+       {},
+       false},
+  };
+
+  for (const auto &tt : tests) {
+    http::sessionData s;
+
+    s.inbound.header = tt.inbound;
+    bool success = s.negotiate(tt.negotiations);
+
+    if (success != tt.success) {
+      log << "negotiate()=" << success << ", but expected " << tt.success
+          << "\n";
+      return false;
+    }
+    if (success) {
+      if (s.outbound.header != tt.outbound || s.negotiated != tt.negotiated) {
+        log << "negotiate() failed to produce the expected result.\n";
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 namespace test {
 using efgy::test::function;
 
 static function basicSession(testBasicSession);
 static function log(testLog);
 static function reply(testReply);
+static function negotiate(testNegotiate);
 }

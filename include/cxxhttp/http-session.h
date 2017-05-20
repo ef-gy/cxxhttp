@@ -24,6 +24,14 @@
 
 namespace cxxhttp {
 namespace http {
+/* HTTP header negotiation map.
+ *
+ * Maps input header names to their equivalent outbound version.
+ */
+static const headers sendNegotiatedAs{
+    {"Accept", "Content-Type"},
+};
+
 /* Transport-agnostic HTTP session data.
  *
  * For all the bits in an HTTP session object that do not rely on knowing the
@@ -250,6 +258,43 @@ class sessionData {
     }
 
     return s;
+  }
+
+  /* Negotiate headers for request.
+   * @negotiations The set of negotiations to perform, from the servlet.
+   *
+   * Uses the global header negotiation facilities to set actual inbound and
+   * outbound headers based on what the input request looks like.
+   *
+   * Note: probably doesn't make sense to call this in a client processor, but
+   * it is most certainly a session-scope thing to be done.
+   *
+   * @return Whether or not negotiations were successful.
+   */
+  bool negotiate(const headers &negotiations) {
+    bool badNegotiation = false;
+    // reset, and perform, header value negotiation based on the servlet's specs
+    // and the client data.
+    negotiated = {};
+    for (const auto &n : negotiations) {
+      const std::string cv =
+          inbound.header.count(n.first) > 0 ? inbound.header[n.first] : "";
+      const std::string v = cxxhttp::negotiate(cv, n.second);
+
+      // modify the Vary value to indicate we used this header.
+      outbound.append("Vary", n.first);
+
+      negotiated[n.first] = v;
+
+      const auto it = sendNegotiatedAs.find(n.first);
+      if (it != sendNegotiatedAs.end()) {
+        outbound.header[it->second] = v;
+      }
+
+      badNegotiation = badNegotiation || v.empty();
+    }
+
+    return !badNegotiation;
   }
 
  protected:

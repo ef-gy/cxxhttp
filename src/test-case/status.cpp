@@ -127,7 +127,8 @@ bool testGenerate(std::ostream &log) {
       {"HTTP/1.1 999 glorb\r", false, 999, "HTTP/1.1", "glorb",
        "HTTP/1.1 500 Bad Status Line\r\n"},
       {"HTTP/1.0 200 OK", true, 200, "HTTP/1.0", "OK", "HTTP/1.0 200 OK\r\n"},
-      {"HTTP/1.0 666 OK", false, 666, "HTTP/1.0", "OK", "HTTP/1.0 200 OK\r\n"},
+      {"HTTP/1.0 666 OK", false, 666, "HTTP/1.0", "OK",
+       "HTTP/1.1 500 Bad Status Line\r\n"},
   };
 
   for (const auto &tt : tests) {
@@ -149,6 +150,11 @@ bool testGenerate(std::ostream &log) {
     if (v.description != tt.description) {
       log << "http::statusLine(" << tt.in << ").description='" << v.description
           << "', expected'" << tt.description << "'\n";
+      return false;
+    }
+    if (std::string(v) != tt.out) {
+      log << "http::statusLine(" << tt.in << ").out='" << std::string(v)
+          << "', expected'" << tt.out << "'\n";
       return false;
     }
   }

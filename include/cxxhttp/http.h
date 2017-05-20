@@ -205,7 +205,8 @@ class session : public sessionData {
       status = stError;
     }
 
-    bool wasStart = status == stRequest || status == stStatus;
+    bool wasRequest = status == stRequest;
+    bool wasStart = wasRequest || status == stStatus;
 
     if (status == stRequest) {
       inboundRequest = buffer();
@@ -227,10 +228,10 @@ class session : public sessionData {
 
     if (wasStart && status == stHeader) {
       inbound = {};
-    } else if (wasStart && status == stError) {
-      // We had an edge from trying to read a start line to an error, so send a
-      // message to the other end about this.
-      reply(400, "Sorry, you sent an invalid start line.");
+    } else if (wasRequest && status == stError) {
+      // We had an edge from trying to read a request line to an error, so send
+      // a message to the other end about this.
+      http::error<session>(*this).reply(400);
       status = stProcessing;
     }
 

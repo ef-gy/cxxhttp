@@ -23,6 +23,7 @@
 #include <cxxhttp/version.h>
 
 #include <cxxhttp/http-constants.h>
+#include <cxxhttp/http-error.h>
 #include <cxxhttp/http-servlet.h>
 #include <cxxhttp/http-session.h>
 
@@ -185,21 +186,17 @@ class server : public serverData {
       }
     }
 
-    if (!methodSupported) {
-      sess.reply(501, "Sorry, this method is not supported by this server.");
-    } else if (trigger406) {
-      sess.reply(406,
-                 "Sorry, negotiating the resource's representation failed.");
-    } else if (trigger405(methods) && (methods.size() > 0)) {
-      parser<headers> p{};
-      for (const auto &m : methods) {
-        p.append("Allow", m);
-      }
+    error<session> e(sess);
 
-      sess.reply(405, "Sorry, this resource is not available via this method.",
-                 p.header);
+    if (!methodSupported) {
+      e.reply(501);
+    } else if (trigger406) {
+      e.reply(406);
+    } else if (trigger405(methods) && (methods.size() > 0)) {
+      e.allow = methods;
+      e.reply(405);
     } else {
-      sess.reply(404, "Sorry, this resource was not found.");
+      e.reply(404);
     }
   }
 
@@ -219,7 +216,7 @@ class server : public serverData {
       if (exp->second == "100-continue") {
         sess.reply(100, "");
       } else {
-        sess.reply(417, "Expectation Failed");
+        error<session>(sess).reply(417);
         return stError;
       }
     }
@@ -232,7 +229,7 @@ class server : public serverData {
       }
 
       if (sess.contentLength > maxContentLength) {
-        sess.reply(413, "Request Entity Too Large");
+        error<session>(sess).reply(413);
         return stError;
       }
     } else {
@@ -372,16 +369,13 @@ class client {
    * there is something to process.
    */
   void start(session &sess) {
-    if (requests.size() == 0) {
-      // nothing to do.
-      return;
+    if (requests.size() > 0) {
+      auto req = requests.front();
+
+      requests.pop_front();
+
+      sess.request(req.method, req.resource, req.header, req.body);
     }
-
-    auto req = requests.front();
-
-    requests.pop_front();
-
-    sess.request(req.method, req.resource, req.header, req.body);
   }
 
   /* Queue up things to do on this connection.

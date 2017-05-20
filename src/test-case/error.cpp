@@ -1,7 +1,7 @@
-/* Test cases for the OPTIONS implementation.
+/* Test cases for the error handling helper code.
  *
- * OPTIONS allows for querying allowed operations off a server, which helps
- * clients in determining what to do with a given server.
+ * These tests exercise `http::error`, which is used to send hopefully-useful
+ * error messages back to HTTP clients when something goes wrong somewhere.
  *
  * See also:
  * * Project Documentation: https://ef.gy/documentation/cxxhttp
@@ -17,61 +17,65 @@
 
 #define ASIO_DISABLE_THREADS
 #define NO_DEFAULT_OPTIONS
+#include <cxxhttp/http-error.h>
 #include <cxxhttp/http-test.h>
-#include <cxxhttp/httpd-options.h>
 
 using namespace cxxhttp;
 
-/* Test the options handler.
+/* Test the error handler.
  * @log Test output stream.
  *
- * Does a full end-to-end exercise of the options handler, with very controlled
+ * Does a full end-to-end exercise of the error handler, with very controlled
  * inputs.
  *
  * @return 'true' on success, 'false' otherwise.
  */
-bool testOptionsHandler(std::ostream &log) {
+bool testErrorHandler(std::ostream &log) {
   struct sampleData {
     std::string request;
+    std::set<std::string> allow;
     unsigned status;
     http::headers header;
     std::string message;
   };
 
   std::vector<sampleData> tests{
-      {"OPTIONS / HTTP/1.1",
-       200,
-       {{"Allow", "OPTIONS"}, {"Content-Type", "text/markdown"}},
-       "# Applicable Resource Processors\n\n"
-       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n"},
+      {"FOO / HTTP/1.1",
+       {},
+       400,
+       {{"Content-Type", "text/markdown"}},
+       "# Client Error\n\nAn error occurred while processing your request. "
+       "That's all I know.\n"},
+      {"FOO / HTTP/1.1",
+       {"GET", "BLARGH"},
+       405,
+       {{"Allow", "BLARGH,GET"}, {"Content-Type", "text/markdown"}},
+       "# Method Not Allowed\n\nAn error occurred while processing your "
+       "request. That's all I know.\n"},
   };
-
-  httpd::servlet<transport::fake> fakeHandler(
-      httpd::options::resource, httpd::options::options<transport::fake>,
-      httpd::options::method);
 
   for (const auto &tt : tests) {
     http::recorder sess;
     std::smatch matches;
 
     sess.inboundRequest = tt.request;
-    sess.connection.processor.servlets.insert(&fakeHandler);
 
-    std::string resource = sess.inboundRequest.resource.path();
-    std::regex_match(resource, matches, fakeHandler.resource);
-    httpd::options::options<transport::fake>(sess, matches);
+    http::error<http::recorder> e(sess);
+
+    e.allow = tt.allow;
+    e.reply(tt.status);
 
     if (sess.status != tt.status) {
-      log << "options() produced an unexpected status code: " << sess.status
+      log << "error() produced an unexpected status code: " << sess.status
           << ", expected " << tt.status << "\n";
       return false;
     }
     if (sess.header != tt.header) {
-      log << "options() produced unexpected headers.\n";
+      log << "error() produced unexpected headers.\n";
       return false;
     }
     if (sess.message != tt.message) {
-      log << "options() produced an unexpected message: '" << sess.message
+      log << "error() produced an unexpected message: '" << sess.message
           << "' expected: '" << tt.message << "'\n";
       return false;
     }
@@ -83,5 +87,5 @@ bool testOptionsHandler(std::ostream &log) {
 namespace test {
 using efgy::test::function;
 
-static function optionsHandler(testOptionsHandler);
+static function errorHandler(testErrorHandler);
 }

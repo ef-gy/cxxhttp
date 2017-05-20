@@ -49,8 +49,7 @@ static void options(typename http::server<transport>::session &session,
     }
   }
 
-  http::parser<http::headers> p{
-      {{"Content-Type", "text/markdown; charset=UTF-8"}}};
+  http::parser<http::headers> p{{{"Content-Type", "text/markdown"}}};
 
   for (const auto &m : methods) {
     p.append("Allow", m);

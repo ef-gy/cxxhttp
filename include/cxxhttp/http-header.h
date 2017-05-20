@@ -72,11 +72,19 @@ class parser {
    */
   std::string get(const std::string &name, const std::string &def = "") const {
     const auto &it = header.find(name);
-    if (it == header.end()) {
-      return def;
-    } else {
-      return it->second;
-    }
+    return it == header.end() ? def : it->second;
+  }
+
+  /* Do we have this header?
+   * @name The header to try and find.
+   *
+   * have() checks if a given header has been set, without any side-effects of
+   * potentially adding it in the process.
+   *
+   * @return Reports whether `name` is in the set of headers.
+   */
+  bool have(const std::string &name) const {
+    return header.find(name) != header.end();
   }
 
   /* Append value to header map.
@@ -96,11 +104,7 @@ class parser {
               bool lws = false) {
     if (!value.empty()) {
       std::string &v = header[key];
-      if (v.empty()) {
-        v = value;
-      } else {
-        v += (lws ? " " : ",") + value;
-      }
+      v += (v.empty() ? "" : (lws ? " " : ",")) + value;
     }
   }
 

@@ -67,8 +67,8 @@ class servlet {
         resource(pResourcex),
         methodx(pMethodx),
         method(pMethodx),
-        handler(pHandler),
         negotiations(pNegotiations),
+        handler(pHandler),
         description(pDescription),
         beacon(*this, pSet) {}
 

@@ -47,13 +47,6 @@ class session : public sessionData {
    */
   using socketType = typename transport::socket;
 
-  /* Stream socket
-   *
-   * This is the asynchronous I/O socket that is used to communicate with the
-   * client.
-   */
-  socketType socket;
-
   /* Connection instance
    *
    * A reference to the server or client that this session belongs to and was
@@ -62,6 +55,13 @@ class session : public sessionData {
    */
   connectionType &connection;
 
+  /* Stream socket
+   *
+   * This is the asynchronous I/O socket that is used to communicate with the
+   * client.
+   */
+  socketType socket;
+
   /* Construct with I/O connection
    * @pConnection The connection instance this session belongs to.
    *
@@ -69,8 +69,7 @@ class session : public sessionData {
    */
   session(connectionType &pConnection)
       : connection(pConnection),
-        socket(pConnection.io),
-        sessionData(),
+        socket(connection.io),
         beacon(*this, connection.sessions) {}
 
   /* Destructor.

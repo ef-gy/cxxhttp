@@ -66,10 +66,10 @@ class requestLine {
    * are always HTTP/1.1.
    */
   requestLine(const std::string &pMethod, const std::string &pResource)
-      : method(pMethod),
-        resource(pResource),
-        majorVersion(1),
-        minorVersion(1) {}
+      : majorVersion(1),
+        minorVersion(1),
+        method(pMethod),
+        resource(pResource) {}
 
   /* Did this request line parse correctly?
    *

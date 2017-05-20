@@ -34,7 +34,7 @@ using service = asio::io_service;
 #if defined(USE_DEFAULT_IO_MAIN)
 #define IO_MAIN_SPEC extern "C"
 #else
-#define IO_MAIN_SPEC static
+#define IO_MAIN_SPEC static inline
 #endif
 
 /* Default IO main function.
@@ -215,8 +215,7 @@ class connection {
    *
    * Default constructor which binds an IO service and sets up a new processor.
    */
-  connection(service &pio, std::ostream &logfile)
-      : io(pio), log(logfile), processor() {}
+  connection(service &pio, std::ostream &logfile) : io(pio), log(logfile) {}
 
   /* Request processor instance
    *

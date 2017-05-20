@@ -50,6 +50,12 @@ class client : public connection<requestProcessor> {
   }
 
  protected:
+  /* Target endpoint.
+   *
+   * This is where we want to connect to.
+   */
+  endpointType<transport> target;
+
   /* Client beacon.
    *
    * Registration in this set is handled automatically in the constructor.
@@ -83,12 +89,6 @@ class client : public connection<requestProcessor> {
       delete newSession;
     }
   }
-
-  /* Target endpoint.
-   *
-   * This is where we want to connect to.
-   */
-  endpointType<transport> target;
 };
 }
 }

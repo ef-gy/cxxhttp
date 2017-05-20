@@ -52,6 +52,13 @@ class server : public connection<requestProcessor> {
   }
 
  protected:
+  /* Socket acceptor
+   *
+   * This is the acceptor which has been bound to the socket specified in the
+   * constructor.
+   */
+  typename transport::acceptor acceptor;
+
   /* Server beacon.
    *
    * Registration in this set is handled automatically in the constructor.
@@ -88,13 +95,6 @@ class server : public connection<requestProcessor> {
 
     startAccept();
   }
-
-  /* Socket acceptor
-   *
-   * This is the acceptor which has been bound to the socket specified in the
-   * constructor.
-   */
-  typename transport::acceptor acceptor;
 };
 }
 }

@@ -241,6 +241,7 @@ class session : public sessionData {
       // We had an edge from trying to read a start line to an error, so send a
       // message to the other end about this.
       reply(400, "Sorry, you sent an invalid start line.");
+      status = stProcessing;
     }
 
     if (status == stHeader) {

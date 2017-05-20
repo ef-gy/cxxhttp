@@ -243,6 +243,38 @@ bool testNegotiate(std::ostream &log) {
   return true;
 }
 
+/* Test whether a 405 is sent at an appropriate time.
+ * @log Test output stream.
+ *
+ * `sessionData::trigger405` decides whether to send a 405 or a 404 and this
+ * test exercises that function.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testTrigger405(std::ostream &log) {
+  struct sampleData {
+    std::set<std::string> methods;
+    bool result;
+  };
+
+  std::vector<sampleData> tests{
+      {{}, false},        {{"OPTIONS"}, false},
+      {{"TRACE"}, false}, {{"OPTIONS", "GET"}, true},
+      {{"GET"}, true},
+  };
+
+  for (const auto &tt : tests) {
+    const bool r = http::sessionData::trigger405(tt.methods);
+
+    if (r != tt.result) {
+      log << "trigger405()=" << r << ", but expected " << tt.result << "\n";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 namespace test {
 using efgy::test::function;
 
@@ -250,4 +282,5 @@ static function basicSession(testBasicSession);
 static function log(testLog);
 static function reply(testReply);
 static function negotiate(testNegotiate);
+static function trigger405(testTrigger405);
 }

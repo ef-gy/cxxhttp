@@ -69,28 +69,6 @@ class serverData {
    * than this are cancelled with an error.
    */
   std::size_t maxContentLength = (1024 * 1024 * 12);
-
-  /* Decide whether to trigger a 405.
-   * @methods The methods we've seen as allowed during processing.
-   *
-   * To trigger the 405 response, we want the list of allowed methods to
-   * be non-empty, but we also don't want the list to only consist of methods
-   * which are expected to be valid for every resource in the first place.
-   * (Though this would technically be correct as well, it would be unexpected
-   * of an HTTP server since everyone else seems to be ignoring the OPTIONS
-   * method and people don't commonly allow TRACE.)
-   *
-   * @return Whether or not a 405 is more appropriate than a 404.
-   */
-  bool trigger405(const std::set<std::string> &methods) const {
-    for (const auto &m : methods) {
-      if (non405method.find(m) == non405method.end()) {
-        return true;
-      }
-    }
-
-    return false;
-  }
 };
 
 /* Basis server processor
@@ -192,7 +170,7 @@ class server : public serverData {
       e.reply(501);
     } else if (trigger406) {
       e.reply(406);
-    } else if (trigger405(methods) && (methods.size() > 0)) {
+    } else if (sess.trigger405(methods)) {
       e.allow = methods;
       e.reply(405);
     } else {

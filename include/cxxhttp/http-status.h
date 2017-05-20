@@ -41,8 +41,7 @@ class statusLine {
    * This currently only accepts HTTP/1.0 and HTTP/1.1 status lines, all others
    * will be rejected.
    */
-  statusLine(const std::string &line)
-      : code(0), majorVersion(0), minorVersion(0) {
+  statusLine(const std::string &line) : statusLine() {
     static const std::regex stat(grammar::httpVersion + " (" +
                                  grammar::statusCode + ") (" +
                                  grammar::reasonPhrase + ")\r?\n?");

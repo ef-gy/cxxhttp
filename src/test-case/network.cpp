@@ -67,13 +67,20 @@ bool testLookup(std::ostream &log) {
     }
   }
 
+  service io;
+  const auto d = transport::tcp::socket(io);
+  if (net::address(d) != "[UNAVAILABLE]") {
+    log << "unix socket name lookup has unexpected result: " << net::address(d)
+        << "\n";
+    return false;
+  }
+
   const auto v = net::endpoint<transport::unix>("/tmp/random-socket");
   if (v.size() != 1) {
     log << "unix socket lookup count is " << v.size() << " but should be 1.\n";
     return false;
   }
 
-  service io;
   const auto e = transport::unix::socket(io);
   if (net::address(e) != "[UNIX]") {
     log << "unix socket name lookup has unexpected result: " << net::address(e)

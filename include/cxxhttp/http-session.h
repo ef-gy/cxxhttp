@@ -157,8 +157,8 @@ class sessionData {
 
   /* Generate an HTTP reply message.
    * @status The status to return.
-   * @header The headers to send.
    * @body The response body to send back to the client.
+   * @header The headers to send.
    *
    * The reply() function uses this to create the text it will send. Headers are
    * not checked for validity.
@@ -172,8 +172,8 @@ class sessionData {
    *
    * @return The raw HTTP message to be sent.
    */
-  std::string generateReply(int status, const headers &header,
-                            const std::string &body) {
+  std::string generateReply(int status, const std::string &body,
+                            const headers &header = {}) {
     // informational responses have no message body.
     bool allowBody = status >= 200;
     // we automatically close connections when an error code is sent.

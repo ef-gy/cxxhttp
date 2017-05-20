@@ -39,8 +39,8 @@ template <class transport>
 static void trace(typename http::server<transport>::session &session,
                   std::smatch &re) {
   session.reply(
-      200, {{"Content-Type", "message/http"}},
-      session.inboundRequest.assemble() + std::string(session.inbound));
+      200, session.inboundRequest.assemble() + std::string(session.inbound),
+      {{"Content-Type", "message/http"}});
 }
 
 /* TRACE location regex.

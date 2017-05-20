@@ -56,7 +56,7 @@ static void options(typename http::server<transport>::session &session,
     p.append("Allow", m);
   }
 
-  session.reply(200, p.header, text);
+  session.reply(200, text, p.header);
 }
 
 /* HTTP OPTIONS location regex.

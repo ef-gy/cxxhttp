@@ -132,8 +132,8 @@ class session : public sessionData {
 
   /* Send reply with custom header map.
    * @status The status to return.
-   * @header The headers to send.
    * @body The response body to send back to the client.
+   * @header The headers to send.
    *
    * Used by the processing code once it is known how to answer the request
    * contained in this object.
@@ -141,8 +141,8 @@ class session : public sessionData {
    * The actual message to send is generated using the generateReply() function,
    * which receives all the parameters passed in.
    */
-  void reply(int status, const headers &header, const std::string &body) {
-    std::string reply = generateReply(status, header, body);
+  void reply(int status, const std::string &body, const headers &header = {}) {
+    std::string reply = generateReply(status, body, header);
 
     asio::async_write(socket, asio::buffer(reply),
                       [status, this](std::error_code ec, std::size_t length) {
@@ -154,16 +154,6 @@ class session : public sessionData {
 
     replies++;
   }
-
-  /* Send reply without custom headers
-   * @status The status to return.
-   * @body The response body to send back to the client.
-   *
-   * Wraps around the 3-parameter reply() function, so that you don't have to
-   * specify an empty header parameter if you don't intend to set custom
-   * headers.
-   */
-  void reply(int status, const std::string &body) { reply(status, {}, body); }
 
   /* Read enough off the input socket to fill a line.
    *

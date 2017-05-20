@@ -58,17 +58,17 @@ class session<transport::fake, requestProcessor> : public sessionData {
    */
   unsigned status;
 
-  /* Last header set.
-   *
-   * Set whenever a reply is sent back over the fake transport.
-   */
-  headers header;
-
   /* Last message.
    *
    * Set whenever a reply is sent back over the fake transport.
    */
   std::string message;
+
+  /* Last header set.
+   *
+   * Set whenever a reply is sent back over the fake transport.
+   */
+  headers header;
 
   /* Stub connection.
    *
@@ -85,18 +85,19 @@ class session<transport::fake, requestProcessor> : public sessionData {
 
   /* Record a reply.
    * @pStatus The status code to record.
-   * @pHeader The header set to record.
    * @pMessage The message to record.
+   * @pHeader The header set to record.
    *
    * Records the arguments in the corresponding member variables.
    *
    * Nothing is actually sent over any wires, because our transport is a fake
    * anyway.
    */
-  void reply(int pStatus, const headers &pHeader, const std::string &pMessage) {
+  void reply(int pStatus, const std::string &pMessage,
+             const headers &pHeader = {}) {
     status = pStatus;
-    header = pHeader;
     message = pMessage;
+    header = pHeader;
   }
 };
 

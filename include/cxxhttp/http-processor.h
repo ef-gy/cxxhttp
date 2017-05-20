@@ -187,27 +187,20 @@ class server : public serverData {
 
     if (!methodSupported) {
       sess.reply(501, "Sorry, this method is not supported by this server.");
-      return;
-    }
-
-    if (trigger406) {
+    } else if (trigger406) {
       sess.reply(406,
                  "Sorry, negotiating the resource's representation failed.");
-      return;
-    }
-
-    if (trigger405(methods) && (methods.size() > 0)) {
+    } else if (trigger405(methods) && (methods.size() > 0)) {
       parser<headers> p{};
       for (const auto &m : methods) {
         p.append("Allow", m);
       }
 
-      sess.reply(405, p.header,
-                 "Sorry, this resource is not available via this method.");
-      return;
+      sess.reply(405, "Sorry, this resource is not available via this method.",
+                 p.header);
+    } else {
+      sess.reply(404, "Sorry, this resource was not found.");
     }
-
-    sess.reply(404, "Sorry, this resource was not found.");
   }
 
   /* Decide whether to expect content or not.

@@ -173,7 +173,7 @@ bool testReply(std::ostream &log) {
   for (const auto &tt : tests) {
     http::sessionData s;
 
-    const auto &v = s.generateReply(tt.status, tt.header, tt.body);
+    const auto &v = s.generateReply(tt.status, tt.body, tt.header);
 
     if (v != tt.message) {
       log << "generateReply() = '" << v << "', but expected '" << tt.message

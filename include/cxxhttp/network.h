@@ -193,7 +193,7 @@ class endpoint<transport::tcp> {
 };
 
 /* Basic asynchronous connection wrapper
- * @requestProcessor The functor class to handle requests.
+ * @requestProcessor The class of something that can handle requests.
  *
  * Contains all the data relating to a particular connection - either for a
  * server, or a client.

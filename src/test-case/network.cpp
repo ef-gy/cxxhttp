@@ -39,9 +39,9 @@ bool testLookup(std::ostream &log) {
 
   std::vector<sampleData> tests{
       {"0.0.0.0", "80", {"0.0.0.0:80"}, 1},
-      {"localhost", "80", {"127.0.0.1:80"}, 1},
-      {"localhost", "http", {"127.0.0.1:80"}, 1},
-      {"localhost", "ftp", {"127.0.0.1:21"}, 1},
+      {"localhost", "80", {"127.0.0.1:80", "[::1]:80"}, 1},
+      {"localhost", "http", {"127.0.0.1:80", "[::1]:80"}, 1},
+      {"localhost", "ftp", {"127.0.0.1:21", "[::1]:21"}, 1},
   };
 
   for (const auto &tt : tests) {
@@ -67,6 +67,54 @@ bool testLookup(std::ostream &log) {
     }
   }
 
+  const auto v = net::endpoint<transport::unix>("/tmp/random-socket");
+  if (v.size() != 1) {
+    log << "unix socket lookup count is " << v.size() << " but should be 1.\n";
+    return false;
+  }
+
+  service io;
+  const auto e = transport::unix::socket(io);
+  if (net::address(e) != "[UNIX]") {
+    log << "unix socket name lookup has unexpected result: " << net::address(e)
+        << "\n";
+    return false;
+  }
+
+  return true;
+}
+
+/* Test connection initialisation.
+ * @log Test output stream.
+ *
+ * Initialises a `net::connection` instance and does some cursory tests on the
+ * blank object.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testConnection(std::ostream &log) {
+  struct processor {
+    using session = int;
+  };
+
+  cxxhttp::service s;
+  net::connection<processor> c(s, std::cout);
+
+  if (&s != &c.io) {
+    std::cerr << "net::connection::io was initialised incorrectly.\n";
+    return false;
+  }
+
+  if (&std::cout != &c.log) {
+    std::cerr << "net::connection::log was initialised incorrectly.\n";
+    return false;
+  }
+
+  if (c.sessions.size() != 0) {
+    std::cerr << "net::connection::sessions should be empty but isn't.\n";
+    return false;
+  }
+
   return true;
 }
 
@@ -74,4 +122,5 @@ namespace test {
 using efgy::test::function;
 
 static function lookup(testLookup);
+static function connection(testConnection);
 }

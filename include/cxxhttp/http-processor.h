@@ -121,7 +121,7 @@ class server : public serverData {
    */
   void handle(session &sess) const {
     std::set<std::string> methods;
-    bool trigger406 = false;
+    bool badNegotiation = false;
     bool methodSupported = false;
 
     const std::string resource = sess.inboundRequest.resource.path();
@@ -139,11 +139,10 @@ class server : public serverData {
       if (resourceMatch) {
         if (methodMatch) {
           sess.outbound = {defaultServerHeaders};
-          bool badNegotiation = !sess.negotiate(servlet->negotiations);
+          badNegotiation =
+              badNegotiation || !sess.negotiate(servlet->negotiations);
 
-          if (badNegotiation) {
-            trigger406 = true;
-          } else {
+          if (!badNegotiation) {
             const std::size_t q = sess.queries();
             servlet->handler(sess, matches);
 
@@ -168,7 +167,7 @@ class server : public serverData {
 
     if (!methodSupported) {
       e.reply(501);
-    } else if (trigger406) {
+    } else if (badNegotiation) {
       e.reply(406);
     } else if (sess.trigger405(methods)) {
       e.allow = methods;

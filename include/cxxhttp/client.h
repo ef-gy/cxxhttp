@@ -87,7 +87,6 @@ class client : public connection<requestProcessor> {
 
     if (error) {
       delete newSession;
-      delete this;
     } else {
       newSession->start();
     }

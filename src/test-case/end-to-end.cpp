@@ -69,6 +69,30 @@ bool testUNIX(std::ostream &log) {
         });
   }
 
+  for (net::endpointType<transport::unix> endpoint : lookup) {
+    http::client<transport::unix> *s =
+        new http::client<transport::unix>(endpoint, clients, service);
+
+    s->processor.query("GET ", "/", {{"Host", name}, {"Keep-Alive", "none"}})
+        .then([&result,
+               &log](typename http::client<transport::unix>::session &session) {
+          if (session.inboundStatus.code != 400) {
+            log << "we sent a bad request line, but got status code "
+                << session.inboundStatus.code << "\n";
+            result = false;
+          }
+          if (session.content !=
+              "# Client Error\n\n"
+              "An error occurred while processing your request. "
+              "That's all I know.\n") {
+            log << "unexpected content:\n" << session.content << "\n";
+            result = false;
+          }
+
+          efgy::global<cxxhttp::service>().stop();
+        });
+  }
+
   efgy::global<cxxhttp::service>().run();
 
   return result;

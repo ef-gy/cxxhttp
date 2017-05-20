@@ -87,10 +87,10 @@ class server : public connection<requestProcessor> {
    * request processor specified as a template argument.
    */
   void handleAccept(session *newSession, const std::error_code &error) {
-    if (!error) {
-      newSession->start();
-    } else {
+    if (error) {
       delete newSession;
+    } else {
+      newSession->start();
     }
 
     startAccept();

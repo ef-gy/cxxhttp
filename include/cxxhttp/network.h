@@ -215,7 +215,8 @@ class connection {
    *
    * Default constructor which binds an IO service and sets up a new processor.
    */
-  connection(service &pio, std::ostream &logfile) : io(pio), log(logfile) {}
+  connection(service &pio, std::ostream &logfile)
+      : io(pio), log(logfile), pending(true) {}
 
   /* Request processor instance
    *
@@ -237,12 +238,30 @@ class connection {
    */
   std::ostream &log;
 
+  /* Are there pending connections?
+   *
+   * Initially set to true, but reset to false if, for whatever reason, there
+   * are no more pending connections for the given session.
+   */
+  bool pending;
+
   /* Active sessions.
    *
    * The sessions that are currently active. This list is maintained using a
    * beaon in the session object.
    */
   efgy::beacons<session> sessions;
+
+  /* Is this connection still active?
+   *
+   * A connection is considered active if it either has at least one session
+   * pending, or if it has the `pending` flag set.
+   *
+   * If a connection is inactive, it can be then be garbage-collected.
+   *
+   * @return Whether the connection is still active or not.
+   */
+  bool active(void) const { return pending || sessions.size() > 0; }
 };
 }
 }

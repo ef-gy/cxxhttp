@@ -83,10 +83,13 @@ class client : public connection<requestProcessor> {
    * allows the session object to begin interacting with the new session.
    */
   void handleConnect(session *newSession, const std::error_code &error) {
-    if (!error) {
-      newSession->start();
-    } else {
+    connection::pending = false;
+
+    if (error) {
       delete newSession;
+      delete this;
+    } else {
+      newSession->start();
     }
   }
 };

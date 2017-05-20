@@ -122,6 +122,11 @@ bool testConnection(std::ostream &log) {
     return false;
   }
 
+  if (c.active() != true) {
+    std::cerr << "a newly-initialised connection should still be active.\n";
+    return false;
+  }
+
   return true;
 }
 

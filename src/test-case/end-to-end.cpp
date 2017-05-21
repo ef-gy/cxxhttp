@@ -35,9 +35,48 @@ using namespace cxxhttp;
 bool testUNIX(std::ostream &log) {
   const char *name = "/tmp/cxxhttp-test.socket";
   bool result = true;
+  int replies = 0;
+
+  struct sampleData {
+    std::string method, resource;
+    http::headers inbound;
+    unsigned status;
+    std::string content;
+  };
+
+  std::vector<sampleData> tests{
+      {
+          "GET",
+          "/",
+          {{"Host", name}, {"Keep-Alive", "none"}},
+          501,
+          "# Not Implemented\n\n"
+          "An error occurred while processing your request. "
+          "That's all I know.\n",
+      },
+      {
+          "GET ",
+          "/",
+          {{"Host", name}, {"Keep-Alive", "none"}},
+          400,
+          "# Client Error\n\n"
+          "An error occurred while processing your request. "
+          "That's all I know.\n",
+      },
+      {
+          "OPTIONS",
+          "/",
+          {{"Host", name},
+           {"Keep-Alive", "none"},
+           {"Accept", "application/foo"}},
+          406,
+          "# Not Acceptable\n\n"
+          "An error occurred while processing your request. "
+          "That's all I know.\n",
+      },
+  };
 
   std::remove(name);
-
   efgy::cli::options opts({"http:unix:/tmp/cxxhttp-test.socket"});
 
   net::endpoint<transport::unix> lookup(name);
@@ -45,52 +84,32 @@ bool testUNIX(std::ostream &log) {
       efgy::global<efgy::beacons<http::client<transport::unix>>>();
   cxxhttp::service &service = efgy::global<cxxhttp::service>();
 
-  for (net::endpointType<transport::unix> endpoint : lookup) {
-    http::client<transport::unix> *s =
-        new http::client<transport::unix>(endpoint, clients, service);
+  for (const auto &tt : tests) {
+    for (net::endpointType<transport::unix> endpoint : lookup) {
+      http::client<transport::unix> *s =
+          new http::client<transport::unix>(endpoint, clients, service);
 
-    s->processor.query("GET", "/", {{"Host", name}, {"Keep-Alive", "none"}})
-        .then([&result,
-               &log](typename http::client<transport::unix>::session &session) {
-          if (session.inboundStatus.code != 501) {
-            log << "nothing implemented the GET method, but we got a "
-                << session.inboundStatus.code << "\n";
-            result = false;
-          }
-          if (session.content !=
-              "# Not Implemented\n\n"
-              "An error occurred while processing your request. "
-              "That's all I know.\n") {
-            log << "unexpected content:\n" << session.content << "\n";
-            result = false;
-          }
+      s->processor.query(tt.method, tt.resource, tt.inbound)
+          .then([&,
+                 tt](typename http::client<transport::unix>::session &session) {
+            if (session.inboundStatus.code != tt.status) {
+              log << "got status " << session.inboundStatus.code << " expected "
+                  << tt.status << "\n";
+              result = false;
+            }
+            if (session.content != tt.content) {
+              log << "unexpected content:\n"
+                  << session.content << "\nexpected:\n"
+                  << tt.content << "\n";
+              result = false;
+            }
 
-          efgy::global<cxxhttp::service>().stop();
-        });
-  }
-
-  for (net::endpointType<transport::unix> endpoint : lookup) {
-    http::client<transport::unix> *s =
-        new http::client<transport::unix>(endpoint, clients, service);
-
-    s->processor.query("GET ", "/", {{"Host", name}, {"Keep-Alive", "none"}})
-        .then([&result,
-               &log](typename http::client<transport::unix>::session &session) {
-          if (session.inboundStatus.code != 400) {
-            log << "we sent a bad request line, but got status code "
-                << session.inboundStatus.code << "\n";
-            result = false;
-          }
-          if (session.content !=
-              "# Client Error\n\n"
-              "An error occurred while processing your request. "
-              "That's all I know.\n") {
-            log << "unexpected content:\n" << session.content << "\n";
-            result = false;
-          }
-
-          efgy::global<cxxhttp::service>().stop();
-        });
+            replies++;
+            if (replies >= tests.size()) {
+              efgy::global<cxxhttp::service>().stop();
+            }
+          });
+    }
   }
 
   efgy::global<cxxhttp::service>().run();

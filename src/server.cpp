@@ -69,13 +69,14 @@ static const char *resource = "/";
 static const char *method = "GET|POST";
 static const http::headers negotiations{
     {"Accept", "text/plain, application/json;q=0.9"}};
+static const char *description = "A simple Hello World handler.";
 
 namespace tcp {
 static httpd::servlet<transport::tcp> hello(resource, ::hello<transport::tcp>,
-                                            method, negotiations);
+                                            method, negotiations, description);
 }
 
 namespace unix {
 static httpd::servlet<transport::unix> hello(resource, ::hello<transport::unix>,
-                                             method, negotiations);
+                                             method, negotiations, description);
 }

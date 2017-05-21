@@ -56,20 +56,30 @@ static const char *resource = ".*";
  */
 static const char *method = "TRACE";
 
+/* A description of how to use the HTTP TRACE method.
+ *
+ * The description in the original RFC is actually pretty good, so we just link
+ * to that here. Do note that the original RFC doesn't call out the theoretical
+ * security issues with getting to cookies in JS you normally couldn't.
+ */
+static const char *description =
+    "See [RFC 2616, section 9.8]"
+    "(https://tools.ietf.org/html/rfc2616#section-9.8).";
+
 #if !defined(NO_DEFAULT_TRACE)
 /* TRACE servlet on TCP sockets.
  *
  * Sets up the servlet for the default TCP processor.
  */
 static httpd::servlet<transport::tcp> TCP(resource, trace<transport::tcp>,
-                                          method);
+                                          method, {}, description);
 
 /* TRACE servlet on UNIX sockets.
  *
  * Same as the TCP variant, just for local UNIX sockets.
  */
 static httpd::servlet<transport::unix> UNIX(resource, trace<transport::unix>,
-                                            method);
+                                            method, {}, description);
 #endif
 }
 }

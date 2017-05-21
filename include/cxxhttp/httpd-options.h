@@ -34,7 +34,10 @@ namespace options {
 template <class transport>
 static void options(typename http::server<transport>::session &session,
                     std::smatch &re) {
-  std::string text = "# Applicable Resource Processors\n\n";
+  std::string text =
+      "# Applicable Resource Processors\n\n"
+      "The following servlets are built into the application and match the "
+      "given resource:\n\n";
   std::set<std::string> methods{};
   const std::string full = re[0];
 
@@ -49,7 +52,7 @@ static void options(typename http::server<transport>::session &session,
     }
   }
 
-  http::parser<http::headers> p{{{"Content-Type", "text/markdown"}}};
+  http::parser<http::headers> p{};
 
   for (const auto &m : methods) {
     p.append("Allow", m);
@@ -72,20 +75,38 @@ static const char *resource = "^\\*|/.*";
  */
 static const char *method = "OPTIONS";
 
+/* HTTP OPTIONS content negotiation parameters.
+ *
+ * We explicitly only provide output in markdown, and this negotiates an
+ * appropriate type. This does mean that if you have an inappropriate `Accept`
+ * header on the client side, you might get a 406 status.
+ */
+static const http::headers negotiations = {
+    {"Accept", "text/markdown, text/x-markdown;q=0.9, text/plain;q=0.9"}};
+
+/* A description of how to use the HTTP OPTIONS method.
+ *
+ * The description in the original RFC is actually pretty good, so we just link
+ * to that here.
+ */
+static const char *description =
+    "See [RFC 2616, section 9.2]"
+    "(https://tools.ietf.org/html/rfc2616#section-9.2).";
+
 #if !defined(NO_DEFAULT_OPTIONS)
 /* HTTP OPTIONS servlet on TCP.
  *
  * Sets up a servlet to respond to OPTIONS queries on TCP sockets.
  */
 static httpd::servlet<transport::tcp> TCP(resource, options<transport::tcp>,
-                                          method);
+                                          method, negotiations, description);
 
 /* HTTP OPTIONS servlet on UNIX sockets.
  *
  * Sets up a servlet for OPTIONS queries on UNIX sockets.
  */
 static httpd::servlet<transport::unix> UNIX(resource, options<transport::unix>,
-                                            method);
+                                            method, negotiations, description);
 #endif
 }
 }

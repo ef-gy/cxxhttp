@@ -33,6 +33,7 @@ using namespace cxxhttp;
 bool testOptionsHandler(std::ostream &log) {
   struct sampleData {
     std::string request;
+    http::headers inbound;
     unsigned status;
     http::headers header;
     std::string message;
@@ -40,21 +41,25 @@ bool testOptionsHandler(std::ostream &log) {
 
   std::vector<sampleData> tests{
       {"OPTIONS / HTTP/1.1",
+       {{"Accept", "text/markdown"}},
        200,
-       {{"Allow", "OPTIONS"}, {"Content-Type", "text/markdown"}},
+       {{"Allow", "OPTIONS"}},
        "# Applicable Resource Processors\n\n"
-       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n"},
+       "The following servlets are built into the application and match the "
+       "given resource:\n\n"
+       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
   };
 
   httpd::servlet<transport::fake> fakeHandler(
       httpd::options::resource, httpd::options::options<transport::fake>,
-      httpd::options::method);
+      httpd::options::method, httpd::options::negotiations);
 
   for (const auto &tt : tests) {
     http::recorder sess;
     std::smatch matches;
 
     sess.inboundRequest = tt.request;
+    sess.inbound = {tt.inbound};
     sess.connection.processor.servlets.insert(&fakeHandler);
 
     std::string resource = sess.inboundRequest.resource.path();
@@ -67,7 +72,10 @@ bool testOptionsHandler(std::ostream &log) {
       return false;
     }
     if (sess.header != tt.header) {
-      log << "options() produced unexpected headers.\n";
+      log << "options() produced unexpected headers.\n"
+          << std::string(http::parser<http::headers>{sess.header})
+          << "expected:\n"
+          << std::string(http::parser<http::headers>{tt.header});
       return false;
     }
     if (sess.message != tt.message) {

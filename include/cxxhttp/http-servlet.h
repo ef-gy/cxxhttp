@@ -160,7 +160,7 @@ class servlet {
    */
   std::string describe(void) const {
     return " * _" + methodx + "_ `" + resourcex + "`\n" + "   " + description +
-           "\n";
+           "\n\n";
   }
 
  protected:

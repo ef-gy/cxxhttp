@@ -45,6 +45,7 @@ template <class transport>
 static void hello(typename http::server<transport>::session &session,
                   std::smatch &) {
   using efgy::json::json;
+  using efgy::json::to_string;
 
   if (session.inboundRequest.method == "POST") {
     session.reply(200, session.content,
@@ -57,10 +58,7 @@ static void hello(typename http::server<transport>::session &session,
   if (session.outbound.header["Content-Type"] == "text/plain") {
     session.reply(200, message);
   } else if (session.outbound.header["Content-Type"] == "application/json") {
-    std::string s;
-    s << json(message);
-
-    session.reply(200, s);
+    session.reply(200, to_string(json(message)));
   }
 }
 

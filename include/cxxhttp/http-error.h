@@ -18,6 +18,7 @@
 
 #include <cxxhttp/http-header.h>
 #include <cxxhttp/http-status.h>
+#include <cxxhttp/negotiate.h>
 
 namespace cxxhttp {
 namespace http {
@@ -50,12 +51,23 @@ class error {
    * This constructs and sends a simple error reply to the client.
    */
   void reply(unsigned status) const {
-    std::string body = "# " + statusLine::getDescription(status) +
-                       "\n\n"
-                       "An error occurred while processing your request. "
-                       "That's all I know.\n";
+    std::string type = negotiate(session.inbound.get("Accept"),
+                                 "text/markdown, text/plain;q=0.9");
+    bool negotiationSuccess = !type.empty();
 
-    parser<headers> p{{{"Content-Type", "text/markdown"}}};
+    if (type.empty()) {
+      type = "text/markdown";
+    }
+
+    std::string body =
+        "# " + statusLine::getDescription(status) +
+        "\n\n"
+        "An error occurred while processing your request. " +
+        (negotiationSuccess ? "" : "Additionally, content type negotiation for "
+                                   "this error page failed. ") +
+        "That's all I know.\n";
+
+    parser<headers> p{{{"Content-Type", type}}};
 
     for (const auto &m : allow) {
       p.append("Allow", m);

@@ -32,7 +32,7 @@ using namespace cxxhttp;
  */
 bool testErrorHandler(std::ostream &log) {
   struct sampleData {
-    std::string request;
+    std::string request, accept;
     std::set<std::string> allow;
     unsigned status;
     http::headers header;
@@ -41,17 +41,27 @@ bool testErrorHandler(std::ostream &log) {
 
   std::vector<sampleData> tests{
       {"FOO / HTTP/1.1",
+       "text/*",
        {},
        400,
        {{"Content-Type", "text/markdown"}},
        "# Client Error\n\nAn error occurred while processing your request. "
        "That's all I know.\n"},
       {"FOO / HTTP/1.1",
+       "",
        {"GET", "BLARGH"},
        405,
        {{"Allow", "BLARGH,GET"}, {"Content-Type", "text/markdown"}},
        "# Method Not Allowed\n\nAn error occurred while processing your "
        "request. That's all I know.\n"},
+      {"FOO / HTTP/1.1",
+       "application/frob",
+       {"GET", "BLARGH"},
+       405,
+       {{"Allow", "BLARGH,GET"}, {"Content-Type", "text/markdown"}},
+       "# Method Not Allowed\n\nAn error occurred while processing your "
+       "request. Additionally, content type negotiation for this error page "
+       "failed. That's all I know.\n"},
   };
 
   for (const auto &tt : tests) {
@@ -59,6 +69,9 @@ bool testErrorHandler(std::ostream &log) {
     std::smatch matches;
 
     sess.inboundRequest = tt.request;
+    if (!tt.accept.empty()) {
+      sess.inbound.header["Accept"] = tt.accept;
+    }
 
     http::error<http::recorder> e(sess);
 

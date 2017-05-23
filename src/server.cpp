@@ -32,7 +32,7 @@
 #include <cxxhttp/httpd-options.h>
 #include <cxxhttp/httpd-trace.h>
 
-#include <ef.gy/stream-json.h>
+#include <ef.gy/json.h>
 
 using namespace cxxhttp;
 
@@ -45,7 +45,6 @@ template <class transport>
 static void hello(typename http::server<transport>::session &session,
                   std::smatch &) {
   using efgy::json::json;
-  using efgy::json::tag;
 
   if (session.inboundRequest.method == "POST") {
     session.reply(200, session.content,
@@ -58,10 +57,10 @@ static void hello(typename http::server<transport>::session &session,
   if (session.outbound.header["Content-Type"] == "text/plain") {
     session.reply(200, message);
   } else if (session.outbound.header["Content-Type"] == "application/json") {
-    std::ostringstream s("");
-    s << tag() << json(message);
+    std::string s;
+    s << json(message);
 
-    session.reply(200, s.str());
+    session.reply(200, s);
   }
 }
 

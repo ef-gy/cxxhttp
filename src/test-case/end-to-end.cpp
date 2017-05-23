@@ -72,6 +72,7 @@ bool testUNIX(std::ostream &log) {
           406,
           "# Not Acceptable\n\n"
           "An error occurred while processing your request. "
+          "Additionally, content type negotiation for this error page failed. "
           "That's all I know.\n",
       },
   };

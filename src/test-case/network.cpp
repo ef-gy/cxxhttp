@@ -39,9 +39,9 @@ bool testLookup(std::ostream &log) {
 
   std::vector<sampleData> tests{
       {"0.0.0.0", "80", {"0.0.0.0:80"}, 1},
-      {"localhost", "80", {"127.0.0.1:80", "[::1]:80"}, 1},
-      {"localhost", "http", {"127.0.0.1:80", "[::1]:80"}, 1},
-      {"localhost", "ftp", {"127.0.0.1:21", "[::1]:21"}, 1},
+      {"localhost", "80", {"127.0.0.1:80", "::1:80"}, 1},
+      {"localhost", "http", {"127.0.0.1:80", "::1:80"}, 1},
+      {"localhost", "ftp", {"127.0.0.1:21", "::1:21"}, 1},
   };
 
   for (const auto &tt : tests) {

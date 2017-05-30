@@ -48,9 +48,7 @@ bool testLookup(std::ostream &log) {
     const auto v = net::endpoint<transport::tcp>(tt.host, tt.service);
     int c = 0;
     for (net::endpointType<transport::tcp> a : v) {
-      std::stringstream f;
-      f << a;
-      const std::string r = f.str();
+      const std::string r = net::address(a);
       if (tt.expected.find(r) == tt.expected.end()) {
         log << "unexpected lookup result: " << r << " for host '" << tt.host
             << "' and service '" << tt.service << "'\n";
@@ -81,9 +79,23 @@ bool testLookup(std::ostream &log) {
     return false;
   }
 
+  const auto ve = transport::unix::endpoint(v[0]);
+  if (net::address(ve) != "/tmp/random-socket") {
+    log << "unix socket lookup has unexpected address: " << net::address(ve)
+        << "\n";
+    return false;
+  }
+
   const auto e = transport::unix::socket(io);
-  if (net::address(e) != "[UNIX]") {
+  if (net::address(e) != "[UNAVAILABLE]") {
     log << "unix socket name lookup has unexpected result: " << net::address(e)
+        << "\n";
+    return false;
+  }
+
+  const auto ee = transport::unix::endpoint();
+  if (net::address(ee) != "[UNIX:empty]") {
+    log << "unix socket name lookup has unexpected result: " << net::address(ee)
         << "\n";
     return false;
   }

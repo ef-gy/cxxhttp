@@ -60,16 +60,48 @@ using unix = asio::local::stream_protocol;
 }
 
 namespace net {
+/* Resolve UNIX endpoint address.
+ * @endpoint The endpoint to examine.
+ *
+ * Examines a UNIX endpoint to resolve its address.
+ *
+ * @return The address of the endpoint.
+ */
+static inline std::string address(const transport::unix::endpoint &endpoint) {
+  if (endpoint.path().empty()) {
+    return "[UNIX:empty]";
+  } else {
+    return endpoint.path();
+  }
+}
+
 /* Resolve UNIX socket address.
- * @socket The UNIX socket wrapper; ignored.
+ * @socket The UNIX socket wrapper.
  *
- * This is currently not supported, so will just return a string to indicate
- * that it's a UNIX socket and not something else.
+ * Pretty much the same implementation as the for TCP sockets: look up the
+ * remote endpoint of that and turn it into a string.
  *
- * @return A fixed string that says that this is a UNIX socket.
+ * @return The remote address of the socket.
  */
 static inline std::string address(const transport::unix::socket &socket) {
-  return "[UNIX]";
+  asio::error_code ec;
+  const auto endpoint = socket.remote_endpoint(ec);
+  if (ec) {
+    return "[UNAVAILABLE]";
+  } else {
+    return address(endpoint);
+  }
+}
+
+/* Resolve TCP endpoint address.
+ * @endpoint The endpoint to examine.
+ *
+ * Examines a TCP endpoint to resolve its address.
+ *
+ * @return The address of the endpoint.
+ */
+static inline std::string address(const transport::tcp::endpoint &endpoint) {
+  return endpoint.address().to_string() + ":" + std::to_string(endpoint.port());
 }
 
 /* Resolve TCP socket address.
@@ -80,10 +112,12 @@ static inline std::string address(const transport::unix::socket &socket) {
  * @return The address of whatever the socket is connected to.
  */
 static inline std::string address(const transport::tcp::socket &socket) {
-  try {
-    return socket.remote_endpoint().address().to_string();
-  } catch (...) {
+  asio::error_code ec;
+  const auto endpoint = socket.remote_endpoint(ec);
+  if (ec) {
     return "[UNAVAILABLE]";
+  } else {
+    return address(endpoint);
   }
 }
 

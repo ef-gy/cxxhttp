@@ -48,7 +48,25 @@ class server : public connection<requestProcessor> {
       : connection(pio, logfile),
         acceptor(pio, endpoint),
         beacon(*this, pServers) {
-    startAccept();
+    try {
+      logfile << "new acceptor on endpoint: "
+              << address(acceptor.local_endpoint()) << "\n";
+      startAccept();
+    } catch (...) {
+      logfile << "exception in acceptor setup.\n";
+    }
+  }
+
+  /* Query local endpoint.
+   *
+   * Queries and returns the local endpoint that a server is bound to.
+   * Particularly useful for binding servers to a random port and then trying to
+   * use them.
+   *
+   * @return The local endpoint for this server.
+   */
+  typename transport::endpoint endpoint(void) {
+    return acceptor.local_endpoint();
   }
 
  protected:

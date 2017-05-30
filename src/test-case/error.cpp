@@ -18,7 +18,6 @@
 #define ASIO_DISABLE_THREADS
 #define NO_DEFAULT_OPTIONS
 #include <cxxhttp/http-error.h>
-#include <cxxhttp/http-test.h>
 
 using namespace cxxhttp;
 
@@ -35,7 +34,6 @@ bool testErrorHandler(std::ostream &log) {
     std::string request, accept;
     std::set<std::string> allow;
     unsigned status;
-    http::headers header;
     std::string message;
   };
 
@@ -44,28 +42,42 @@ bool testErrorHandler(std::ostream &log) {
        "text/*",
        {},
        400,
-       {{"Content-Type", "text/markdown"}},
+       "HTTP/1.1 400 Client Error\r\n"
+       "Connection: close\r\n"
+       "Content-Length: 84\r\n"
+       "Content-Type: text/markdown\r\n"
+       "\r\n"
        "# Client Error\n\nAn error occurred while processing your request. "
        "That's all I know.\n"},
       {"FOO / HTTP/1.1",
        "",
        {"GET", "BLARGH"},
        405,
-       {{"Allow", "BLARGH,GET"}, {"Content-Type", "text/markdown"}},
+       "HTTP/1.1 405 Method Not Allowed\r\n"
+       "Allow: BLARGH,GET\r\n"
+       "Connection: close\r\n"
+       "Content-Length: 90\r\n"
+       "Content-Type: text/markdown\r\n"
+       "\r\n"
        "# Method Not Allowed\n\nAn error occurred while processing your "
        "request. That's all I know.\n"},
       {"FOO / HTTP/1.1",
        "application/frob",
        {"GET", "BLARGH"},
        405,
-       {{"Allow", "BLARGH,GET"}, {"Content-Type", "text/markdown"}},
+       "HTTP/1.1 405 Method Not Allowed\r\n"
+       "Allow: BLARGH,GET\r\n"
+       "Connection: close\r\n"
+       "Content-Length: 157\r\n"
+       "Content-Type: text/markdown\r\n"
+       "\r\n"
        "# Method Not Allowed\n\nAn error occurred while processing your "
        "request. Additionally, content type negotiation for this error page "
        "failed. That's all I know.\n"},
   };
 
   for (const auto &tt : tests) {
-    http::recorder sess;
+    http::sessionData sess;
     std::smatch matches;
 
     sess.inboundRequest = tt.request;
@@ -73,23 +85,20 @@ bool testErrorHandler(std::ostream &log) {
       sess.inbound.header["Accept"] = tt.accept;
     }
 
-    http::error<http::recorder> e(sess);
+    http::error e(sess);
 
     e.allow = tt.allow;
     e.reply(tt.status);
 
-    if (sess.status != tt.status) {
-      log << "error() produced an unexpected status code: " << sess.status
-          << ", expected " << tt.status << "\n";
+    if (sess.outboundQueue.size() == 0) {
+      log << "nothing was sent.\n";
       return false;
     }
-    if (sess.header != tt.header) {
-      log << "error() produced unexpected headers.\n";
-      return false;
-    }
-    if (sess.message != tt.message) {
-      log << "error() produced an unexpected message: '" << sess.message
-          << "' expected: '" << tt.message << "'\n";
+
+    const auto &m = sess.outboundQueue.front();
+    if (m != tt.message) {
+      log << "error() produced an unexpected message: '" << m << "' expected: '"
+          << tt.message << "'\n";
       return false;
     }
   }

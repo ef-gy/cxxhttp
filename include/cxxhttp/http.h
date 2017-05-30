@@ -225,7 +225,7 @@ class session : public sessionData {
     } else if (wasRequest && status == stError) {
       // We had an edge from trying to read a request line to an error, so send
       // a message to the other end about this.
-      http::error<session>(*this).reply(400);
+      http::error(*this).reply(400);
       send();
       status = stProcessing;
     }

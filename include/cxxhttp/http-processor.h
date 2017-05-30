@@ -146,7 +146,7 @@ class server : public serverData {
       }
     }
 
-    error<session> e(sess);
+    error e(sess);
 
     if (!methodSupported) {
       e.reply(501);
@@ -176,7 +176,7 @@ class server : public serverData {
       if (exp->second == "100-continue") {
         sess.reply(100, "");
       } else {
-        error<session>(sess).reply(417);
+        error(sess).reply(417);
         return stError;
       }
     }
@@ -189,7 +189,7 @@ class server : public serverData {
       }
 
       if (sess.contentLength > maxContentLength) {
-        error<session>(sess).reply(413);
+        error(sess).reply(413);
         return stError;
       }
     } else {

@@ -17,18 +17,17 @@
 #include <set>
 
 #include <cxxhttp/http-header.h>
+#include <cxxhttp/http-session.h>
 #include <cxxhttp/http-status.h>
 #include <cxxhttp/negotiate.h>
 
 namespace cxxhttp {
 namespace http {
 /* Error reply handler.
- * @S The session type, which is needed to reply to something.
  *
  * `error` slightly simplifies and unifies error responses to clients, by
  * generating an appropriate response when an error needs to be sent.
  */
-template <class S>
 class error {
  public:
   /* Allowed methods.
@@ -43,7 +42,7 @@ class error {
    * Keeps track of a session object, which is used when trying to send an error
    * to the client.
    */
-  error(S &pSession) : session(pSession) {}
+  error(sessionData &pSession) : session(pSession) {}
 
   /* Send error code to client.
    * @status The status code to send to the client. Should be an error code.
@@ -81,7 +80,7 @@ class error {
    *
    * Set in the constructor and used when sending replies.
    */
-  S &session;
+  sessionData &session;
 };
 }
 }

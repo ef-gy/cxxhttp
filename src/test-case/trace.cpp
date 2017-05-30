@@ -17,7 +17,6 @@
 
 #define ASIO_DISABLE_THREADS
 #define NO_DEFAULT_TRACE
-#include <cxxhttp/http-test.h>
 #include <cxxhttp/httpd-trace.h>
 
 using namespace cxxhttp;
@@ -34,21 +33,21 @@ bool testTraceHandler(std::ostream &log) {
   struct sampleData {
     std::string request;
     std::set<std::string> headers;
-    unsigned status;
-    http::headers header;
     std::string message;
   };
 
   std::vector<sampleData> tests{
       {"TRACE / HTTP/1.1",
        {"Host: none", "Foo: Bar"},
-       200,
-       {{"Content-Type", "message/http"}},
+       "HTTP/1.1 200 OK\r\n"
+       "Content-Length: 40\r\n"
+       "Content-Type: message/http\r\n"
+       "\r\n"
        "TRACE / HTTP/1.1\r\nFoo: Bar\r\nHost: none\r\n"},
   };
 
   for (const auto &tt : tests) {
-    http::recorder sess;
+    http::sessionData sess;
     std::smatch matches;
 
     sess.inboundRequest = tt.request;
@@ -56,20 +55,17 @@ bool testTraceHandler(std::ostream &log) {
       sess.inbound.absorb(h);
     }
 
-    httpd::trace::trace<transport::fake>(sess, matches);
+    httpd::trace::trace(sess, matches);
 
-    if (sess.status != tt.status) {
-      log << "trace() produced an unexpected status code: " << sess.status
-          << ", expected " << tt.status << "\n";
+    if (sess.outboundQueue.size() == 0) {
+      log << "nothing was sent.\n";
       return false;
     }
-    if (sess.header != tt.header) {
-      log << "trace() produced unexpected headers.\n";
-      return false;
-    }
-    if (sess.message != tt.message) {
-      log << "trace() produced an unexpected message: '" << sess.message
-          << "' expected: '" << tt.message << "'\n";
+
+    const auto &m = sess.outboundQueue.front();
+    if (m != tt.message) {
+      log << "trace() produced an unexpected message: '" << m << "' expected: '"
+          << tt.message << "'\n";
       return false;
     }
   }

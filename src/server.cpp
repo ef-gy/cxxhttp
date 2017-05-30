@@ -41,9 +41,7 @@ using namespace cxxhttp;
  *
  * This function serves the familiar "Hello World!" when called.
  */
-template <class transport>
-static void hello(typename http::server<transport>::session &session,
-                  std::smatch &) {
+static void hello(http::sessionData &session, std::smatch &) {
   using efgy::json::json;
   using efgy::json::to_string;
 
@@ -68,12 +66,5 @@ static const http::headers negotiations{
     {"Accept", "text/plain, application/json;q=0.9"}};
 static const char *description = "A simple Hello World handler.";
 
-namespace tcp {
-static httpd::servlet<transport::tcp> hello(resource, ::hello<transport::tcp>,
-                                            method, negotiations, description);
-}
-
-namespace unix {
-static httpd::servlet<transport::unix> hello(resource, ::hello<transport::unix>,
-                                             method, negotiations, description);
-}
+static http::servlet servlet(resource, ::hello, method, negotiations,
+                             description);

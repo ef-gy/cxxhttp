@@ -24,16 +24,13 @@ namespace cxxhttp {
 namespace httpd {
 namespace options {
 /* HTTP OPTIONS method implementation.
- * @transport Transport type of the session.
  * @session The HTTP session to reply to.
  * @re Parsed resource match set.
  *
  * This function implements the HTTP OPTIONS method, which informs cliets of the
  * methods available at a given resource.
  */
-template <class transport>
-static void options(typename http::server<transport>::session &session,
-                    std::smatch &re) {
+static void options(http::sessionData &session, std::smatch &re) {
   std::string text =
       "# Applicable Resource Processors\n\n"
       "The following servlets are built into the application and match the "
@@ -41,7 +38,8 @@ static void options(typename http::server<transport>::session &session,
   std::set<std::string> methods{};
   const std::string full = re[0];
 
-  for (const auto &servlet : session.connection.processor.servlets) {
+  const auto &servlets = efgy::global<efgy::beacons<http::servlet>>();
+  for (const auto &servlet : servlets) {
     if ((full == "*") || std::regex_match(full, servlet->resource)) {
       text += servlet->describe();
       for (const auto &m : http::method) {
@@ -94,19 +92,12 @@ static const char *description =
     "(https://tools.ietf.org/html/rfc2616#section-9.2).";
 
 #if !defined(NO_DEFAULT_OPTIONS)
-/* HTTP OPTIONS servlet on TCP.
+/* HTTP OPTIONS servlet.
  *
- * Sets up a servlet to respond to OPTIONS queries on TCP sockets.
+ * Sets up a servlet to respond to OPTIONS queries on.
  */
-static httpd::servlet<transport::tcp> TCP(resource, options<transport::tcp>,
-                                          method, negotiations, description);
-
-/* HTTP OPTIONS servlet on UNIX sockets.
- *
- * Sets up a servlet for OPTIONS queries on UNIX sockets.
- */
-static httpd::servlet<transport::unix> UNIX(resource, options<transport::unix>,
-                                            method, negotiations, description);
+static http::servlet servlet(resource, options, method, negotiations,
+                             description);
 #endif
 }
 }

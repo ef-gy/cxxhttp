@@ -25,7 +25,6 @@ namespace cxxhttp {
 namespace httpd {
 namespace trace {
 /* HTTP TRACE implementation.
- * @transport The transport type of the session.
  * @session The session to reply to, with all the data we need.
  * @re The regex match fragments; ignored since we just respond to everything.
  *
@@ -35,9 +34,7 @@ namespace trace {
  * This method is not really subject to negotiation, so we haven't specified any
  * of those.
  */
-template <class transport>
-static void trace(typename http::server<transport>::session &session,
-                  std::smatch &re) {
+static void trace(http::sessionData &session, std::smatch &re) {
   session.reply(
       200, session.inboundRequest.assemble() + std::string(session.inbound),
       {{"Content-Type", "message/http"}});
@@ -67,19 +64,11 @@ static const char *description =
     "(https://tools.ietf.org/html/rfc2616#section-9.8).";
 
 #if !defined(NO_DEFAULT_TRACE)
-/* TRACE servlet on TCP sockets.
+/* TRACE servlet.
  *
- * Sets up the servlet for the default TCP processor.
+ * Sets up the servlet for the default HTTP processor.
  */
-static httpd::servlet<transport::tcp> TCP(resource, trace<transport::tcp>,
-                                          method, {}, description);
-
-/* TRACE servlet on UNIX sockets.
- *
- * Same as the TCP variant, just for local UNIX sockets.
- */
-static httpd::servlet<transport::unix> UNIX(resource, trace<transport::unix>,
-                                            method, {}, description);
+static http::servlet servlet(resource, trace, method, {}, description);
 #endif
 }
 }

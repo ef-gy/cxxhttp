@@ -15,8 +15,11 @@
 #if !defined(CXXHTTP_HTTP_SESSION_H)
 #define CXXHTTP_HTTP_SESSION_H
 
+#include <list>
+
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
+#include <cxxhttp/version.h>
 
 #include <cxxhttp/http-header.h>
 #include <cxxhttp/http-request.h>
@@ -30,6 +33,15 @@ namespace http {
  */
 static const headers sendNegotiatedAs{
     {"Accept", "Content-Type"},
+};
+
+/* Default client headers.
+ *
+ * These headers are sent by default with every client request, unless
+ * overriden.
+ */
+static const headers defaultClientHeaders{
+    {"User-Agent", identifier},
 };
 
 /* Transport-agnostic HTTP session data.
@@ -126,13 +138,54 @@ class sessionData {
    */
   std::size_t replies;
 
+  /* A flat buffer of things we still need to send.
+   *
+   * Each reply() records what we want to send, here. This is to get around the
+   * problem of needing to know the exact session type for reply operations,
+   * while also making it easier to run tests on this.
+   */
+  std::list<std::string> outboundQueue;
+
+  /* Pending log messages.
+   *
+   * These are flushed in the proper session's `send()` function.
+   */
+  std::list<std::string> log;
+
+  /* Whether to close the connection after sending something.
+   *
+   * Is picked up by the session's `send()` function, and will close the
+   * connection upon sending the last item in <outboundQueue>.
+   */
+  bool closeAfterSend;
+
+  /* Whether there's currently a write in progress.
+   *
+   * Set to true in `send()` whenever a write has been triggered, and cleared
+   * after that write has finished.
+   */
+  bool writePending;
+
+  /* Whether the session is "free".
+   *
+   * A free session can be used for a new connection. This is set to false as
+   * soon as an accept is pending against the session's socket.
+   */
+  bool free;
+
   /* Default constructor
    *
    * Sets up an empty data object with default values for the members that need
    * that.
    */
   sessionData(void)
-      : status(stRequest), contentLength(0), requests(0), replies(0) {}
+      : status(stRequest),
+        contentLength(0),
+        requests(0),
+        replies(0),
+        closeAfterSend(false),
+        writePending(false),
+        free(false) {}
 
   /* Calculate number of queries from this session.
    *
@@ -210,7 +263,6 @@ class sessionData {
   }
 
   /* Create a log message.
-   * @address The remote address to write to the log.
    * @status Reply status code.
    * @length The number of octets sent back in the reply.
    *
@@ -219,8 +271,7 @@ class sessionData {
    *
    * @return The full log message.
    */
-  std::string logMessage(const std::string &address, int status,
-                         std::size_t length) const {
+  std::string logMessage(int status, std::size_t length) const {
     static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
     std::string userAgent = inbound.get("User-Agent", "-");
 
@@ -232,7 +283,7 @@ class sessionData {
       userAgent = "(redacted)";
     }
 
-    return address + " - - [-] \"" + inboundRequest.assemble(false) + "\" " +
+    return "[PEER] - - [-] \"" + inboundRequest.assemble(false) + "\" " +
            std::to_string(status) + +" " + std::to_string(length) + " \"" +
            referer + "\" \"" + userAgent + "\"";
   }
@@ -241,7 +292,7 @@ class sessionData {
    *
    * This reads data that is already available in `input` and returns it as a
    * string. How much data is extracted depends on the current state. It'll
-   * either be full line if we're still parsing headers, or as much of the
+   * either be a full line if we're still parsing headers, or as much of the
    * remainder of the message body we can, if we're doing that.
    *
    * @return Partial data from the `input`, as needed by the current context.
@@ -317,6 +368,58 @@ class sessionData {
     }
 
     return false;
+  }
+
+  /* Send request.
+   * @method The request method.
+   * @resource Which request to get.
+   * @header Any headers to send.
+   * @body A request body, if applicable.
+   *
+   * Sends a request to whatever this session is connected to. Only really makes
+   * sense if this is a client, but nobody's preventing you from doing your own
+   * thing.
+   *
+   * This actually only queues up the send operation, which is picked up by the
+   * `send()` function in the session proper.
+   */
+  void request(const std::string &method, const std::string &resource,
+               headers header, const std::string &body = "") {
+    parser<headers> head{header};
+    head.insert(defaultClientHeaders);
+
+    outboundQueue.push_back(requestLine(method, resource).assemble() +
+                            std::string(head) + "\r\n" + body);
+
+    if (status == stRequest) {
+      status = stStatus;
+    }
+
+    requests++;
+  }
+
+  /* Send reply with custom header map.
+   * @status The status to return.
+   * @body The response body to send back to the client.
+   * @header The headers to send.
+   *
+   * Used by the processing code once it is known how to answer the request
+   * contained in this object.
+   *
+   * The actual message to send is generated using the generateReply() function,
+   * which receives all the parameters passed in.
+   *
+   * This actually only queues up the send operation, which is picked up by the
+   * `send()` function in the session proper.
+   */
+  void reply(int status, const std::string &body, const headers &header = {}) {
+    outboundQueue.push_back(generateReply(status, body, header));
+
+    closeAfterSend = closeAfterSend || status >= 400;
+
+    log.push_back(logMessage(status, body.size()));
+
+    replies++;
   }
 
  protected:

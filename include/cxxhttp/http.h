@@ -78,18 +78,8 @@ class session : public sessionData {
    * stShutdown.
    */
   ~session(void) {
-    status = stShutdown;
-
-    try {
-      socket.shutdown(socketType::shutdown_both);
-    } catch (std::system_error &e) {
-      std::cerr << "exception while shutting down socket: " << e.what() << "\n";
-    }
-
-    try {
-      socket.close();
-    } catch (std::system_error &e) {
-      std::cerr << "exception while closing socket: " << e.what() << "\n";
+    if (!free) {
+      recycle();
     }
   }
 
@@ -99,59 +89,35 @@ class session : public sessionData {
    */
   void start(void) { connection.processor.start(*this); }
 
-  /* Send request.
-   * @method The request method.
-   * @resource Which request to get.
-   * @header Any headers to send.
-   * @body A request body, if applicable.
+  /* Send the next message.
    *
-   * Sends a request to whatever this session is connected to. Only really makes
-   * sense if this is a client, but nobody's preventing you from doing your own
-   * thing.
+   * Sends the next message in the <outboundQueue>, if there is one and no
+   * message is currently in flight.
    */
-  void request(const std::string &method, const std::string &resource,
-               headers header, const std::string &body = "") {
-    parser<headers> head{header};
-    head.insert(defaultClientHeaders);
+  void send(void) {
+    if (status != stShutdown) {
+      if (!writePending) {
+        if (outboundQueue.size() > 0) {
+          writePending = true;
+          const std::string &msg = outboundQueue.front();
 
-    std::string req = requestLine(method, resource).assemble() +
-                      std::string(head) + "\r\n" + body;
+          asio::async_write(socket, asio::buffer(msg),
+                            [this](std::error_code ec, std::size_t length) {
+                              handleWrite(ec);
+                            });
 
-    if (status == stRequest) {
-      status = stStatus;
-      readLine();
+          outboundQueue.pop_front();
+        } else if (closeAfterSend) {
+          recycle();
+        }
+      }
     }
 
-    asio::async_write(
-        socket, asio::buffer(req),
-        [&](std::error_code ec, std::size_t length) { handleWrite(0, ec); });
+    for (const auto &l : log) {
+      connection.log << l << "\n";
+    }
 
-    requests++;
-  }
-
-  /* Send reply with custom header map.
-   * @status The status to return.
-   * @body The response body to send back to the client.
-   * @header The headers to send.
-   *
-   * Used by the processing code once it is known how to answer the request
-   * contained in this object.
-   *
-   * The actual message to send is generated using the generateReply() function,
-   * which receives all the parameters passed in.
-   */
-  void reply(int status, const std::string &body, const headers &header = {}) {
-    std::string reply = generateReply(status, body, header);
-
-    asio::async_write(socket, asio::buffer(reply),
-                      [status, this](std::error_code ec, std::size_t length) {
-                        handleWrite(status, ec);
-                      });
-
-    connection.log << logMessage(net::address(socket), status, body.size())
-                   << "\n";
-
-    replies++;
+    log.clear();
   }
 
   /* Read enough off the input socket to fill a line.
@@ -185,6 +151,34 @@ class session : public sessionData {
    * over the lot of them.
    */
   efgy::beacon<session> beacon;
+
+  /* Make session reusable for future use.
+   *
+   * Destroys all pending data that needs to be cleaned up, and tags the session
+   * as clean. This allows reusing the session, or destruction out of band.
+   */
+  void recycle(void) {
+    status = stShutdown;
+
+    closeAfterSend = false;
+    outboundQueue.clear();
+
+    send();
+
+    try {
+      socket.shutdown(socketType::shutdown_both);
+    } catch (std::system_error &e) {
+      std::cerr << "exception while shutting down socket: " << e.what() << "\n";
+    }
+
+    try {
+      socket.close();
+    } catch (std::system_error &e) {
+      std::cerr << "exception while closing socket: " << e.what() << "\n";
+    }
+
+    free = true;
+  }
 
   /* Callback after more data has been read.
    * @error Current error state.
@@ -221,6 +215,7 @@ class session : public sessionData {
         // we're done parsing headers, so change over to streaming in the
         // results.
         status = connection.processor.afterHeaders(*this);
+        send();
         content.clear();
       }
     }
@@ -231,6 +226,7 @@ class session : public sessionData {
       // We had an edge from trying to read a request line to an error, so send
       // a message to the other end about this.
       http::error<session>(*this).reply(400);
+      send();
       status = stProcessing;
     }
 
@@ -245,13 +241,15 @@ class session : public sessionData {
 
         /* processing the request takes place here */
         connection.processor.handle(*this);
+        send();
 
         if (q == queries()) {
           // the processor did not send anything, so give it another chance at
           // deciding what to do with this session.
           status = connection.processor.afterProcessing(*this);
+          send();
           if (status == stShutdown) {
-            delete this;
+            recycle();
             return;
           }
         }
@@ -261,12 +259,11 @@ class session : public sessionData {
     }
 
     if (status == stError) {
-      delete this;
+      recycle();
     }
   }
 
   /* Asynchronouse write handler
-   * @statusCode The HTTP status code of the reply.
    * @error Current error state.
    *
    * Decides whether or not things need to be written to the stream, or if
@@ -275,14 +272,19 @@ class session : public sessionData {
    * Automatically deletes the object on errors - which also closes the
    * connection automagically.
    */
-  void handleWrite(int statusCode, const std::error_code error) {
+  void handleWrite(const std::error_code error) {
     if (status != stShutdown) {
-      if (error || (statusCode >= 400)) {
-        delete this;
-      } else if (status == stProcessing) {
-        status = connection.processor.afterProcessing(*this);
+      writePending = false;
+      if (error) {
+        recycle();
+      } else {
+        if (status == stProcessing) {
+          status = connection.processor.afterProcessing(*this);
+        }
         if (status == stShutdown) {
-          delete this;
+          recycle();
+        } else {
+          send();
         }
       }
     }

@@ -21,23 +21,6 @@
 
 namespace cxxhttp {
 namespace httpd {
-/* HTTP servlet container.
- * @transport What transport the servlet is for, e.g. transport::tcp.
- *
- * This contains all the data needed to set up a subprocessor for the default
- * server processor type. This consists of regexen to match against a requested
- * resource and the method invoked, as well as a handler for a succsseful match.
- *
- * For advanced usage, it is possible to provide data or content negotiation.
- *
- * This alias makes initialisation slightly more convenient, by removing the
- * need to specify the session type. Instead, this just uses the session type
- * for a default HTTP server.
- */
-template <class transport>
-using servlet =
-    http::servlet<transport, typename http::server<transport>::session>;
-
 namespace cli {
 using efgy::cli::option;
 
@@ -59,8 +42,8 @@ static bool setup(net::endpoint<transport> lookup,
                   efgy::beacons<http::server<transport>> &servers =
                       efgy::global<efgy::beacons<http::server<transport>>>(),
                   service &service = efgy::global<cxxhttp::service>(),
-                  efgy::beacons<servlet<transport>> &servlets =
-                      efgy::global<efgy::beacons<servlet<transport>>>()) {
+                  efgy::beacons<http::servlet> &servlets =
+                      efgy::global<efgy::beacons<http::servlet>>()) {
   bool rv = false;
 
   for (net::endpointType<transport> endpoint : lookup) {
@@ -124,34 +107,26 @@ namespace usage {
 using efgy::cli::hint;
 
 /* Create usage hint.
- * @transport Used to look up the correct set of servlets, e.g. transpor::tcp.
  *
  * This creates a brief textual summary of the available servlets, with the
  * regular expressions that are used to match them against incoming queries.
  *
  * @return A string with a summary of the available servlets.
  */
-template <typename transport>
 static std::string describe(void) {
   std::string rv;
-  const auto &servlets = efgy::global<efgy::beacons<servlet<transport>>>();
+  const auto &servlets = efgy::global<efgy::beacons<http::servlet>>();
   for (const auto &servlet : servlets) {
     rv += servlet->describe();
   }
   return rv;
 }
 
-/* TCP servlet hints.
+/* Servlet hints.
  *
- * Enables a description of all available TCP servlets for the `--help` flag.
+ * Enables a description of all available HTTP servlets for the `--help` flag.
  */
-static hint TCP("HTTP Endpoints (TCP)", describe<transport::tcp>);
-
-/* UNIX socket servlet hints.
- *
- * Enables a description of all available UNIX servlets for the `--help` flag.
- */
-static hint UNIX("HTTP Endpoints (UNIX)", describe<transport::unix>);
+static hint endpointHint("HTTP Endpoints", describe);
 }
 }
 }

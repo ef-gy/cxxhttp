@@ -20,7 +20,6 @@
 
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
-#include <cxxhttp/version.h>
 
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-error.h>
@@ -37,15 +36,6 @@ class session;
  */
 static const headers defaultServerHeaders{
     {"Server", identifier},
-};
-
-/* Default client headers.
- *
- * These headers are sent by default with every client request, unless
- * overriden.
- */
-static const headers defaultClientHeaders{
-    {"User-Agent", identifier},
 };
 
 /* HTTP processors
@@ -96,20 +86,13 @@ class server : public serverData {
    */
   using session = http::session<transport, server>;
 
-  /* Servlet type.
-   *
-   * This is what processes actual inbound requests. We need to sort through
-   * those to do anything.
-   */
-  using servlet = http::servlet<transport, session>;
-
   /* Bound servlets.
    *
    * This is the list of server-side request handlers we'll be using.
    * Deliberately not a reference, so that different servers can have different
    * servlets.
    */
-  efgy::beacons<servlet> servlets;
+  efgy::beacons<http::servlet> servlets;
 
   /* Handle request
    * @sess The session object where the request was made.
@@ -237,10 +220,7 @@ class server : public serverData {
    *
    * In the HTTP server case, we begin by reading.
    */
-  void start(session &sess) const {
-    sess.status = stRequest;
-    sess.readLine();
-  }
+  void start(session &sess) const { sess.status = afterProcessing(sess); }
 };
 
 /* Client request data.
@@ -352,6 +332,8 @@ class client {
       requests.pop_front();
 
       sess.request(req.method, req.resource, req.header, req.body);
+      sess.send();
+      sess.readLine();
     }
   }
 

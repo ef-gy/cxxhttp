@@ -17,7 +17,6 @@
 
 #define ASIO_DISABLE_THREADS
 #define NO_DEFAULT_OPTIONS
-#include <cxxhttp/http-test.h>
 #include <cxxhttp/httpd-options.h>
 
 using namespace cxxhttp;
@@ -34,52 +33,45 @@ bool testOptionsHandler(std::ostream &log) {
   struct sampleData {
     std::string request;
     http::headers inbound;
-    unsigned status;
-    http::headers header;
     std::string message;
   };
 
   std::vector<sampleData> tests{
       {"OPTIONS / HTTP/1.1",
        {{"Accept", "text/markdown"}},
-       200,
-       {{"Allow", "OPTIONS"}},
+       "HTTP/1.1 200 OK\r\n"
+       "Allow: OPTIONS\r\n"
+       "Content-Length: 171\r\n"
+       "\r\n"
        "# Applicable Resource Processors\n\n"
        "The following servlets are built into the application and match the "
        "given resource:\n\n"
        " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
   };
 
-  httpd::servlet<transport::fake> fakeHandler(
-      httpd::options::resource, httpd::options::options<transport::fake>,
-      httpd::options::method, httpd::options::negotiations);
+  http::servlet fakeHandler(httpd::options::resource, httpd::options::options,
+                            httpd::options::method,
+                            httpd::options::negotiations);
 
   for (const auto &tt : tests) {
-    http::recorder sess;
+    http::sessionData sess;
     std::smatch matches;
 
     sess.inboundRequest = tt.request;
     sess.inbound = {tt.inbound};
-    sess.connection.processor.servlets.insert(&fakeHandler);
 
     std::string resource = sess.inboundRequest.resource.path();
     std::regex_match(resource, matches, fakeHandler.resource);
-    httpd::options::options<transport::fake>(sess, matches);
+    httpd::options::options(sess, matches);
 
-    if (sess.status != tt.status) {
-      log << "options() produced an unexpected status code: " << sess.status
-          << ", expected " << tt.status << "\n";
+    if (sess.outboundQueue.size() == 0) {
+      log << "nothing was sent.\n";
       return false;
     }
-    if (sess.header != tt.header) {
-      log << "options() produced unexpected headers.\n"
-          << std::string(http::parser<http::headers>{sess.header})
-          << "expected:\n"
-          << std::string(http::parser<http::headers>{tt.header});
-      return false;
-    }
-    if (sess.message != tt.message) {
-      log << "options() produced an unexpected message: '" << sess.message
+
+    const auto &m = sess.outboundQueue.front();
+    if (m != tt.message) {
+      log << "options() produced an unexpected message: '" << m
           << "' expected: '" << tt.message << "'\n";
       return false;
     }

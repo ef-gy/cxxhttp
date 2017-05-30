@@ -82,7 +82,7 @@ bool testBasicSession(std::ostream &log) {
  */
 bool testLog(std::ostream &log) {
   struct sampleData {
-    std::string address, request;
+    std::string request;
     http::headers header;
     int status;
     std::size_t length;
@@ -90,42 +90,36 @@ bool testLog(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {"foo",
-       "GET / HTTP/1.1",
+      {"GET / HTTP/1.1",
        {},
        200,
        42,
-       "foo - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"-\""},
-      {"[UNIX]",
-       "GET / HTTP/1.1",
+       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"-\""},
+      {"GET / HTTP/1.1",
        {{"User-Agent", "frob/123"}},
        200,
        42,
-       "[UNIX] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"frob/123\""},
-      {"[UNIX]",
-       "GET / HTTP/1.1",
+       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"frob/123\""},
+      {"GET / HTTP/1.1",
        {{"User-Agent", "frob/123\"foo\""}},
        200,
        42,
-       "[UNIX] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"(redacted)\""},
-      {"[UNIX]",
-       "GET / HTTP/1.1",
+       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"(redacted)\""},
+      {"GET / HTTP/1.1",
        {{"Referer", "http://foo/"}},
        200,
        42,
-       "[UNIX] - - [-] \"GET / HTTP/1.1\" 200 42 \"http://foo/\" \"-\""},
-      {"[UNIX]",
-       "GET / HTTP/1.1",
+       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"http://foo/\" \"-\""},
+      {"GET / HTTP/1.1",
        {{"Referer", "http://foo/%2"}},
        200,
        42,
-       "[UNIX] - - [-] \"GET / HTTP/1.1\" 200 42 \"(invalid)\" \"-\""},
-      {"[UNIX]",
-       "GET / HTTP/1.1",
+       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"(invalid)\" \"-\""},
+      {"GET / HTTP/1.1",
        {{"Referer", "http://foo/"}, {"User-Agent", "frob/123"}},
        200,
        42,
-       "[UNIX] - - [-] \"GET / HTTP/1.1\" 200 42 \"http://foo/\" \"frob/123\""},
+       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"http://foo/\" \"frob/123\""},
   };
 
   for (const auto &tt : tests) {
@@ -134,7 +128,7 @@ bool testLog(std::ostream &log) {
     s.inboundRequest = tt.request;
     s.inbound.header = tt.header;
 
-    const auto &v = s.logMessage(tt.address, tt.status, tt.length);
+    const auto &v = s.logMessage(tt.status, tt.length);
 
     if (v != tt.log) {
       log << "logMessage() = '" << v << "', but expected '" << tt.log << "'\n";

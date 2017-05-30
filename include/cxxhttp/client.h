@@ -63,12 +63,19 @@ class client : public connection<requestProcessor> {
   efgy::beacon<client> beacon;
 
   /* Connect to the socket.
+   * @newSession An optional session to reuse.
    *
    * This function creates a new, blank session and attempts to connect to the
    * given socket.
    */
-  void startConnect(void) {
-    session *newSession = new session(*this);
+  void startConnect(session *newSession = 0) {
+    if (newSession == 0) {
+      newSession = connection::getSession();
+    }
+    if (!newSession) {
+      newSession = new session(*this);
+    }
+
     newSession->socket.async_connect(
         target, [newSession, this](const std::error_code &error) {
           handleConnect(newSession, error);

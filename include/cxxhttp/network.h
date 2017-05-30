@@ -296,6 +296,27 @@ class connection {
    * @return Whether the connection is still active or not.
    */
   bool active(void) const { return pending || sessions.size() > 0; }
+
+  /* Get a free session.
+   *
+   * Steps through all sessions to obtain a free one, If no sessions are free,
+   * this will instead return the null pointer.
+   *
+   * This allows recycling sessions, which in turn means we don't have to do
+   * ugly things like kill sessions ourselves.
+   *
+   * @return A free session, or null.
+   */
+  session *getSession(void) {
+    for (auto &sess : sessions) {
+      if (sess->free) {
+        sess->free = false;
+        return sess;
+      }
+    }
+
+    return 0;
+  }
 };
 }
 }

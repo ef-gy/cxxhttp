@@ -48,13 +48,7 @@ class server : public connection<requestProcessor> {
       : connection(pio, logfile),
         acceptor(pio, endpoint),
         beacon(*this, pServers) {
-    try {
-      logfile << "new acceptor on endpoint: "
-              << address(acceptor.local_endpoint()) << "\n";
-      startAccept();
-    } catch (...) {
-      logfile << "exception in acceptor setup.\n";
-    }
+    startAccept();
   }
 
   /* Query local endpoint.
@@ -84,12 +78,19 @@ class server : public connection<requestProcessor> {
   efgy::beacon<server> beacon;
 
   /* Accept the next incoming connection
+   * @newSession An optional session to reuse.
    *
    * This function creates a new, blank session to handle the next incoming
    * request.
    */
-  void startAccept(void) {
-    session *newSession = new session(*this);
+  void startAccept(session *newSession = 0) {
+    if (newSession == 0) {
+      newSession = connection::getSession();
+    }
+    if (!newSession) {
+      newSession = new session(*this);
+    }
+
     acceptor.async_accept(newSession->socket,
                           [newSession, this](const std::error_code &error) {
                             handleAccept(newSession, error);
@@ -106,12 +107,11 @@ class server : public connection<requestProcessor> {
    */
   void handleAccept(session *newSession, const std::error_code &error) {
     if (error) {
-      delete newSession;
+      startAccept(newSession);
     } else {
       newSession->start();
+      startAccept();
     }
-
-    startAccept();
   }
 };
 }

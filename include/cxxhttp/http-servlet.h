@@ -22,12 +22,11 @@
 #include <ef.gy/global.h>
 
 #include <cxxhttp/http-header.h>
+#include <cxxhttp/http-session.h>
 
 namespace cxxhttp {
 namespace http {
 /* HTTP servlet container.
- * @transport What transport the servlet is for, e.g. transport::tcp.
- * @session The session type to use.
  *
  * This contains all the data needed to set up a subprocessor for the default
  * server processor type. This consists of regexen to match against a requested
@@ -35,16 +34,8 @@ namespace http {
  *
  * For advanced usage, it is possible to provide data or content negotiation.
  */
-template <class transport, class session>
 class servlet {
  public:
-  /* Session type alias.
-   *
-   * This shortens a few lines below, as the type is surprisingly long to write
-   * out.
-   */
-  using sessionType = session;
-
   /* Constructor.
    * @pResourcex Regex for applicable resources.
    * @pHandler Function specification to handle incoming requests that match.
@@ -58,7 +49,7 @@ class servlet {
    * per-transport set of servlets.
    */
   servlet(const std::string &pResourcex,
-          std::function<void(sessionType &, std::smatch &)> pHandler,
+          std::function<void(sessionData &, std::smatch &)> pHandler,
           const std::string &pMethodx = "GET",
           const http::headers pNegotiations = {},
           const std::string &pDescription = "no description available",
@@ -141,7 +132,7 @@ class servlet {
    * then the processor will continue trying to look up matching handlers and
    * assume no reply has been sent, yet.
    */
-  const std::function<void(sessionType &, std::smatch &)> handler;
+  const std::function<void(sessionData &, std::smatch &)> handler;
 
   /* Description of the servlet.
    *

@@ -92,7 +92,7 @@ A very trivial sample server would be this (see src/server.cpp):
       session.reply(200, "Hello World!");
     }
 
-    static httpd::servlet servlet("/", ::hello);
+    static http::servlet servlet("/", ::hello);
 
     int main(int argc, char *argv[]) { return cxxhttp::main(argc, argv); }
 

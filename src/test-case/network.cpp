@@ -103,49 +103,8 @@ bool testLookup(std::ostream &log) {
   return true;
 }
 
-/* Test connection initialisation.
- * @log Test output stream.
- *
- * Initialises a `net::connection` instance and does some cursory tests on the
- * blank object.
- *
- * @return 'true' on success, 'false' otherwise.
- */
-bool testConnection(std::ostream &log) {
-  struct processor {};
-  struct session {
-    using transportType = int;
-  };
-
-  cxxhttp::service s;
-  net::connection<session, processor> c(s, std::cout);
-
-  if (&s != &c.io) {
-    std::cerr << "net::connection::io was initialised incorrectly.\n";
-    return false;
-  }
-
-  if (&std::cout != &c.log) {
-    std::cerr << "net::connection::log was initialised incorrectly.\n";
-    return false;
-  }
-
-  if (c.sessions.size() != 0) {
-    std::cerr << "net::connection::sessions should be empty but isn't.\n";
-    return false;
-  }
-
-  if (c.active() != true) {
-    std::cerr << "a newly-initialised connection should still be active.\n";
-    return false;
-  }
-
-  return true;
-}
-
 namespace test {
 using efgy::test::function;
 
 static function lookup(testLookup);
-static function connection(testConnection);
 }

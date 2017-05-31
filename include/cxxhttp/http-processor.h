@@ -198,6 +198,14 @@ class server {
    * In the HTTP server case, we begin by reading.
    */
   void start(sessionData &sess) const { sess.status = afterProcessing(sess); }
+
+  /* Whether to listen for a connection.
+   *
+   * 'true' for servers, i.e. if we want to listen for inbound queries.
+   *
+   * @return Always true, this is a server.
+   */
+  static bool listen(void) { return true; };
 };
 
 /* Client request data.
@@ -334,6 +342,14 @@ class client {
     onSuccess = callback;
     return *this;
   }
+
+  /* Whether to listen for a connection.
+   *
+   * 'true' for servers, i.e. if we want to listen for inbound queries.
+   *
+   * @return Always false, this is a client.
+   */
+  static bool listen(void) { return false; };
 
  protected:
   /* Request pool.

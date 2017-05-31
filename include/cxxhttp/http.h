@@ -16,8 +16,7 @@
 
 #include <system_error>
 
-#include <cxxhttp/client.h>
-#include <cxxhttp/server.h>
+#include <cxxhttp/network.h>
 
 #include <cxxhttp/http-processor.h>
 
@@ -313,7 +312,7 @@ class session : public sessionData {
  */
 template <class transport>
 using server =
-    net::server<session<transport, processor::server>, processor::server>;
+    net::connection<session<transport, processor::server>, processor::server>;
 
 /* HTTP client template.
  * @transport Transport type for the server.
@@ -323,7 +322,7 @@ using server =
  */
 template <class transport>
 using client =
-    net::client<session<transport, processor::client>, processor::client>;
+    net::connection<session<transport, processor::client>, processor::client>;
 }
 }
 

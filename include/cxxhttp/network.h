@@ -238,15 +238,6 @@ class connection {
  public:
   using transport = typename session::transportType;
 
-  /* Initialise with IO service
-   * @pio IO service to use.
-   * @logfile A stream to write log messages to.
-   *
-   * Default constructor which binds an IO service and sets up a new processor.
-   */
-  connection(service &pio, std::ostream &logfile)
-      : io(pio), log(logfile), pending(true) {}
-
   /* Request processor instance
    *
    * Used to generate replies for incoming queries.
@@ -281,6 +272,45 @@ class connection {
    */
   efgy::beacons<session> sessions;
 
+  /* Initialise with IO service
+   * @pio IO service to use.
+   * @logfile A stream to write log messages to.
+   *
+   * Default constructor which binds an IO service and sets up a new processor.
+   */
+  connection(endpointType<transport> &endpoint,
+             efgy::beacons<connection> &pConnections =
+                 efgy::global<efgy::beacons<connection>>(),
+             service &pio = efgy::global<service>(),
+             std::ostream &logfile = std::cout)
+      : io(pio),
+        log(logfile),
+        pending(true),
+        acceptor(pio),
+        target(endpoint),
+        beacon(*this, pConnections) {
+    if (processor.listen()) {
+      acceptor.open(endpoint.protocol());
+      acceptor.bind(endpoint);
+      acceptor.listen();
+      startAccept();
+    } else {
+      startConnect();
+    }
+  }
+
+  /* Query local endpoint.
+   *
+   * Queries and returns the local endpoint that a server is bound to.
+   * Particularly useful for binding servers to a random port and then trying to
+   * use them.
+   *
+   * @return The local endpoint for this server.
+   */
+  typename transport::endpoint endpoint(void) {
+    return acceptor.local_endpoint();
+  }
+
   /* Is this connection still active?
    *
    * A connection is considered active if it either has at least one session
@@ -311,6 +341,100 @@ class connection {
     }
 
     return 0;
+  }
+
+ protected:
+  /* Socket acceptor
+   *
+   * This is the acceptor which has been bound to the socket specified in the
+   * constructor.
+   */
+  typename transport::acceptor acceptor;
+
+  /* Target endpoint.
+   *
+   * This is where we want to connect to.
+   */
+  endpointType<transport> target;
+
+  /* Connection beacon.
+   *
+   * Registration in this set is handled automatically in the constructor.
+   */
+  efgy::beacon<connection> beacon;
+
+  /* Accept the next incoming connection
+   * @newSession An optional session to reuse.
+   *
+   * This function creates a new, blank session to handle the next incoming
+   * request.
+   */
+  void startAccept(session *newSession = 0) {
+    if (newSession == 0) {
+      newSession = getSession();
+    }
+    if (!newSession) {
+      newSession = new session(*this);
+    }
+
+    acceptor.async_accept(newSession->socket.lowest_layer(),
+                          [newSession, this](const std::error_code &error) {
+                            handleAccept(newSession, error);
+                          });
+  }
+
+  /* Handle next incoming connection
+   * @newSession The blank session object that was created by startAccept().
+   * @error Describes any error condition that may have occurred.
+   *
+   * Called by asio.hpp when a new inbound connection has been accepted; this
+   * will make the session parse the incoming request and dispatch it to the
+   * request processor specified as a template argument.
+   */
+  void handleAccept(session *newSession, const std::error_code &error) {
+    if (error) {
+      startAccept(newSession);
+    } else {
+      newSession->start();
+      startAccept();
+    }
+  }
+
+  /* Connect to the socket.
+   * @newSession An optional session to reuse.
+   *
+   * This function creates a new, blank session and attempts to connect to the
+   * given socket.
+   */
+  void startConnect(session *newSession = 0) {
+    if (newSession == 0) {
+      newSession = getSession();
+    }
+    if (!newSession) {
+      newSession = new session(*this);
+    }
+
+    newSession->socket.lowest_layer().async_connect(
+        target, [newSession, this](const std::error_code &error) {
+          handleConnect(newSession, error);
+        });
+  }
+
+  /* Handle new connection
+   * @newSession The blank session object that was created by startConnect().
+   * @error Describes any error condition that may have occurred.
+   *
+   * Called by asio.hpp when a new outbound connection has been accepted; this
+   * allows the session object to begin interacting with the new session.
+   */
+  void handleConnect(session *newSession, const std::error_code &error) {
+    pending = false;
+
+    if (error) {
+      delete newSession;
+    } else {
+      newSession->start();
+    }
   }
 };
 }

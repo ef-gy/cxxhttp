@@ -49,9 +49,7 @@ static bool fetch(net::endpoint<transport> lookup, std::string host,
 
     s->processor
         .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}})
-        .then([&stream](typename client<transport>::session &session) {
-          stream << session.content;
-        });
+        .then([&stream](sessionData &session) { stream << session.content; });
 
     return true;
   }

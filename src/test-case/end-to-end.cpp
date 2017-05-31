@@ -91,8 +91,7 @@ bool testUNIX(std::ostream &log) {
           new http::client<transport::unix>(endpoint, clients, service);
 
       s->processor.query(tt.method, tt.resource, tt.inbound)
-          .then([&,
-                 tt](typename http::client<transport::unix>::session &session) {
+          .then([&, tt](http::sessionData &session) {
             if (session.inboundStatus.code != tt.status) {
               log << "got status " << session.inboundStatus.code << " expected "
                   << tt.status << "\n";

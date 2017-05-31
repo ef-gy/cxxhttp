@@ -227,21 +227,16 @@ class endpoint<transport::tcp> {
 };
 
 /* Basic asynchronous connection wrapper
+ * @session The session type. We need this as they're registered.
  * @requestProcessor The class of something that can handle requests.
  *
  * Contains all the data relating to a particular connection - either for a
  * server, or a client.
  */
-template <typename requestProcessor>
+template <typename session, typename requestProcessor>
 class connection {
  public:
-  /* The session type.
-   *
-   * The request processor needs to know about the kinds of sessions it's
-   * dealing with, so we grab that type here because we're keeping track of the
-   * sessions ourselves, below.
-   */
-  using session = typename requestProcessor::session;
+  using transport = typename session::transportType;
 
   /* Initialise with IO service
    * @pio IO service to use.

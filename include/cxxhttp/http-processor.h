@@ -44,25 +44,7 @@ static const headers defaultServerHeaders{
  * actually handle an HTTP request after it has been parsed.
  */
 namespace processor {
-/* Transport-agnostic parts of the server processor.
- *
- * These are transport-agnostic bits of data and functions that are used by the
- * server processor, so as to deduplicate some of the functions that would
- * otherwise be expanded per target transport type.
- * target transport type.
- */
-class serverData {
- public:
-  /* Maximum request content size
-   *
-   * The maximum number of octets supported for a request body. Requests larger
-   * than this are cancelled with an error.
-   */
-  std::size_t maxContentLength = (1024 * 1024 * 12);
-};
-
 /* Basis server processor
- * @transport The socket class for the request, e.g. transport::tcp
  *
  * This is the default processor, which fans out incoming requests by means of a
  * set of regular expressions. If a regex matches, a corresponding function is
@@ -75,16 +57,14 @@ class serverData {
  * A reference to the processor is available via the the session object, and it
  * is kept around for as long as the server object is.
  */
-template <class transport>
-class server : public serverData {
+class server {
  public:
-  /* Session type
+  /* Maximum request content size
    *
-   * This is the session type that the processor is intended for. This typedef
-   * is mostly here for convenience, but it also helps the connection type to
-   * figure out what session this processor needs.
+   * The maximum number of octets supported for a request body. Requests larger
+   * than this are cancelled with an error.
    */
-  using session = http::session<transport, server>;
+  std::size_t maxContentLength = (1024 * 1024 * 12);
 
   /* Bound servlets.
    *
@@ -102,7 +82,7 @@ class server : public serverData {
    * all that match it will call the registered function, until one of them
    * returns true.
    */
-  void handle(session &sess) const {
+  void handle(sessionData &sess) const {
     std::set<std::string> methods;
     bool badNegotiation = false;
     bool methodSupported = false;
@@ -168,7 +148,7 @@ class server : public serverData {
    *
    * @return The parser state to switch to.
    */
-  enum status afterHeaders(session &sess) const {
+  enum status afterHeaders(sessionData &sess) const {
     const auto &cli = sess.inbound.header.find("Content-Length");
     const auto &exp = sess.inbound.header.find("Expect");
 
@@ -207,10 +187,7 @@ class server : public serverData {
    *
    * @return The parser state to switch to.
    */
-  enum status afterProcessing(session &sess) const {
-    sess.readLine();
-    return stRequest;
-  }
+  enum status afterProcessing(sessionData &sess) const { return stRequest; }
 
   /* Begin handling requests
    * @sess The session that's just been established.
@@ -220,7 +197,7 @@ class server : public serverData {
    *
    * In the HTTP server case, we begin by reading.
    */
-  void start(session &sess) const { sess.status = afterProcessing(sess); }
+  void start(sessionData &sess) const { sess.status = afterProcessing(sess); }
 };
 
 /* Client request data.
@@ -256,28 +233,21 @@ struct request {
   std::string body;
 };
 
-/* Basic HTTP client processor.
- * @transport The transport type, e.g. transport::tcp.
+/* Basic client processor.
  *
- * Like the basic server processor, but handles client requests.
+ * This provides a basic client processor, which retrieves data and, on success,
+ * will call a user-specified callback, with the full session. This allows for
+ * further processing by a client.
  */
-template <class transport>
 class client {
  public:
-  /* Session type
-   *
-   * This is the session type that the processor is intended for. This typedef
-   * is mostly here for convenience.
-   */
-  using session = http::session<transport, client>;
-
   /* Process result of request.
    * @sess The session with the fully processed request.
    *
    * Called once a request has been fully processed. Will trigger further
    * processing if anything is pending.
    */
-  void handle(session &sess) {
+  void handle(sessionData &sess) {
     if (onSuccess) {
       onSuccess(sess);
     }
@@ -293,7 +263,7 @@ class client {
    *
    * @return The parser state to switch to.
    */
-  enum status afterHeaders(session &sess) const {
+  enum status afterHeaders(sessionData &sess) const {
     const auto &cli = sess.inbound.header.find("Content-Length");
 
     if (cli != sess.inbound.header.end()) {
@@ -317,7 +287,7 @@ class client {
    *
    * @return The parser state to switch to.
    */
-  enum status afterProcessing(session &sess) const { return stShutdown; }
+  enum status afterProcessing(sessionData &sess) const { return stShutdown; }
 
   /* Start processing requests.
    * @sess The session to process requests on.
@@ -325,15 +295,13 @@ class client {
    * Pops a new request off the list of pending requests, and processes it, if
    * there is something to process.
    */
-  void start(session &sess) {
+  void start(sessionData &sess) {
     if (requests.size() > 0) {
       auto req = requests.front();
 
       requests.pop_front();
 
       sess.request(req.method, req.resource, req.header, req.body);
-      sess.send();
-      sess.readLine();
     }
   }
 
@@ -362,7 +330,7 @@ class client {
    * @return A reference to the object's instance, to allow for chaining of
    * function calls.
    */
-  client &then(std::function<void(session &)> callback) {
+  client &then(std::function<void(sessionData &)> callback) {
     onSuccess = callback;
     return *this;
   }
@@ -379,7 +347,7 @@ class client {
    *
    * Called when a server has returned something to one of our queries.
    */
-  std::function<void(session &)> onSuccess;
+  std::function<void(sessionData &)> onSuccess;
 };
 }
 }

@@ -112,12 +112,13 @@ bool testLookup(std::ostream &log) {
  * @return 'true' on success, 'false' otherwise.
  */
 bool testConnection(std::ostream &log) {
-  struct processor {
-    using session = int;
+  struct processor {};
+  struct session {
+    using transportType = int;
   };
 
   cxxhttp::service s;
-  net::connection<processor> c(s, std::cout);
+  net::connection<session, processor> c(s, std::cout);
 
   if (&s != &c.io) {
     std::cerr << "net::connection::io was initialised incorrectly.\n";

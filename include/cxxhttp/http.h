@@ -33,13 +33,19 @@ namespace http {
 template <typename transport, typename requestProcessor>
 class session : public sessionData {
  public:
+  /* Transport type alias.
+   *
+   * Referenced here so we don't have to specify it elsewhere.
+   */
+  using transportType = transport;
+
   /* Connection type.
    *
    * This is the type of the server or client that the session is being served
    * on; used when instantiating a session, as we need to use some of the data
    * the server or client may have to offer.
    */
-  using connectionType = net::connection<requestProcessor>;
+  using connectionType = net::connection<session, requestProcessor>;
 
   /* Connection socket type.
    *
@@ -87,7 +93,13 @@ class session : public sessionData {
    *
    * Starts processing the incoming request.
    */
-  void start(void) { connection.processor.start(*this); }
+  void start(void) {
+    connection.processor.start(*this);
+    if (status == stRequest || status == stStatus) {
+      readLine();
+    }
+    send();
+  }
 
   /* Send the next message.
    *
@@ -147,8 +159,8 @@ class session : public sessionData {
  protected:
   /* Session beacon.
    *
-   * We want to keep track of how all of the sessions, so that we can do stats
-   * over the lot of them.
+   * We want to keep track of all of the sessions, so that we can do stats over
+   * the lot of them.
    */
   efgy::beacon<session> beacon;
 
@@ -243,18 +255,18 @@ class session : public sessionData {
 
         /* processing the request takes place here */
         connection.processor.handle(*this);
-        send();
 
         if (q == queries()) {
           // the processor did not send anything, so give it another chance at
           // deciding what to do with this session.
           status = connection.processor.afterProcessing(*this);
-          send();
           if (status == stShutdown) {
             recycle();
-            return;
+          } else if (status == stRequest || status == stStatus) {
+            readLine();
           }
         }
+        send();
       } else {
         readRemainingContent();
       }
@@ -295,25 +307,23 @@ class session : public sessionData {
 
 /* HTTP server template.
  * @transport Transport type for the server.
- * @requestProcessor The processor to use; default to processor::server.
  *
  * This is a template for an HTTP server, based on net::server and using the
- * given processor.
+ * server processor.
  */
-template <class transport,
-          class requestProcessor = processor::server<transport>>
-using server = net::server<transport, requestProcessor, session>;
+template <class transport>
+using server =
+    net::server<session<transport, processor::server>, processor::server>;
 
 /* HTTP client template.
  * @transport Transport type for the server.
- * @requestProcessor The processor to use; default to processor::client.
  *
  * This is a template for an HTTP client, based on net::client and using the
- * given processor.
+ * client processor.
  */
-template <class transport,
-          class requestProcessor = processor::client<transport>>
-using client = net::client<transport, requestProcessor, session>;
+template <class transport>
+using client =
+    net::client<session<transport, processor::client>, processor::client>;
 }
 }
 

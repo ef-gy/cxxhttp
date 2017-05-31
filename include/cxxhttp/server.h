@@ -19,18 +19,17 @@
 namespace cxxhttp {
 namespace net {
 /* Basic asynchronous server wrapper
- * @transport The socket class, e.g. asio::ip::tcp
+ * @session The session type.
  * @requestProcessor The functor class to handle requests.
  *
  * Contains the code that accepts incoming requests and dispatches sessions to
  * process these requests asynchronously.
  */
-template <typename transport, typename requestProcessor,
-          template <typename, typename> class sessionTemplate>
-class server : public connection<requestProcessor> {
+template <typename session, typename requestProcessor>
+class server : public connection<session, requestProcessor> {
  public:
-  using connection = net::connection<requestProcessor>;
-  using session = sessionTemplate<transport, requestProcessor>;
+  using connection = net::connection<session, requestProcessor>;
+  using typename connection::transport;
 
   /* Initialise with IO service
    * @endpoint Endpoint for the socket to bind.
@@ -91,7 +90,7 @@ class server : public connection<requestProcessor> {
       newSession = new session(*this);
     }
 
-    acceptor.async_accept(newSession->socket,
+    acceptor.async_accept(newSession->socket.lowest_layer(),
                           [newSession, this](const std::error_code &error) {
                             handleAccept(newSession, error);
                           });

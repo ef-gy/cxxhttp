@@ -94,32 +94,20 @@ bool testLog(std::ostream &log) {
        {},
        200,
        42,
-       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"-\""},
+       "{\"length\":42,\"method\":\"GET\",\"protocol\":\"HTTP/1.1\","
+       "\"resource\":\"/\",\"status\":200}"},
       {"GET / HTTP/1.1",
        {{"User-Agent", "frob/123"}},
        200,
        42,
-       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"frob/123\""},
-      {"GET / HTTP/1.1",
-       {{"User-Agent", "frob/123\"foo\""}},
-       200,
-       42,
-       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"-\" \"(redacted)\""},
+       "{\"length\":42,\"method\":\"GET\",\"protocol\":\"HTTP/1.1\","
+       "\"resource\":\"/\",\"status\":200,\"user-agent\":\"frob/123\"}"},
       {"GET / HTTP/1.1",
        {{"Referer", "http://foo/"}},
        200,
        42,
-       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"http://foo/\" \"-\""},
-      {"GET / HTTP/1.1",
-       {{"Referer", "http://foo/%2"}},
-       200,
-       42,
-       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"(invalid)\" \"-\""},
-      {"GET / HTTP/1.1",
-       {{"Referer", "http://foo/"}, {"User-Agent", "frob/123"}},
-       200,
-       42,
-       "[PEER] - - [-] \"GET / HTTP/1.1\" 200 42 \"http://foo/\" \"frob/123\""},
+       "{\"length\":42,\"method\":\"GET\",\"protocol\":\"HTTP/1.1\","
+       "\"referer\":\"http://foo/\",\"resource\":\"/\",\"status\":200}"},
   };
 
   for (const auto &tt : tests) {

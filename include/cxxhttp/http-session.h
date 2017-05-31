@@ -17,6 +17,8 @@
 
 #include <list>
 
+#include <ef.gy/json.h>
+
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
 #include <cxxhttp/version.h>
@@ -266,26 +268,29 @@ class sessionData {
    * @status Reply status code.
    * @length The number of octets sent back in the reply.
    *
-   * Creates a standard, nginx combined-format log message for the currently
-   * active request. This can then be sent written to a physical log stream.
+   * Creates a JSON log line containing most of the data that would normally
+   * be in an nginx-style combined log message for the currently active
+   * request.
    *
    * @return The full log message.
    */
   std::string logMessage(int status, std::size_t length) const {
-    static const std::regex agent("(" + grammar::token + "|[ ()/;])+");
-    std::string userAgent = inbound.get("User-Agent", "-");
-
-    uri ref = inbound.get("Referer", "-");
-    std::string referer =
-        ref.valid() ? std::string(ref) : std::string("(invalid)");
-
-    if (!std::regex_match(userAgent, agent)) {
-      userAgent = "(redacted)";
+    efgy::json::json json;
+    json("status") = (long double)(status);
+    json("length") = (long double)(length);
+    if (inboundRequest.valid()) {
+      json("method") = inboundRequest.method;
+      json("resource") = std::string(inboundRequest.resource);
+      json("protocol") = inboundRequest.protocol();
+    }
+    if (inbound.have("User-Agent")) {
+      json("user-agent") = inbound.get("User-Agent");
+    }
+    if (inbound.have("Referer")) {
+      json("referer") = inbound.get("referer");
     }
 
-    return "[PEER] - - [-] \"" + inboundRequest.assemble(false) + "\" " +
-           std::to_string(status) + +" " + std::to_string(length) + " \"" +
-           referer + "\" \"" + userAgent + "\"";
+    return efgy::json::to_string(json);
   }
 
   /* Extract partial data from the session.

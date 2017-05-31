@@ -177,6 +177,8 @@ class session : public sessionData {
       std::cerr << "exception while closing socket: " << e.what() << "\n";
     }
 
+    input.consume(input.size() + 1);
+
     free = true;
   }
 

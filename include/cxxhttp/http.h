@@ -250,22 +250,17 @@ class session : public sessionData {
       if (remainingBytes() == 0) {
         status = stProcessing;
 
-        const auto q = queries();
-
         /* processing the request takes place here */
         connection.processor.handle(*this);
 
-        if (q == queries()) {
-          // the processor did not send anything, so give it another chance at
-          // deciding what to do with this session.
-          status = connection.processor.afterProcessing(*this);
-          if (status == stShutdown) {
-            recycle();
-          } else if (status == stRequest || status == stStatus) {
-            readLine();
-          }
-        }
+        status = connection.processor.afterProcessing(*this);
         send();
+
+        if (status == stShutdown) {
+          recycle();
+        } else if (status == stRequest || status == stStatus) {
+          readLine();
+        }
       } else {
         readRemainingContent();
       }

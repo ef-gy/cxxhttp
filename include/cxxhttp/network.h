@@ -60,67 +60,6 @@ using unix = asio::local::stream_protocol;
 }
 
 namespace net {
-/* Resolve UNIX endpoint address.
- * @endpoint The endpoint to examine.
- *
- * Examines a UNIX endpoint to resolve its address.
- *
- * @return The address of the endpoint.
- */
-static inline std::string address(const transport::unix::endpoint &endpoint) {
-  if (endpoint.path().empty()) {
-    return "[UNIX:empty]";
-  } else {
-    return endpoint.path();
-  }
-}
-
-/* Resolve UNIX socket address.
- * @socket The UNIX socket wrapper.
- *
- * Pretty much the same implementation as the for TCP sockets: look up the
- * remote endpoint of that and turn it into a string.
- *
- * @return The remote address of the socket.
- */
-static inline std::string address(const transport::unix::socket &socket) {
-  asio::error_code ec;
-  const auto endpoint = socket.remote_endpoint(ec);
-  if (ec) {
-    return "[UNAVAILABLE]";
-  } else {
-    return address(endpoint);
-  }
-}
-
-/* Resolve TCP endpoint address.
- * @endpoint The endpoint to examine.
- *
- * Examines a TCP endpoint to resolve its address.
- *
- * @return The address of the endpoint.
- */
-static inline std::string address(const transport::tcp::endpoint &endpoint) {
-  return endpoint.address().to_string() + ":" + std::to_string(endpoint.port());
-}
-
-/* Resolve TCP socket address.
- * @socket The socket to examine.
- *
- * Examines a TCP socket to resolve the host address on the other end.
- *
- * @return The address of whatever the socket is connected to.
- */
-static inline std::string address(const transport::tcp::socket &socket) {
-  asio::error_code ec;
-  const auto endpoint = socket.remote_endpoint(ec);
-  if (ec) {
-    return "[UNAVAILABLE]";
-  } else {
-    return address(endpoint);
-  }
-}
-
 /* Endpoint type alias.
  * @transport The ASIO transport type, e.g. asio::ip::tcp.
  *

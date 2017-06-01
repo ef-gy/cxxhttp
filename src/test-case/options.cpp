@@ -34,6 +34,7 @@ bool testOptionsHandler(std::ostream &log) {
     std::string request;
     http::headers inbound;
     std::string message;
+    std::string describe;
   };
 
   std::vector<sampleData> tests{
@@ -46,6 +47,7 @@ bool testOptionsHandler(std::ostream &log) {
        "# Applicable Resource Processors\n\n"
        "The following servlets are built into the application and match the "
        "given resource:\n\n"
+       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n",
        " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
   };
 
@@ -73,6 +75,13 @@ bool testOptionsHandler(std::ostream &log) {
     if (m != tt.message) {
       log << "options() produced an unexpected message: '" << m
           << "' expected: '" << tt.message << "'\n";
+      return false;
+    }
+
+    const auto &d = httpd::usage::describe();
+    if (d != tt.describe) {
+      log << "describe() produced an unexpected message: '" << d
+          << "' expected: '" << tt.describe << "'\n";
       return false;
     }
   }

@@ -266,7 +266,9 @@ class connection {
   efgy::beacons<session> sessions;
 
   /* Initialise with IO service
+   * @endpoint Where to connect to, or listen on.
    * @pio IO service to use.
+   * @pConnections The root of the connection set to register with.
    *
    * Default constructor which binds an IO service and sets up a new processor.
    */

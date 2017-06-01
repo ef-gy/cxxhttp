@@ -252,15 +252,13 @@ class client {
   /* Process result of request.
    * @sess The session with the fully processed request.
    *
-   * Called once a request has been fully processed. Will trigger further
-   * processing if anything is pending.
+   * Called once a request has been fully processed. Will dispatch to the
+   * callback that the user gave us.
    */
   void handle(sessionData &sess) {
     if (onSuccess) {
       onSuccess(sess);
     }
-
-    start(sess);
   }
 
   /* Decide whether to expect content or not.
@@ -295,7 +293,18 @@ class client {
    *
    * @return The parser state to switch to.
    */
-  enum status afterProcessing(sessionData &sess) const { return stShutdown; }
+  enum status afterProcessing(sessionData &sess) {
+    if (requests.size() > 0) {
+      auto req = requests.front();
+
+      requests.pop_front();
+
+      sess.request(req.method, req.resource, req.header, req.body);
+      return stStatus;
+    } else {
+      return stShutdown;
+    }
+  }
 
   /* Start processing requests.
    * @sess The session to process requests on.
@@ -303,15 +312,7 @@ class client {
    * Pops a new request off the list of pending requests, and processes it, if
    * there is something to process.
    */
-  void start(sessionData &sess) {
-    if (requests.size() > 0) {
-      auto req = requests.front();
-
-      requests.pop_front();
-
-      sess.request(req.method, req.resource, req.header, req.body);
-    }
-  }
+  void start(sessionData &sess) { sess.status = afterProcessing(sess); }
 
   /* Queue up things to do on this connection.
    * @method The method for the request. Use GET if you're not sure.

@@ -17,8 +17,6 @@
 
 #include <list>
 
-#include <ef.gy/json.h>
-
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
 #include <cxxhttp/version.h>
@@ -140,6 +138,13 @@ class sessionData {
    */
   std::size_t replies;
 
+  /* How many transport errors has this session seen.
+   *
+   * This counter is increased whenever some transport operation failed. We
+   * don't actually care what the error was, we only count them.
+   */
+  std::size_t errors;
+
   /* A flat buffer of things we still need to send.
    *
    * Each reply() records what we want to send, here. This is to get around the
@@ -147,12 +152,6 @@ class sessionData {
    * while also making it easier to run tests on this.
    */
   std::list<std::string> outboundQueue;
-
-  /* Pending log messages.
-   *
-   * These are flushed in the proper session's `send()` function.
-   */
-  std::list<std::string> log;
 
   /* Whether to close the connection after sending something.
    *
@@ -185,6 +184,7 @@ class sessionData {
         contentLength(0),
         requests(0),
         replies(0),
+        errors(0),
         closeAfterSend(false),
         writePending(false),
         free(false) {}
@@ -262,35 +262,6 @@ class sessionData {
     }
 
     return reply;
-  }
-
-  /* Create a log message.
-   * @status Reply status code.
-   * @length The number of octets sent back in the reply.
-   *
-   * Creates a JSON log line containing most of the data that would normally
-   * be in an nginx-style combined log message for the currently active
-   * request.
-   *
-   * @return The full log message.
-   */
-  std::string logMessage(int status, std::size_t length) const {
-    efgy::json::json json;
-    json("status") = (long double)(status);
-    json("length") = (long double)(length);
-    if (inboundRequest.valid()) {
-      json("method") = inboundRequest.method;
-      json("resource") = std::string(inboundRequest.resource);
-      json("protocol") = inboundRequest.protocol();
-    }
-    if (inbound.have("User-Agent")) {
-      json("user-agent") = inbound.get("User-Agent");
-    }
-    if (inbound.have("Referer")) {
-      json("referer") = inbound.get("referer");
-    }
-
-    return efgy::json::to_string(json);
   }
 
   /* Extract partial data from the session.
@@ -396,10 +367,6 @@ class sessionData {
     outboundQueue.push_back(requestLine(method, resource).assemble() +
                             std::string(head) + "\r\n" + body);
 
-    if (status == stRequest) {
-      status = stStatus;
-    }
-
     requests++;
   }
 
@@ -421,8 +388,6 @@ class sessionData {
     outboundQueue.push_back(generateReply(status, body, header));
 
     closeAfterSend = closeAfterSend || status >= 400;
-
-    log.push_back(logMessage(status, body.size()));
 
     replies++;
   }

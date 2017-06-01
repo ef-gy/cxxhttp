@@ -73,60 +73,6 @@ bool testBasicSession(std::ostream &log) {
   return true;
 }
 
-/* Test log line creation.
- * @log Test output stream.
- *
- * Creates log lines for a few sample sessions.
- *
- * @return 'true' on success, 'false' otherwise.
- */
-bool testLog(std::ostream &log) {
-  struct sampleData {
-    std::string request;
-    http::headers header;
-    int status;
-    std::size_t length;
-    std::string log;
-  };
-
-  std::vector<sampleData> tests{
-      {"GET / HTTP/1.1",
-       {},
-       200,
-       42,
-       "{\"length\":42,\"method\":\"GET\",\"protocol\":\"HTTP/1.1\","
-       "\"resource\":\"/\",\"status\":200}"},
-      {"GET / HTTP/1.1",
-       {{"User-Agent", "frob/123"}},
-       200,
-       42,
-       "{\"length\":42,\"method\":\"GET\",\"protocol\":\"HTTP/1.1\","
-       "\"resource\":\"/\",\"status\":200,\"user-agent\":\"frob/123\"}"},
-      {"GET / HTTP/1.1",
-       {{"Referer", "http://foo/"}},
-       200,
-       42,
-       "{\"length\":42,\"method\":\"GET\",\"protocol\":\"HTTP/1.1\","
-       "\"referer\":\"http://foo/\",\"resource\":\"/\",\"status\":200}"},
-  };
-
-  for (const auto &tt : tests) {
-    http::sessionData s;
-
-    s.inboundRequest = tt.request;
-    s.inbound.header = tt.header;
-
-    const auto &v = s.logMessage(tt.status, tt.length);
-
-    if (v != tt.log) {
-      log << "logMessage() = '" << v << "', but expected '" << tt.log << "'\n";
-      return false;
-    }
-  }
-
-  return true;
-}
-
 /* Test request body creation.
  * @log Test output stream.
  *
@@ -261,7 +207,6 @@ namespace test {
 using efgy::test::function;
 
 static function basicSession(testBasicSession);
-static function log(testLog);
 static function reply(testReply);
 static function negotiate(testNegotiate);
 static function trigger405(testTrigger405);

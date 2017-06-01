@@ -96,6 +96,8 @@ class session : public sessionData {
     connection.processor.start(*this);
     if (status == stRequest || status == stStatus) {
       readLine();
+    } else if (status == stShutdown) {
+      recycle();
     }
     send();
   }
@@ -123,12 +125,6 @@ class session : public sessionData {
         }
       }
     }
-
-    for (const auto &l : log) {
-      connection.log << l << "\n";
-    }
-
-    log.clear();
   }
 
   /* Read enough off the input socket to fill a line.
@@ -176,17 +172,14 @@ class session : public sessionData {
 
     send();
 
-    try {
-      socket.shutdown(socketType::shutdown_both);
-    } catch (std::system_error &e) {
-      std::cerr << "exception while shutting down socket: " << e.what() << "\n";
-    }
+    asio::error_code ec;
 
-    try {
-      socket.close();
-    } catch (std::system_error &e) {
-      std::cerr << "exception while closing socket: " << e.what() << "\n";
-    }
+    socket.shutdown(socketType::shutdown_both, ec);
+    socket.close(ec);
+
+    // we should do something here with ec, but then we've already given up on
+    // this connection, so meh.
+    errors = ec ? errors + 1 : errors;
 
     input.consume(input.size() + 1);
 

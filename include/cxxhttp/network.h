@@ -251,13 +251,6 @@ class connection {
    */
   service &io;
 
-  /* Log stream
-   *
-   * This is a standard output stream to send log data to. Log data is written
-   * by the session code, so that code determines the format of log lines.
-   */
-  std::ostream &log;
-
   /* Are there pending connections?
    *
    * Initially set to true, but reset to false if, for whatever reason, there
@@ -274,17 +267,14 @@ class connection {
 
   /* Initialise with IO service
    * @pio IO service to use.
-   * @logfile A stream to write log messages to.
    *
    * Default constructor which binds an IO service and sets up a new processor.
    */
   connection(endpointType<transport> &endpoint,
              efgy::beacons<connection> &pConnections =
                  efgy::global<efgy::beacons<connection>>(),
-             service &pio = efgy::global<service>(),
-             std::ostream &logfile = std::cout)
+             service &pio = efgy::global<service>())
       : io(pio),
-        log(logfile),
         pending(true),
         acceptor(pio),
         target(endpoint),
@@ -322,27 +312,6 @@ class connection {
    */
   bool active(void) const { return pending || sessions.size() > 0; }
 
-  /* Get a free session.
-   *
-   * Steps through all sessions to obtain a free one, If no sessions are free,
-   * this will instead return the null pointer.
-   *
-   * This allows recycling sessions, which in turn means we don't have to do
-   * ugly things like kill sessions ourselves.
-   *
-   * @return A free session, or null.
-   */
-  session *getSession(void) {
-    for (auto &sess : sessions) {
-      if (sess->free) {
-        sess->free = false;
-        return sess;
-      }
-    }
-
-    return 0;
-  }
-
  protected:
   /* Socket acceptor
    *
@@ -372,9 +341,6 @@ class connection {
   void startAccept(session *newSession = 0) {
     if (newSession == 0) {
       newSession = getSession();
-    }
-    if (!newSession) {
-      newSession = new session(*this);
     }
 
     acceptor.async_accept(newSession->socket.lowest_layer(),
@@ -410,9 +376,6 @@ class connection {
     if (newSession == 0) {
       newSession = getSession();
     }
-    if (!newSession) {
-      newSession = new session(*this);
-    }
 
     newSession->socket.lowest_layer().async_connect(
         target, [newSession, this](const std::error_code &error) {
@@ -435,6 +398,27 @@ class connection {
     } else {
       newSession->start();
     }
+  }
+
+  /* Get a free session.
+   *
+   * Steps through all sessions to obtain a free one, If no sessions are free,
+   * this will instead return a brand new one.
+   *
+   * This allows recycling sessions, which in turn means we don't have to do
+   * ugly things like kill sessions ourselves.
+   *
+   * @return A free session, or null.
+   */
+  session *getSession(void) {
+    for (auto &sess : sessions) {
+      if (sess->free) {
+        sess->free = false;
+        return sess;
+      }
+    }
+
+    return new session(*this);
   }
 };
 }

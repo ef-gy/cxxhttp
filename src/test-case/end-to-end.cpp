@@ -117,8 +117,35 @@ bool testUNIX(std::ostream &log) {
   return result;
 }
 
+/* Set up a TCP test server.
+ * @log Test output stream.
+ *
+ * Querying this is annoying, so we omit it. We still want to ensure the setup
+ * code works, though.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testTCP(std::ostream &log) {
+  std::string spec = "localhost:0";
+  std::regex rx("(.+):(.+)");
+  std::smatch matches;
+
+  if (!std::regex_match(spec, matches, rx)) {
+    log << "matching a fixed regex failed in testTCP()!\n";
+    return false;
+  }
+
+  httpd::cli::setupTCP(matches);
+
+  // this would've thrown an exception if it had failed, which the test code
+  // already tests for. Since it didn't, we return true.
+
+  return true;
+}
+
 namespace test {
 using efgy::test::function;
 
 static function UNIX(testUNIX);
+static function TCP(testTCP);
 }

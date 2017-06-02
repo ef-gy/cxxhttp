@@ -47,10 +47,9 @@ static bool setup(net::endpoint<transport> lookup,
   bool rv = false;
 
   for (net::endpointType<transport> endpoint : lookup) {
-    http::server<transport> *s =
-        new http::server<transport>(endpoint, servers, service);
+    auto &s = http::server<transport>::get(endpoint, servers, service);
 
-    s->processor.servlets = servlets;
+    s.processor.servlets = servlets;
 
     rv = rv || true;
   }

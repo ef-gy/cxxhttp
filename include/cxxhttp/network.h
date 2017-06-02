@@ -230,6 +230,60 @@ class connection {
     }
   }
 
+  /* Reuse idle connection, or create new one.
+   * @endpoint Where to connect to, or listen on.
+   * @pio IO service to use.
+   * @pConnections The root of the connection set to register with.
+   *
+   * This will scan through all connections to find one that is either idle and
+   * return that one, or one that has the same paramters to tag along to, or it
+   * will create an entirely new one.
+   */
+  static connection &get(endpointType<transport> &endpoint,
+                         efgy::beacons<connection> &pConnections =
+                             efgy::global<efgy::beacons<connection>>(),
+                         service &pio = efgy::global<service>()) {
+    for (auto &c : pConnections) {
+      if (&pio == &(c->io)) {
+        if (c->idle()) {
+          c->pending = true;
+          c->target = endpoint;
+          c->startConnect();
+          return *c;
+        } else if (c->target == endpoint) {
+          return *c;
+        }
+      }
+    }
+
+    return *(new connection(endpoint, pConnections, pio));
+  }
+
+  /* Is this session idle?
+   *
+   * Used when trying to find a session to reuse. This determines whether the
+   * session can just be reused directly, without further processing.
+   *
+   * @return Whether the session can be reused.
+   */
+  bool idle(void) const {
+    if (!pending) {
+      if (sessions.size() == 0) {
+        return true;
+      }
+
+      for (const auto &s : sessions) {
+        if (!s->free) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
   /* Query local endpoint.
    *
    * Queries and returns the local endpoint that a server is bound to.
@@ -290,23 +344,6 @@ class connection {
                           });
   }
 
-  /* Handle next incoming connection
-   * @newSession The blank session object that was created by startAccept().
-   * @error Describes any error condition that may have occurred.
-   *
-   * Called by asio.hpp when a new inbound connection has been accepted; this
-   * will make the session parse the incoming request and dispatch it to the
-   * request processor specified as a template argument.
-   */
-  void handleAccept(session *newSession, const std::error_code &error) {
-    if (error) {
-      startAccept(newSession);
-    } else {
-      newSession->start();
-      startAccept();
-    }
-  }
-
   /* Connect to the socket.
    * @newSession An optional session to reuse.
    *
@@ -322,6 +359,23 @@ class connection {
         target, [newSession, this](const std::error_code &error) {
           handleConnect(newSession, error);
         });
+  }
+
+  /* Handle next incoming connection
+   * @newSession The blank session object that was created by startAccept().
+   * @error Describes any error condition that may have occurred.
+   *
+   * Called by asio.hpp when a new inbound connection has been accepted; this
+   * will make the session parse the incoming request and dispatch it to the
+   * request processor specified as a template argument.
+   */
+  void handleAccept(session *newSession, const std::error_code &error) {
+    if (error) {
+      startAccept(newSession);
+    } else {
+      newSession->start();
+      startAccept();
+    }
   }
 
   /* Handle new connection

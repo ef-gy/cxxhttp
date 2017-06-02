@@ -45,10 +45,9 @@ static bool fetch(net::endpoint<transport> lookup, std::string host,
                       efgy::global<efgy::beacons<client<transport>>>(),
                   service &service = efgy::global<cxxhttp::service>()) {
   for (net::endpointType<transport> endpoint : lookup) {
-    client<transport> *s = new client<transport>(endpoint, clients, service);
+    auto &s = client<transport>::get(endpoint, clients, service);
 
-    s->processor
-        .query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}})
+    s.processor.query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}})
         .then([&stream](sessionData &session) { stream << session.content; });
 
     return true;

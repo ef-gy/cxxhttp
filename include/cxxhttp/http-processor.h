@@ -15,8 +15,8 @@
 #define CXXHTTP_HTTP_PROCESSOR_H
 
 #include <algorithm>
-#include <deque>
 #include <functional>
+#include <list>
 
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
@@ -358,7 +358,7 @@ class client {
    * Will be processed in sequence until either the connection is closed or the
    * list is empty. This allows for pipelining on the client side.
    */
-  std::deque<request> requests;
+  std::list<request> requests;
 
   /* Success callback.
    *

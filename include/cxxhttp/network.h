@@ -204,7 +204,7 @@ class connection {
    */
   efgy::beacons<session> sessions;
 
-  /* Initialise with IO service
+  /* Initialise with IO service and endpoint.
    * @endpoint Where to connect to, or listen on.
    * @pio IO service to use.
    * @pConnections The root of the connection set to register with.
@@ -220,14 +220,7 @@ class connection {
         acceptor(pio),
         target(endpoint),
         beacon(*this, pConnections) {
-    if (processor.listen()) {
-      acceptor.open(endpoint.protocol());
-      acceptor.bind(endpoint);
-      acceptor.listen();
-      startAccept();
-    } else {
-      startConnect();
-    }
+    start();
   }
 
   /* Reuse idle connection, or create new one.
@@ -248,7 +241,7 @@ class connection {
         if (c->idle()) {
           c->pending = true;
           c->target = endpoint;
-          c->startConnect();
+          c->start();
           return *c;
         } else if (c->target == endpoint) {
           return *c;
@@ -256,13 +249,28 @@ class connection {
       }
     }
 
+    // since we use beacons that insert and remove from pConnections, this does
+    // not actually leak memory. Though it does seem to confuse valgrind. But
+    // reusal is working, so it can't be leaking.
     return *(new connection(endpoint, pConnections, pio));
   }
 
-  /* Is this session idle?
+  /* Destroy connection.
    *
-   * Used when trying to find a session to reuse. This determines whether the
-   * session can just be reused directly, without further processing.
+   * This kills all the sessions that this connection kept track of.
+   */
+  ~connection(void) {
+    while (sessions.size() > 0) {
+      auto s = sessions.front();
+      sessions.pop_front();
+      delete s;
+    }
+  }
+
+  /* Is this connection idle?
+   *
+   * Used when trying to find a connection to reuse. This determines whether the
+   * connection can just be reused directly, without further processing.
    *
    * @return Whether the session can be reused.
    */
@@ -326,6 +334,22 @@ class connection {
    * Registration in this set is handled automatically in the constructor.
    */
   efgy::beacon<connection> beacon;
+
+  /* Start accepting connections or connecting.
+   *
+   * Queries the processor to find out whether we should listen or connect to
+   * the target, then does that.
+   */
+  void start(void) {
+    if (processor.listen()) {
+      acceptor.open(target.protocol());
+      acceptor.bind(target);
+      acceptor.listen();
+      startAccept();
+    } else {
+      startConnect();
+    }
+  }
 
   /* Accept the next incoming connection
    * @newSession An optional session to reuse.

@@ -151,20 +151,14 @@ class session : public sessionData {
                          std::size_t bytes_transferred) { handleRead(error); });
   }
 
- protected:
-  /* Session beacon.
-   *
-   * We want to keep track of all of the sessions, so that we can do stats over
-   * the lot of them.
-   */
-  efgy::beacon<session> beacon;
-
   /* Make session reusable for future use.
    *
    * Destroys all pending data that needs to be cleaned up, and tags the session
    * as clean. This allows reusing the session, or destruction out of band.
    */
   void recycle(void) {
+    connection.processor.recycle(*this);
+
     status = stShutdown;
 
     closeAfterSend = false;
@@ -185,6 +179,14 @@ class session : public sessionData {
 
     free = true;
   }
+
+ protected:
+  /* Session beacon.
+   *
+   * We want to keep track of all of the sessions, so that we can do stats over
+   * the lot of them.
+   */
+  efgy::beacon<session> beacon;
 
   /* Callback after more data has been read.
    * @error Current error state.

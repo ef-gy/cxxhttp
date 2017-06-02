@@ -205,7 +205,17 @@ class server {
    *
    * @return Always true, this is a server.
    */
-  static bool listen(void) { return true; };
+  static bool listen(void) { return true; }
+
+  /* Do stuff upon recycling a session.
+   * @sess The session being recycled.
+   *
+   * Called right before the session is recycled, with a reference to the plain
+   * version of it.
+   *
+   * There's nothing to do here for the server, so we just don't do anything.
+   */
+  void recycle(sessionData &sess) {}
 };
 
 /* Client request data.
@@ -350,7 +360,17 @@ class client {
    *
    * @return Always false, this is a client.
    */
-  static bool listen(void) { return false; };
+  static bool listen(void) { return false; }
+
+  /* Do stuff upon recycling a session.
+   * @sess The session being recycled.
+   *
+   * Called right before the session is recycled, with a reference to the plain
+   * version of it.
+   */
+  void recycle(sessionData &sess) {
+    // do something here if we still had queries to send.
+  }
 
  protected:
   /* Request pool.

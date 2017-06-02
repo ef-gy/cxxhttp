@@ -175,6 +175,11 @@ class endpoint<transport::tcp> {
 template <typename session, typename requestProcessor>
 class connection {
  public:
+  /* Transport type.
+   *
+   * Aliased from the session's transport type, which is actually the only
+   * place that knows how we're connecting.
+   */
   using transport = typename session::transportType;
 
   /* Request processor instance
@@ -394,12 +399,12 @@ class connection {
    * request processor specified as a template argument.
    */
   void handleAccept(session *newSession, const std::error_code &error) {
-    if (error) {
-      startAccept(newSession);
-    } else {
+    if (!error) {
       newSession->start();
-      startAccept();
+      newSession = 0;
     }
+
+    startAccept(newSession);
   }
 
   /* Handle new connection
@@ -413,7 +418,8 @@ class connection {
     pending = false;
 
     if (error) {
-      delete newSession;
+      newSession->errors++;
+      newSession->recycle();
     } else {
       newSession->start();
     }

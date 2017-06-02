@@ -216,7 +216,7 @@ class connection {
    *
    * Default constructor which binds an IO service and sets up a new processor.
    */
-  connection(endpointType<transport> &endpoint,
+  connection(const endpointType<transport> &endpoint,
              efgy::beacons<connection> &pConnections =
                  efgy::global<efgy::beacons<connection>>(),
              service &pio = efgy::global<service>())
@@ -237,7 +237,7 @@ class connection {
    * return that one, or one that has the same paramters to tag along to, or it
    * will create an entirely new one.
    */
-  static connection &get(endpointType<transport> &endpoint,
+  static connection &get(const endpointType<transport> &endpoint,
                          efgy::beacons<connection> &pConnections =
                              efgy::global<efgy::beacons<connection>>(),
                          service &pio = efgy::global<service>()) {

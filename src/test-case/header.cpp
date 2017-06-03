@@ -67,20 +67,18 @@ bool testAppend(std::ostream &log) {
   struct sampleData {
     headers in;
     std::string key, value, out, get, res;
-    bool have;
   };
 
   std::vector<sampleData> tests{
-      {{}, "a", "b", "a: b\r\n", "a", "b", true},
-      {{{"a", "b"}}, "a", "c", "a: b,c\r\n", "a", "b,c", true},
-      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n", "q", "", false},
+      {{}, "a", "b", "a: b\r\n", "a", "b"},
+      {{{"a", "b"}}, "a", "c", "a: b,c\r\n", "a", "b,c"},
+      {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n", "q", ""},
       {{{"a", "b"}, {"c", "d"}},
        "a",
        "e",
        "a: b,e\r\nc: d\r\n",
        "q",
-       "",
-       false},
+       ""},
   };
 
   for (const auto &tt : tests) {
@@ -94,12 +92,6 @@ bool testAppend(std::ostream &log) {
     const auto &w = p.get(tt.get);
     if (w != tt.res) {
       log << "('" << v << "').get='" << w << "', expected '" << tt.res << "'\n";
-      return false;
-    }
-    const auto &x = p.have(tt.get);
-    if (x != tt.have) {
-      log << "('" << v << "').have='" << x << "', expected '" << tt.have
-          << "'\n";
       return false;
     }
   }

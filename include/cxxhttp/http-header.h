@@ -75,18 +75,6 @@ class parser {
     return it == header.end() ? def : it->second;
   }
 
-  /* Do we have this header?
-   * @name The header to try and find.
-   *
-   * have() checks if a given header has been set, without any side-effects of
-   * potentially adding it in the process.
-   *
-   * @return Reports whether `name` is in the set of headers.
-   */
-  bool have(const std::string &name) const {
-    return header.find(name) != header.end();
-  }
-
   /* Append value to header map.
    * @key The key to append to, or set.
    * @value The new value.

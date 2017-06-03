@@ -22,38 +22,94 @@
 
 namespace cxxhttp {
 namespace http {
-/* Fetch a resource to a stream.
- * @transport Transport type of the endpoint.
- * @lookup The endpoint spec to look up.
- * @host What to send as the Host header in the request.
- * @resource Which resource to fetch.
- * @stream Where to write the resource to. Must not go out of scope.
- * @clients The list of clients to add this one to.
- * @service The IO service to use.
+/* Prepare and dispatch an HTTP client call.
+ * @uri What to get.
+ * @header Additional headers for the request.
+ * @content What to send as the request body.
+ * @method The method to use when talking to the server.
+ * @clients The global client set.
+ * @service The ASIO IO service to use.
  *
- * Fetches a simple resource and writes the resulting information to the given
- * stream. Fetching and writing are performed asynchronously.
+ * This function prepares a client and a connection, in a way that makes it easy
+ * to fetch a resource from some remote server.
  *
- * If stream goes out of scope before it's used, that'd be bad.
+ * If the URL does not specify a host to connect to, the Host: header is used
+ * instead. This allows connecting to UNIX sockets via HTTP, as the target
+ * socket path would not otherwise fit in the authority field of a URL.
  *
- * @return Reports whether setting up the asynchronous client succeeded.
+ * This function actively ignores the scheme specified in the URL, if any.
+ * That's because the function already says it'll use HTTP. On the downside,
+ * that also means that HTTPS won't work with this function (because the library
+ * does not currently support that). If this is a concern for you, use a socat
+ * proxy or something.
+ *
+ * Example usage of this function:
+ *
+ *     const std::string url = "http://example.com/";
+ *     call<tcp>(url)
+ *         .success([](sessionData &sess) {
+ *           std::cout << sess.content;
+ *         })
+ *         .failure([url](sessionData &sess) {
+ *           std::cerr << "Failed to retrieve URL: " << url << "\n";
+ *         });
+ *
+ * For an example with UNIX sockets, see src/fetch.cpp.
+ *
+ * @return An HTTP client reference, so you can set up success and failure
+ * handlers like in the example.
  */
 template <class transport>
-static bool fetch(net::endpoint<transport> lookup, std::string host,
-                  std::string resource, std::ostream &stream = std::cout,
-                  efgy::beacons<client<transport>> &clients =
-                      efgy::global<efgy::beacons<client<transport>>>(),
-                  service &service = efgy::global<cxxhttp::service>()) {
-  for (net::endpointType<transport> endpoint : lookup) {
-    auto &s = client<transport>::get(endpoint, clients, service);
+static processor::client &call(
+    const std::string &uri, headers header = {},
+    const std::string &content = "", const std::string method = "GET",
+    efgy::beacons<client<transport>> &clients =
+        efgy::global<efgy::beacons<client<transport>>>(),
+    service &service = efgy::global<cxxhttp::service>()) {
+  cxxhttp::uri u = uri;
+  std::regex rx("([^:]+)(:([0-9]+))?");
+  std::smatch match;
 
-    s.processor.query("GET", resource, {{"Host", host}, {"Keep-Alive", "none"}})
-        .then([&stream](sessionData &session) { stream << session.content; });
+  static processor::client failure;
 
-    return true;
+  if (u.valid()) {
+    std::string authority = u.authority();
+    if (authority.empty()) {
+      authority = header["Host"];
+    }
+    if (header["Host"].empty()) {
+      header["Host"] = authority;
+    }
+    if (std::regex_match(authority, match, rx)) {
+      const std::string host = match[1];
+      const std::string port = match[3];
+      const std::string serv = port.empty() ? "http" : port;
+      net::endpoint<transport> endpoint(host, serv);
+      try {
+        for (net::endpointType<transport> e : endpoint) {
+          try {
+            auto &s = client<transport>::get(e, clients, service);
+
+            s.processor.doFail = false;
+            s.processor.query(method, u.path(), header, content);
+            return s.processor;
+          } catch (...) {
+            // ignore setup and connection errors, which will fall through to
+            // the
+            // specially crafted failure client.
+          }
+        }
+      } catch (...) {
+        // this will throw if the host to connect to can't be found, in which
+        // case we want to fall back to returning the failure client.
+      }
+    }
   }
 
-  return false;
+  if (!failure.doFail) {
+    failure.doFail = true;
+  }
+  return failure;
 }
 }
 }

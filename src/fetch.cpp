@@ -17,7 +17,8 @@
 
 #include <cxxhttp/http-client.h>
 
-using cxxhttp::http::fetch;
+using cxxhttp::http::call;
+using cxxhttp::http::sessionData;
 using cxxhttp::net::endpoint;
 using cxxhttp::transport::unix;
 using cxxhttp::transport::tcp;
@@ -26,15 +27,32 @@ using efgy::cli::option;
 namespace cli {
 static option UNIX("-{0,2}http:unix:(.+):(.+)",
                    [](std::smatch &m) -> bool {
-                     return fetch(endpoint<unix>(m[1]), m[1], m[2]);
+                     const std::string target = m[1];
+                     const std::string path = m[2];
+                     call<unix>(path, {{"Host", target}})
+                         .success([](sessionData &sess) {
+                           std::cout << sess.content;
+                         })
+                         .failure([target, path](sessionData &sess) {
+                           std::cerr << "Failed to retrieve URL: " << path
+                                     << " from socket: " << target << "\n";
+                         });
+                     return true;
                    },
                    "Fetch resource[2] via HTTP from unix socket[1].");
 
 static option TCP("http://([^@:/]+)(:([0-9]+))?(/.*)",
                   [](std::smatch &m) -> bool {
-                    const std::string port =
-                        m[2] != "" ? std::string(m[3]) : std::string("80");
-                    return fetch(endpoint<tcp>(m[1], port), m[1], m[4]);
+                    const std::string url = m[0];
+                    call<tcp>(url)
+                        .success([](sessionData &sess) {
+                          std::cout << sess.content;
+                        })
+                        .failure([url](sessionData &sess) {
+                          std::cerr << "Failed to retrieve URL: " << url
+                                    << "\n";
+                        });
+                    return true;
                   },
                   "Fetch the given HTTP URL.");
 }

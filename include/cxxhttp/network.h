@@ -80,11 +80,12 @@ class endpoint : public std::array<endpointType<transport>, 1> {
  public:
   /* Construct with socket name.
    * @pSocket A UNIX socket address.
+   * @service Ignored, for compatibility with TCP.
    *
    * Initialses the endpoint given a socket name. This merely forwards
    * construction to the base class.
    */
-  endpoint(const std::string &pSocket)
+  endpoint(const std::string &pSocket, const std::string &service = "")
       : std::array<endpointType<transport>, 1>{{pSocket}} {}
 };
 

@@ -259,6 +259,20 @@ struct request {
  */
 class client {
  public:
+  /* Auto-trigger failure response.
+   *
+   * When true, trying to set a handler with failure() or then() will
+   * automatically trigger the failure response. This is to allow failure
+   * callbacks when name resolution for clients fails entirely.
+   */
+  bool doFail = false;
+
+  /* Was the last reply informational?
+   *
+   * We ignore these replies, so just resume as you normally would have.
+   */
+  bool gotInformationalResponse = false;
+
   /* Process result of request.
    * @sess The session with the fully processed request.
    *
@@ -266,8 +280,20 @@ class client {
    * callback that the user gave us.
    */
   void handle(sessionData &sess) {
-    if (onSuccess) {
-      onSuccess(sess);
+    if (sess.inboundStatus.valid()) {
+      if (sess.inboundStatus.code >= 100 && sess.inboundStatus.code < 200) {
+        gotInformationalResponse = true;
+        return;
+      }
+      if (sess.inboundStatus.code >= 200 && sess.inboundStatus.code < 400) {
+        if (onSuccess) {
+          onSuccess(sess);
+        }
+        return;
+      }
+    }
+    if (onFailure) {
+      onFailure(sess);
     }
   }
 
@@ -304,7 +330,10 @@ class client {
    * @return The parser state to switch to.
    */
   enum status afterProcessing(sessionData &sess) {
-    if (requests.size() > 0) {
+    if (gotInformationalResponse) {
+      gotInformationalResponse = false;
+      return stStatus;
+    } else if (requests.size() > 0) {
       auto req = requests.front();
 
       requests.pop_front();
@@ -350,7 +379,38 @@ class client {
    * function calls.
    */
   client &then(std::function<void(sessionData &)> callback) {
+    return success(callback), failure(callback);
+  }
+
+  /* Set function to call upon success.
+   * @callback The post-completion callback.
+   *
+   * The naming here is vaguely in line with the naming scheme used in recent
+   * JavaScript libraries.
+   *
+   * @return A reference to the object's instance, to allow for chaining of
+   * function calls.
+   */
+  client &success(std::function<void(sessionData &)> callback) {
     onSuccess = callback;
+    return *this;
+  }
+
+  /* Set function to call upon failure.
+   * @callback The post-completion callback.
+   *
+   * The naming here is vaguely in line with the naming scheme used in recent
+   * JavaScript libraries.
+   *
+   * @return A reference to the object's instance, to allow for chaining of
+   * function calls.
+   */
+  client &failure(std::function<void(sessionData &)> callback) {
+    onFailure = callback;
+    if (doFail && onFailure) {
+      static sessionData none;
+      onFailure(none);
+    }
     return *this;
   }
 
@@ -370,6 +430,7 @@ class client {
    */
   void recycle(sessionData &sess) {
     // do something here if we still had queries to send.
+    requests.clear();
   }
 
  protected:
@@ -385,6 +446,13 @@ class client {
    * Called when a server has returned something to one of our queries.
    */
   std::function<void(sessionData &)> onSuccess;
+
+  /* Failure callback.
+   *
+   * Called when being recycled without valid content, or whenever a non-good
+   * return status is encountered.
+   */
+  std::function<void(sessionData &)> onFailure;
 };
 }
 }

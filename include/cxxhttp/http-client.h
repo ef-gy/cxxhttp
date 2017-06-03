@@ -23,6 +23,7 @@
 namespace cxxhttp {
 namespace http {
 /* Prepare and dispatch an HTTP client call.
+ * @transport An ASIO transport type.
  * @uri What to get.
  * @header Additional headers for the request.
  * @content What to send as the request body.
@@ -95,8 +96,7 @@ static processor::client &call(
             return s.processor;
           } catch (...) {
             // ignore setup and connection errors, which will fall through to
-            // the
-            // specially crafted failure client.
+            // the specially crafted failure client.
           }
         }
       } catch (...) {

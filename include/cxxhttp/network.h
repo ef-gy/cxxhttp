@@ -237,6 +237,8 @@ class connection {
    * This will scan through all connections to find one that is either idle and
    * return that one, or one that has the same paramters to tag along to, or it
    * will create an entirely new one.
+   *
+   * @return A connection, which is valid for the given parameters.
    */
   static connection &get(const endpointType<transport> &endpoint,
                          efgy::beacons<connection> &pConnections =

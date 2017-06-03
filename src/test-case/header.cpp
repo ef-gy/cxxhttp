@@ -73,12 +73,7 @@ bool testAppend(std::ostream &log) {
       {{}, "a", "b", "a: b\r\n", "a", "b"},
       {{{"a", "b"}}, "a", "c", "a: b,c\r\n", "a", "b,c"},
       {{{"a", "b"}, {"A", "c"}}, "A", "d", "a: b,d\r\n", "q", ""},
-      {{{"a", "b"}, {"c", "d"}},
-       "a",
-       "e",
-       "a: b,e\r\nc: d\r\n",
-       "q",
-       ""},
+      {{{"a", "b"}, {"c", "d"}}, "a", "e", "a: b,e\r\nc: d\r\n", "q", ""},
   };
 
   for (const auto &tt : tests) {

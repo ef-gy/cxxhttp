@@ -25,7 +25,7 @@ namespace cxxhttp {
  * is only increased after a release, but should still provide some measure of
  * feature testing.
  */
-static const unsigned int version = 1;
+static const unsigned int version = 2;
 
 /* Server identifier.
  *

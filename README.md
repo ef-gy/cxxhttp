@@ -105,8 +105,7 @@ This will run the server and to see what it does, use:
 
     curl -i http://localhost:8080/
 
-Which should print the "Hello World!" from above, and you'll notice that your
-example server printed a "GET /" access log line.
+Which should print the "Hello World!" from above.
 
 You can run the ./example programme without arguments to see all the available
 command line options. In particular, there is "http:unix:...", which lets you

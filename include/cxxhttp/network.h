@@ -372,8 +372,8 @@ class connection {
 
     acceptor.async_accept(newSession->socket.lowest_layer(),
                           [newSession, this](const std::error_code &error) {
-                            handleAccept(newSession, error);
-                          });
+      handleAccept(newSession, error);
+    });
   }
 
   /* Connect to the socket.

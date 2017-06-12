@@ -40,12 +40,16 @@ bool testParse(std::ostream &log) {
        "GET /foo HTTP/1.2\r\n"},
       {"OPTIONS * HTTP/1.1", true, "OPTIONS", "*", "HTTP/1.1",
        "OPTIONS * HTTP/1.1\r\n"},
+      {"GET /?a=b HTTP/1.1", true, "GET", "/?a=b", "HTTP/1.1",
+       "GET /?a=b HTTP/1.1\r\n"},
+      {"GET /?a=b&c=d HTTP/1.1", true, "GET", "/?a=b&c=d", "HTTP/1.1",
+       "GET /?a=b&c=d HTTP/1.1\r\n"},
   };
 
   for (const auto &tt : tests) {
     const http::requestLine v(tt.in);
     if (v.valid() != tt.valid) {
-      log << "http::requestLine(" << tt.in << ") has incorrect result\n";
+      log << "http::requestLine(" << tt.in << ") has incorrect validity\n";
       return false;
     }
     if (v.protocol() != tt.protocol) {

@@ -209,11 +209,9 @@ bool testMerge(std::ostream &log) {
       parser<headers> a{tt.a};
       parser<headers> b{tt.b};
       parser<headers> out{tt.out};
-      log << "bad header merge; expected:\n"
-          << std::string(out) << "got:\n"
-          << std::string(p) << "with left hand side:\n"
-          << std::string(a) << "and right hand side:\n"
-          << std::string(b);
+      log << "bad header merge; expected:\n" << std::string(out) << "got:\n"
+          << std::string(p) << "with left hand side:\n" << std::string(a)
+          << "and right hand side:\n" << std::string(b);
       return false;
     }
   }

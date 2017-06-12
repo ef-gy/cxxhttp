@@ -41,9 +41,9 @@ template <class transport>
 static bool setup(net::endpoint<transport> lookup,
                   efgy::beacons<http::server<transport>> &servers =
                       efgy::global<efgy::beacons<http::server<transport>>>(),
-                  service &service = efgy::global<cxxhttp::service>(),
-                  efgy::beacons<http::servlet> &servlets =
-                      efgy::global<efgy::beacons<http::servlet>>()) {
+                  service & service = efgy::global<cxxhttp::service>(),
+                  efgy::beacons<http::servlet> &
+                      servlets = efgy::global<efgy::beacons<http::servlet>>()) {
   bool rv = false;
 
   for (net::endpointType<transport> endpoint : lookup) {

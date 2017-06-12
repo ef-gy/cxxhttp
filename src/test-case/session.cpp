@@ -186,8 +186,10 @@ bool testTrigger405(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {{}, false},        {{"OPTIONS"}, false},
-      {{"TRACE"}, false}, {{"OPTIONS", "GET"}, true},
+      {{}, false},
+      {{"OPTIONS"}, false},
+      {{"TRACE"}, false},
+      {{"OPTIONS", "GET"}, true},
       {{"GET"}, true},
   };
 

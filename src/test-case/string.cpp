@@ -35,8 +35,10 @@ bool testCompare(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {"a", "b", true, false},    {"a", "a", false, false},
-      {"a", "A", false, false},   {"aa", "ab", true, false},
+      {"a", "b", true, false},
+      {"a", "a", false, false},
+      {"a", "A", false, false},
+      {"aa", "ab", true, false},
       {"aA", "Aa", false, false},
   };
 

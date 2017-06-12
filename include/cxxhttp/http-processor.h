@@ -88,13 +88,17 @@ class server {
     bool methodSupported = false;
 
     const std::string resource = sess.inboundRequest.resource.path();
+    const std::string resourceAndQuery = sess.inboundRequest.resource.path() +
+                                         "?" +
+                                         sess.inboundRequest.resource.query();
     const std::string method = sess.inboundRequest.method;
 
     for (const auto &servlet : servlets) {
       std::smatch matches;
 
       bool resourceMatch =
-          std::regex_match(resource, matches, servlet->resource);
+          std::regex_match(resource, matches, servlet->resource) ||
+          std::regex_match(resourceAndQuery, matches, servlet->resource);
       bool methodMatch = std::regex_match(method, servlet->method);
 
       methodSupported = methodSupported || methodMatch;

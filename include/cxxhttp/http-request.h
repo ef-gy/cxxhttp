@@ -42,7 +42,7 @@ class requestLine {
    * will be rejected.
    */
   requestLine(const std::string &line) : majorVersion(0), minorVersion(0) {
-    static const std::regex req("(\\w+) ([\\w\\d%/.:;()+-]+|\\*) " +
+    static const std::regex req("(\\w+) ([\\w\\d%/.:;()+?=&-]+|\\*) " +
                                 grammar::httpVersion + "\r?\n?");
     std::smatch matches;
     bool matched = std::regex_match(line, matches, req);

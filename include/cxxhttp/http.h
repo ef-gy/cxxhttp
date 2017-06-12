@@ -115,9 +115,8 @@ class session : public sessionData {
           const std::string &msg = outboundQueue.front();
 
           asio::async_write(socket, asio::buffer(msg),
-                            [this](std::error_code ec, std::size_t length) {
-                              handleWrite(ec);
-                            });
+                            [this](std::error_code ec,
+                                   std::size_t length) { handleWrite(ec); });
 
           outboundQueue.pop_front();
         } else if (closeAfterSend) {
@@ -135,9 +134,8 @@ class session : public sessionData {
   void readLine(void) {
     asio::async_read_until(
         socket, input, "\n",
-        [&](const asio::error_code &error, std::size_t bytes_transferred) {
-          handleRead(error);
-        });
+        [&](const asio::error_code &error,
+            std::size_t bytes_transferred) { handleRead(error); });
   }
 
   /* Read remainder of the request body.

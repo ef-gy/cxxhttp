@@ -46,62 +46,60 @@ bool testUNIX(std::ostream &log) {
 
   std::vector<sampleData> tests{
       {
-          "POST",
-          "/",
-          {{"Host", name}, {"Keep-Alive", "none"}},
-          501,
-          "# Not Implemented\n\n"
-          "An error occurred while processing your request. "
-          "That's all I know.\n",
+       "POST",
+       "/",
+       {{"Host", name}, {"Keep-Alive", "none"}},
+       501,
+       "# Not Implemented\n\n"
+       "An error occurred while processing your request. "
+       "That's all I know.\n",
       },
       {
-          "GET ",
-          "/",
-          {{"Host", name}, {"Keep-Alive", "none"}},
-          400,
-          "# Client Error\n\n"
-          "An error occurred while processing your request. "
-          "That's all I know.\n",
+       "GET ",
+       "/",
+       {{"Host", name}, {"Keep-Alive", "none"}},
+       400,
+       "# Client Error\n\n"
+       "An error occurred while processing your request. "
+       "That's all I know.\n",
       },
       {
-          "OPTIONS",
-          "/",
-          {{"Host", name},
-           {"Keep-Alive", "none"},
-           {"Accept", "application/foo"}},
-          406,
-          "# Not Acceptable\n\n"
-          "An error occurred while processing your request. "
-          "Additionally, content type negotiation for this error page failed. "
-          "That's all I know.\n",
+       "OPTIONS",
+       "/",
+       {{"Host", name}, {"Keep-Alive", "none"}, {"Accept", "application/foo"}},
+       406,
+       "# Not Acceptable\n\n"
+       "An error occurred while processing your request. "
+       "Additionally, content type negotiation for this error page failed. "
+       "That's all I know.\n",
       },
       {
-          "GET", "/foo", {}, 200, "Hello World!",
+       "GET", "/foo", {}, 200, "Hello World!",
       },
       {
-          "GET", "/bar", {{"Accept", ""}}, 200, "Hello World!",
+       "GET", "/bar", {{"Accept", ""}}, 200, "Hello World!",
       },
       {
-          "GET", "/bar", {{"Accept", "text/foo"}}, 200, "Hello World!",
+       "GET", "/bar", {{"Accept", "text/foo"}}, 200, "Hello World!",
       },
       {
-          "GET",
-          "/var",
-          {{"Accept", "text/foo"}},
-          404,
-          "# Not Found\n\n"
-          "An error occurred while processing your request. "
-          "Additionally, content type negotiation for this error page failed. "
-          "That's all I know.\n",
+       "GET",
+       "/var",
+       {{"Accept", "text/foo"}},
+       404,
+       "# Not Found\n\n"
+       "An error occurred while processing your request. "
+       "Additionally, content type negotiation for this error page failed. "
+       "That's all I know.\n",
       },
       {
-          "FOO",
-          "/foo",
-          {},
-          405,
-          "# Method Not Allowed\n\n"
-          "An error occurred while processing your request. "
-          "That's all I know.\n",
+       "FOO",
+       "/foo",
+       {},
+       405,
+       "# Method Not Allowed\n\n"
+       "An error occurred while processing your request. "
+       "That's all I know.\n",
       },
   };
 
@@ -109,10 +107,9 @@ bool testUNIX(std::ostream &log) {
     sess.reply(200, "Hello World!");
   });
 
-  http::servlet bar("/bar",
-                    [](http::sessionData &sess, std::smatch &) {
-                      sess.reply(200, "Hello World!");
-                    },
+  http::servlet bar("/bar", [](http::sessionData &sess, std::smatch &) {
+                              sess.reply(200, "Hello World!");
+                            },
                     "GET|FOO", {{"Accept", "text/foo"}});
 
   std::remove(name);
@@ -136,9 +133,8 @@ bool testUNIX(std::ostream &log) {
               result = false;
             }
             if (session.content != tt.content) {
-              log << "unexpected content:\n"
-                  << session.content << "\nexpected:\n"
-                  << tt.content << "\n";
+              log << "unexpected content:\n" << session.content
+                  << "\nexpected:\n" << tt.content << "\n";
               result = false;
             }
 

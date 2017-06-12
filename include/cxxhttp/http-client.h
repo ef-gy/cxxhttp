@@ -64,9 +64,9 @@ template <class transport>
 static processor::client &call(
     const std::string &uri, headers header = {},
     const std::string &content = "", const std::string method = "GET",
-    efgy::beacons<client<transport>> &clients =
-        efgy::global<efgy::beacons<client<transport>>>(),
-    service &service = efgy::global<cxxhttp::service>()) {
+    efgy::beacons<client<transport>> &
+        clients = efgy::global<efgy::beacons<client<transport>>>(),
+    service & service = efgy::global<cxxhttp::service>()) {
   cxxhttp::uri u = uri;
   std::regex rx("([^:]+)(:([0-9]+))?");
   std::smatch match;

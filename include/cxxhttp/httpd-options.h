@@ -46,6 +46,9 @@ static void options(http::sessionData &session, std::smatch &re) {
         if (std::regex_match(m, servlet->method)) {
           methods.insert(m);
         }
+        if (std::regex_match("GET", servlet->method)) {
+          methods.insert("HEAD");
+        }
       }
     }
   }

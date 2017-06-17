@@ -93,6 +93,9 @@ bool testUNIX(std::ostream &log) {
        "That's all I know.\n",
       },
       {
+       "HEAD", "/var", {{"Accept", "text/foo"}}, 404, "",
+      },
+      {
        "FOO",
        "/foo",
        {},

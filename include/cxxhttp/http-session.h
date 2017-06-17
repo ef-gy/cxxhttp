@@ -174,6 +174,15 @@ class sessionData {
    */
   bool free;
 
+  /* The currently processing request is a HEAD request.
+   *
+   * If this flag is set to `true`, it will cause the message body to be
+   * discarded in replies.
+   * The Content-Length will still be set correctly, as the RFC does allow this
+   * behavior and this is slightly more useful.
+   */
+  bool isHEAD;
+
   /* Default constructor
    *
    * Sets up an empty data object with default values for the members that need
@@ -187,7 +196,8 @@ class sessionData {
         errors(0),
         closeAfterSend(false),
         writePending(false),
-        free(false) {}
+        free(false),
+        isHEAD(false) {}
 
   /* Calculate number of queries from this session.
    *
@@ -230,13 +240,15 @@ class sessionData {
   std::string generateReply(int status, const std::string &body,
                             const headers &header = {}) {
     // informational responses have no message body.
-    bool allowBody = status >= 200;
+    bool allowBody = status >= 200 && !isHEAD;
     // we automatically close connections when an error code is sent.
     bool allowKeepAlive = status < 400;
 
     parser<headers> head;
 
-    if (allowBody) {
+    // We set the Content-Length header for HEAD requests, even though those
+    // do not actually get a body.
+    if (allowBody || isHEAD) {
       head.insert({
           {"Content-Length", std::to_string(body.size())},
       });
@@ -366,6 +378,8 @@ class sessionData {
 
     outboundQueue.push_back(requestLine(method, resource).assemble() +
                             std::string(head) + "\r\n" + body);
+
+    isHEAD = method == "HEAD";
 
     requests++;
   }

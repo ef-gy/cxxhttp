@@ -80,7 +80,7 @@ class server {
    * This is the generic inbound request handler. Whenever a new request needs
    * to be handled, this will go through the registered list of regexen, and for
    * all that match it will call the registered function, until one of them
-   * returns true.
+   * returns and has sent a response.
    */
   void handle(sessionData &sess) const {
     std::set<std::string> methods;
@@ -92,6 +92,7 @@ class server {
                                          "?" +
                                          sess.inboundRequest.resource.query();
     const std::string method = sess.inboundRequest.method;
+    sess.isHEAD = method == "HEAD";
 
     for (const auto &servlet : servlets) {
       std::smatch matches;
@@ -100,6 +101,10 @@ class server {
           std::regex_match(resource, matches, servlet->resource) ||
           std::regex_match(resourceAndQuery, matches, servlet->resource);
       bool methodMatch = std::regex_match(method, servlet->method);
+
+      if (!methodMatch && sess.isHEAD) {
+        methodMatch = std::regex_match("GET", servlet->method);
+      }
 
       methodSupported = methodSupported || methodMatch;
 
@@ -310,16 +315,25 @@ class client {
    * @return The parser state to switch to.
    */
   enum status afterHeaders(sessionData &sess) const {
-    const auto &cli = sess.inbound.header.find("Content-Length");
+    if (sess.isHEAD) {
+      // if this is a HEAD request, ignore any Content-Length headers and assume
+      // the response size will be zero octets long.
+      // We have this because HEAD is allowed (but not required) to produce a
+      // Content-Length header, which if present would have to be correct for
+      // what GET would return.
+      sess.contentLength = 0;
+    } else {
+      const auto &cli = sess.inbound.header.find("Content-Length");
 
-    if (cli != sess.inbound.header.end()) {
-      try {
-        sess.contentLength = std::stoi(cli->second);
-      } catch (...) {
+      if (cli != sess.inbound.header.end()) {
+        try {
+          sess.contentLength = std::stoi(cli->second);
+        } catch (...) {
+          sess.contentLength = 0;
+        }
+      } else {
         sess.contentLength = 0;
       }
-    } else {
-      sess.contentLength = 0;
     }
 
     return stContent;

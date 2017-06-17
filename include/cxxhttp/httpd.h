@@ -18,6 +18,7 @@
 #include <ef.gy/cli.h>
 
 #include <cxxhttp/http.h>
+#include <cxxhttp/http-stdio.h>
 
 namespace cxxhttp {
 namespace httpd {
@@ -57,6 +58,24 @@ static bool setup(net::endpoint<transport> lookup,
   return rv;
 }
 
+/* Set up an HTTP server on STDIO.
+ * @service The ASIO I/O service to initialise the server with; optional.
+ * @servlets Which servlets to initialise the new server with; optional.
+ *
+ * This will initialise an HTTP server with all the normal trimmings on STDIO.
+ * Primarily useful for debugging and for use with (x)inetd.
+ *
+ * @return `true` for success (always).
+ */
+static inline bool setup(service &service = efgy::global<cxxhttp::service>(),
+                         efgy::beacons<http::servlet> &servlets =
+                             efgy::global<efgy::beacons<http::servlet>>()) {
+  static http::stdio::server server(service);
+  server.processor.servlets = servlets;
+  server.start();
+  return true;
+}
+
 /* Set up an HTTP server on a TCP socket.
  * @match The matches from the TCP regex.
  *
@@ -84,6 +103,16 @@ static inline bool setupUNIX(std::smatch &match) {
   return setup(net::endpoint<transport::unix>(match[1]));
 }
 
+/* Set up an HTTP server on STDIO.
+ * @match Matches from the CLI option regex; ignored.
+ *
+ * This will initialise an HTTP server with all the normal trimmings on STDIO.
+ * Primarily useful for debugging and for use with (x)inetd.
+ *
+ * @return `true` for success (always).
+ */
+static inline bool setupSTDIO(std::smatch &match) { return setup(); }
+
 /* TCP HTTP server CLI option.
  *
  * The format is `http:(interface-address):(port)`. The server that is set up
@@ -100,6 +129,9 @@ static option TCP(
  */
 static option UNIX("-{0,2}http:unix:(.+)", setupUNIX,
                    "listen for HTTP connections on the given unix socket[1]");
+
+static option STDIO("-{0,2}http:stdio", setupSTDIO,
+                    "Process HTTP connections on STDIN and STDOUT.");
 }
 
 namespace usage {

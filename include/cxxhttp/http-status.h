@@ -14,12 +14,11 @@
 #if !defined(CXXHTTP_HTTP_STATUS_H)
 #define CXXHTTP_HTTP_STATUS_H
 
-#include <array>
 #include <regex>
-#include <string>
 
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-grammar.h>
+#include <cxxhttp/http-version.h>
 
 namespace cxxhttp {
 namespace http {
@@ -40,14 +39,14 @@ class statusLine {
    * Should be < {2,0}, otherwise we'll likely reject the request at a later
    * stage in the flow control mechanism.
    */
-  std::array<unsigned, 2> version;
+  http::version version;
 
   /* Default initialiser.
    *
    * Initialise everything to be empty. Obviously this doesn't make for a valid
    * header.
    */
-  statusLine(void) : code(0), version({{0, 0}}) {}
+  statusLine(void) : code(0) {}
 
   /* Parse HTTP status line.
    * @line The (suspected) status line to parse.
@@ -65,9 +64,7 @@ class statusLine {
     if (matched) {
       const std::string maj = matches[1];
       const std::string min = matches[2];
-      unsigned majv = maj[0] - '0';
-      unsigned minv = min[0] - '0';
-      version = {{majv, minv}};
+      version = {maj, min};
       description = matches[4];
       // we pre-validate that this is a number in the range of 100-999 with the
       // regex, so while this could ordinarily throw an exception it would be
@@ -82,8 +79,7 @@ class statusLine {
    *
    * Use this to create a status line when replying to a query.
    */
-  statusLine(unsigned pStatus,
-             const std::array<unsigned, 2> &pVersion = {{1, 1}})
+  statusLine(unsigned pStatus, const http::version &pVersion = {1, 1})
       : code(pStatus),
         version(pVersion),
         description(getDescription(pStatus)) {}
@@ -93,13 +89,12 @@ class statusLine {
    * Set to false, unless a successful parse happened (or the object has been
    * initialised directly, presumably with correct values).
    *
-   * This does not consider HTTP/0.9 status lines to be valid.
+   * This does not consider anything before HTTP/0.9 status lines to be valid.
    *
    * @return A boolean indicating whether or not this is a valid status line.
    */
   bool valid(void) const {
-    static const std::array<unsigned, 2> minVersion{{1, 0}};
-    return (code >= 100) && (code < 600) && (version >= minVersion);
+    return (code >= 100) && (code < 600) && version.valid();
   }
 
   /* Protocol name.
@@ -110,10 +105,7 @@ class statusLine {
    * @return HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion
    * accepts.
    */
-  std::string protocol(void) const {
-    return "HTTP/" + std::to_string(version[0]) + "." +
-           std::to_string(version[1]);
-  }
+  std::string protocol(void) const { return std::string(version); }
 
   /* Status code description.
    *

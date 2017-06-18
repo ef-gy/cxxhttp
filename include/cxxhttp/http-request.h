@@ -14,12 +14,11 @@
 #if !defined(CXXHTTP_HTTP_REQUEST_H)
 #define CXXHTTP_HTTP_REQUEST_H
 
-#include <array>
 #include <regex>
-#include <string>
 
 #include <cxxhttp/http-grammar.h>
 #include <cxxhttp/uri.h>
+#include <cxxhttp/http-version.h>
 
 namespace cxxhttp {
 namespace http {
@@ -34,7 +33,7 @@ class requestLine {
    * Should be < {2,0}, otherwise we'll likely reject the request at a later
    * stage in the flow control mechanism.
    */
-  std::array<unsigned, 2> version;
+  http::version version;
 
   /* The request method.
    *
@@ -53,15 +52,15 @@ class requestLine {
    * Initialise everything to be empty. Obviously this doesn't make for a valid
    * header.
    */
-  requestLine(void) : version({{0, 0}}) {}
+  requestLine(void) {}
 
   /* Parse HTTP request line.
    * @line The (suspected) request line to parse.
    *
-   * This currently only accepts HTTP/1.0 and HTTP/1.1 request lines, all others
-   * will be rejected.
+   * This currently only accepts >= HTTP/0.9 request lines, all others will be
+   * rejected.
    */
-  requestLine(const std::string &line) : version({{0, 0}}) {
+  requestLine(const std::string &line) {
     static const std::regex req("(\\w+) ([\\w\\d%/.:;()+?=&-]+|\\*) " +
                                 grammar::httpVersion + "\r?\n?");
     std::smatch matches;
@@ -72,9 +71,7 @@ class requestLine {
       resource = std::string(matches[2]);
       const std::string maj = matches[3];
       const std::string min = matches[4];
-      unsigned majv = maj[0] - '0';
-      unsigned minv = min[0] - '0';
-      version = {{majv, minv}};
+      version = {maj, min};
     }
   }
 
@@ -87,21 +84,18 @@ class requestLine {
    * are always HTTP/1.1.
    */
   requestLine(const std::string &pMethod, const std::string &pResource)
-      : version({{1, 1}}), method(pMethod), resource(pResource) {}
+      : version(1, 1), method(pMethod), resource(pResource) {}
 
   /* Did this request line parse correctly?
    *
    * Set to false, unless a successful parse happened (or the object has been
    * initialised directly, presumably with correct values).
    *
-   * This does not consider HTTP/0.9 request lines to be valid.
+   * This does not consider requests lines older than HTTP/0.9 to be valid.
    *
    * @return A boolean indicating whether or not this is a valid status line.
    */
-  bool valid(void) const {
-    static const std::array<unsigned, 2> minVersion{{1, 0}};
-    return (version >= minVersion) && resource.valid();
-  }
+  bool valid(void) const { return version.valid() && resource.valid(); }
 
   /* Protocol name.
    *
@@ -111,10 +105,7 @@ class requestLine {
    * @return HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion
    * accepts.
    */
-  std::string protocol(void) const {
-    return "HTTP/" + std::to_string(version[0]) + "." +
-           std::to_string(version[1]);
-  }
+  std::string protocol(void) const { return std::string(version); }
 
   /* Create request line.
    * @newline Whether to include a trailing CRLF.

@@ -254,8 +254,8 @@ class flow {
 
     bool wasRequest = session.status == stRequest;
     bool wasStart = wasRequest || session.status == stStatus;
-    std::array<unsigned, 2> version{{0, 0}};
-    static const std::array<unsigned, 2> limVersion{{2, 0}};
+    http::version version;
+    static const http::version limVersion{2, 0};
 
     if (session.status == stRequest) {
       session.inboundRequest = session.buffer();

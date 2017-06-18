@@ -67,4 +67,22 @@ else
   rv="false"
 fi
 
+printf "running test case 4: "
+
+uri="http://localhost-but-actually-not-really:${port}/"
+out="data/test/fetch/bad-host"
+tmp="/tmp/cxxhttp-fetch-test-bad-host"
+
+if ./fetch "${uri}" > "${tmp}" 2>&1; then
+  if diff --ignore-all-space -u "${out}" "${tmp}"; then
+    echo "OK"
+  else
+    echo "FAIL"
+    rv="false"
+  fi
+else
+  echo "FAIL"
+  rv="false"
+fi
+
 exec ${rv}

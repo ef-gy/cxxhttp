@@ -17,7 +17,7 @@
 
 #include <ef.gy/cli.h>
 
-#include <cxxhttp/http.h>
+#include <cxxhttp/http-network.h>
 #include <cxxhttp/http-stdio.h>
 
 namespace cxxhttp {

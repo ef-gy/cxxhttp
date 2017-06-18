@@ -11,8 +11,8 @@
  * This file is part of the cxxhttp project, which is released as open source
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
-#if !defined(CXXHTTP_HTTP_H)
-#define CXXHTTP_HTTP_H
+#if !defined(CXXHTTP_HTTP_NETWORK_H)
+#define CXXHTTP_HTTP_NETWORK_H
 
 #include <cxxhttp/network.h>
 

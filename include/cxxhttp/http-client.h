@@ -17,8 +17,9 @@
 #if !defined(CXXHTTP_HTTP_CLIENT_H)
 #define CXXHTTP_HTTP_CLIENT_H
 
-#include <cxxhttp/http.h>
 #include <iostream>
+
+#include <cxxhttp/http-network.h>
 
 namespace cxxhttp {
 namespace http {

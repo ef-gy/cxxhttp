@@ -131,7 +131,7 @@ static option UNIX("-{0,2}http:unix:(.+)", setupUNIX,
                    "listen for HTTP connections on the given unix socket[1]");
 
 static option STDIO("-{0,2}http:stdio", setupSTDIO,
-                    "Process HTTP connections on STDIN and STDOUT.");
+                    "process HTTP connections on STDIN and STDOUT.");
 }
 
 namespace usage {

@@ -14,6 +14,7 @@
 #if !defined(CXXHTTP_HTTP_REQUEST_H)
 #define CXXHTTP_HTTP_REQUEST_H
 
+#include <array>
 #include <regex>
 #include <string>
 
@@ -28,85 +29,12 @@ namespace http {
  */
 class requestLine {
  public:
-  /* Default initialiser.
+  /* Protocol version.
    *
-   * Initialise everything to be empty. Obviously this doesn't make for a valid
-   * header.
+   * Should be < {2,0}, otherwise we'll likely reject the request at a later
+   * stage in the flow control mechanism.
    */
-  requestLine(void) : majorVersion(0), minorVersion(0) {}
-
-  /* Parse HTTP request line.
-   * @line The (suspected) request line to parse.
-   *
-   * This currently only accepts HTTP/1.0 and HTTP/1.1 request lines, all others
-   * will be rejected.
-   */
-  requestLine(const std::string &line) : majorVersion(0), minorVersion(0) {
-    static const std::regex req("(\\w+) ([\\w\\d%/.:;()+?=&-]+|\\*) " +
-                                grammar::httpVersion + "\r?\n?");
-    std::smatch matches;
-    bool matched = std::regex_match(line, matches, req);
-
-    if (matched) {
-      method = matches[1];
-      resource = std::string(matches[2]);
-      const std::string maj = matches[3];
-      const std::string min = matches[4];
-      majorVersion = maj[0] - '0';
-      minorVersion = min[0] - '0';
-    }
-  }
-
-  /* Construct with method and resource.
-   * @pMethod The method to set.
-   * @pResource The resource to set.
-   *
-   * Used by code that wants to send out requests to generate a request line.
-   * Defaults the minor/major version of the protocol so that outbound replies
-   * are always HTTP/1.1.
-   */
-  requestLine(const std::string &pMethod, const std::string &pResource)
-      : majorVersion(1),
-        minorVersion(1),
-        method(pMethod),
-        resource(pResource) {}
-
-  /* Did this request line parse correctly?
-   *
-   * Set to false, unless a successful parse happened (or the object has been
-   * initialised directly, presumably with correct values).
-   *
-   * This does not consider HTTP/0.9 request lines to be valid.
-   *
-   * @return A boolean indicating whether or not this is a valid status line.
-   */
-  bool valid(void) const { return (majorVersion > 0) && resource.valid(); }
-
-  /* Protocol name.
-   *
-   * The value is reconstructed from the parsed value, because we only accept
-   * HTTP/x.x versions anyway.
-   *
-   * @return HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion
-   * accepts.
-   */
-  std::string protocol(void) const {
-    return "HTTP/" + std::to_string(majorVersion) + "." +
-           std::to_string(minorVersion);
-  }
-
-  /* Major protocol version.
-   *
-   * Should be '1', otherwise we'll likely reject the request in a later stage.
-   */
-  unsigned majorVersion;
-
-  /* Minor protocol version.
-   *
-   * Should be '0' or '1', otherwise we'll likely reject the request in a later
-   * stage.
-   */
-  unsigned minorVersion;
+  std::array<unsigned, 2> version;
 
   /* The request method.
    *
@@ -119,6 +47,74 @@ class requestLine {
    * Does not have any post-processing done to it, just yet.
    */
   uri resource;
+
+  /* Default initialiser.
+   *
+   * Initialise everything to be empty. Obviously this doesn't make for a valid
+   * header.
+   */
+  requestLine(void) : version({{0, 0}}) {}
+
+  /* Parse HTTP request line.
+   * @line The (suspected) request line to parse.
+   *
+   * This currently only accepts HTTP/1.0 and HTTP/1.1 request lines, all others
+   * will be rejected.
+   */
+  requestLine(const std::string &line) : version({{0, 0}}) {
+    static const std::regex req("(\\w+) ([\\w\\d%/.:;()+?=&-]+|\\*) " +
+                                grammar::httpVersion + "\r?\n?");
+    std::smatch matches;
+    bool matched = std::regex_match(line, matches, req);
+
+    if (matched) {
+      method = matches[1];
+      resource = std::string(matches[2]);
+      const std::string maj = matches[3];
+      const std::string min = matches[4];
+      unsigned majv = maj[0] - '0';
+      unsigned minv = min[0] - '0';
+      version = {{majv, minv}};
+    }
+  }
+
+  /* Construct with method and resource.
+   * @pMethod The method to set.
+   * @pResource The resource to set.
+   *
+   * Used by code that wants to send out requests to generate a request line.
+   * Defaults the minor/major version of the protocol so that outbound replies
+   * are always HTTP/1.1.
+   */
+  requestLine(const std::string &pMethod, const std::string &pResource)
+      : version({{1, 1}}), method(pMethod), resource(pResource) {}
+
+  /* Did this request line parse correctly?
+   *
+   * Set to false, unless a successful parse happened (or the object has been
+   * initialised directly, presumably with correct values).
+   *
+   * This does not consider HTTP/0.9 request lines to be valid.
+   *
+   * @return A boolean indicating whether or not this is a valid status line.
+   */
+  bool valid(void) const {
+    static const std::array<unsigned, 2> minVersion{{1, 0}};
+    return (version >= minVersion) && resource.valid();
+  }
+
+  /* Protocol name.
+   *
+   * The value is reconstructed from the parsed value, because we only accept
+   * HTTP/x.x versions anyway.
+   *
+   * @return HTTP/1.0 or HTTP/1.1. Or anything else that grammar::httpVersion
+   * accepts.
+   */
+  std::string protocol(void) const {
+    return "HTTP/" + std::to_string(version[0]) + "." +
+           std::to_string(version[1]);
+  }
 
   /* Create request line.
    * @newline Whether to include a trailing CRLF.

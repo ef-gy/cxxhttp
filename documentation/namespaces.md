@@ -20,6 +20,13 @@ HTTP grammar fragments.
 Contains grammar fragments used when parsing HTTP messages, mostly in the form
 of regular expressions.
 
+#<cldoc:cxxhttp::http::stdio>
+
+HTTP-over-STDIO
+
+Implements HTTP over STDIN and STDOUT, which is useful for, say, debugging or
+for running your server behind (x)inetd.
+
 #<cldoc:cxxhttp::httpd>
 
 Servlet-based HTTP server.

@@ -254,13 +254,17 @@ class flow {
 
     bool wasRequest = session.status == stRequest;
     bool wasStart = wasRequest || session.status == stStatus;
+    std::array<unsigned, 2> version{{0, 0}};
+    static const std::array<unsigned, 2> limVersion{{2, 0}};
 
     if (session.status == stRequest) {
       session.inboundRequest = session.buffer();
       session.status = session.inboundRequest.valid() ? stHeader : stError;
+      version = session.inboundRequest.version;
     } else if (session.status == stStatus) {
       session.inboundStatus = session.buffer();
       session.status = session.inboundStatus.valid() ? stHeader : stError;
+      version = session.inboundStatus.version;
     } else if (session.status == stHeader) {
       session.inbound.absorb(session.buffer());
       // this may return false, and if it did then what the client sent was
@@ -274,12 +278,19 @@ class flow {
       }
     }
 
+    if (wasStart && session.status != stError && version >= limVersion) {
+      // reject any requests with a major version over 1.x
+      session.status = stError;
+    }
+
     if (wasStart && session.status == stHeader) {
       session.inbound = {};
     } else if (wasRequest && session.status == stError) {
       // We had an edge from trying to read a request line to an error, so send
       // a message to the other end about this.
-      http::error(session).reply(400);
+      // The error code is a 400 for a generic error or an invalid request line,
+      // or a 505 if we can't handle the message framing.
+      http::error(session).reply(version >= limVersion ? 505 : 400);
       send();
       session.status = stProcessing;
     }

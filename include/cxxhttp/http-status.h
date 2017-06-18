@@ -14,6 +14,7 @@
 #if !defined(CXXHTTP_HTTP_STATUS_H)
 #define CXXHTTP_HTTP_STATUS_H
 
+#include <array>
 #include <regex>
 #include <string>
 
@@ -28,12 +29,25 @@ namespace http {
  */
 class statusLine {
  public:
+  /* The status code.
+   *
+   * Anything not in the http::status map is probably an error.
+   */
+  unsigned code;
+
+  /* Protocol version.
+   *
+   * Should be < {2,0}, otherwise we'll likely reject the request at a later
+   * stage in the flow control mechanism.
+   */
+  std::array<unsigned, 2> version;
+
   /* Default initialiser.
    *
    * Initialise everything to be empty. Obviously this doesn't make for a valid
    * header.
    */
-  statusLine(void) : code(0), majorVersion(0), minorVersion(0) {}
+  statusLine(void) : code(0), version({{0, 0}}) {}
 
   /* Parse HTTP status line.
    * @line The (suspected) status line to parse.
@@ -51,8 +65,9 @@ class statusLine {
     if (matched) {
       const std::string maj = matches[1];
       const std::string min = matches[2];
-      majorVersion = maj[0] - '0';
-      minorVersion = min[0] - '0';
+      unsigned majv = maj[0] - '0';
+      unsigned minv = min[0] - '0';
+      version = {{majv, minv}};
       description = matches[4];
       // we pre-validate that this is a number in the range of 100-999 with the
       // regex, so while this could ordinarily throw an exception it would be
@@ -63,15 +78,14 @@ class statusLine {
 
   /* Create status line with status and protocol.
    * @pStatus The status code.
-   * @major Major version component of the HTTP protocol.
-   * @minor Minor version component of the HTTP protocol.
+   * @pVersion Protocl version pair, defaults to 1.1.
    *
    * Use this to create a status line when replying to a query.
    */
-  statusLine(unsigned pStatus, unsigned major = 1, unsigned minor = 1)
+  statusLine(unsigned pStatus,
+             const std::array<unsigned, 2> &pVersion = {{1, 1}})
       : code(pStatus),
-        majorVersion(major),
-        minorVersion(minor),
+        version(pVersion),
         description(getDescription(pStatus)) {}
 
   /* Did this status line parse correctly?
@@ -84,14 +98,9 @@ class statusLine {
    * @return A boolean indicating whether or not this is a valid status line.
    */
   bool valid(void) const {
-    return (code >= 100) && (code < 600) && (majorVersion > 0);
+    static const std::array<unsigned, 2> minVersion{{1, 0}};
+    return (code >= 100) && (code < 600) && (version >= minVersion);
   }
-
-  /* The status code.
-   *
-   * Anything not in the http::status map is probably an error.
-   */
-  unsigned code;
 
   /* Protocol name.
    *
@@ -102,22 +111,9 @@ class statusLine {
    * accepts.
    */
   std::string protocol(void) const {
-    return "HTTP/" + std::to_string(majorVersion) + "." +
-           std::to_string(minorVersion);
+    return "HTTP/" + std::to_string(version[0]) + "." +
+           std::to_string(version[1]);
   }
-
-  /* Major protocol version.
-   *
-   * Should be '1', otherwise we'll likely reject the request in a later stage.
-   */
-  unsigned majorVersion;
-
-  /* Minor protocol version.
-   *
-   * Should be '0' or '1', otherwise we'll likely reject the request in a later
-   * stage.
-   */
-  unsigned minorVersion;
 
   /* Status code description.
    *

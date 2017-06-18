@@ -130,11 +130,7 @@ class flow {
    * Closes the descriptors, cancels all remaining requests and sets the status
    * to stShutdown.
    */
-  ~flow(void) {
-    if (!session.free) {
-      recycle();
-    }
-  }
+  ~flow(void) { recycle(); }
 
   /* Start processing.
    *
@@ -204,33 +200,36 @@ class flow {
    * as clean. This allows reusing the session, or destruction out of band.
    */
   void recycle(void) {
-    processor.recycle(session);
+    if (!session.free) {
+      processor.recycle(session);
 
-    session.status = stShutdown;
+      session.status = stShutdown;
 
-    session.closeAfterSend = false;
-    session.outboundQueue.clear();
+      session.closeAfterSend = false;
+      session.outboundQueue.clear();
 
-    send();
+      send();
 
-    asio::error_code ec;
+      asio::error_code ec;
 
-    maybeShutdown(inputConnection, ec);
-    inputConnection.close(ec);
+      maybeShutdown(inputConnection, ec);
+      inputConnection.close(ec);
 
-    if (&inputConnection != &outputConnection) {
-      // avoid closing the descriptor twice, if one is a reference to the other.
-      maybeShutdown(outputConnection, ec);
-      outputConnection.close(ec);
+      if (&inputConnection != &outputConnection) {
+        // avoid closing the descriptor twice, if one is a reference to the
+        // other.
+        maybeShutdown(outputConnection, ec);
+        outputConnection.close(ec);
+      }
+
+      // we should do something here with ec, but then we've already given up on
+      // this connection, so meh.
+      session.errors = ec ? session.errors + 1 : session.errors;
+
+      session.input.consume(session.input.size() + 1);
+
+      session.free = true;
     }
-
-    // we should do something here with ec, but then we've already given up on
-    // this connection, so meh.
-    session.errors = ec ? session.errors + 1 : session.errors;
-
-    session.input.consume(session.input.size() + 1);
-
-    session.free = true;
   }
 
  protected:

@@ -93,17 +93,6 @@ class session : public sessionData {
         socket(flow.inputConnection),
         beacon(*this, connection.sessions) {}
 
-  /* Destructor.
-   *
-   * Closes the socket, cancels all remaining requests and sets the status to
-   * stShutdown.
-   */
-  ~session(void) {
-    if (!free) {
-      recycle();
-    }
-  }
-
   /* Start processing.
    *
    * Starts processing the incoming request.

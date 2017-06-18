@@ -58,17 +58,6 @@ class session : public sessionData {
    */
   session(asio::io_service &service) : flow(processor, service, *this, 0, 1) {}
 
-  /* Destructor.
-   *
-   * Closes the descriptors, cancels all remaining requests and sets the status
-   * to stShutdown.
-   */
-  ~session(void) {
-    if (!free) {
-      flow.recycle();
-    }
-  }
-
   /* Start processing.
    *
    * Starts processing the incoming request.

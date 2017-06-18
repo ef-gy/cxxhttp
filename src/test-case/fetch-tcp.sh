@@ -49,4 +49,22 @@ fi
 
 kill -KILL ${pid}
 
-exec $(${true})
+printf "running test case 3: "
+
+uri="http://localhost:${port}/"
+out="data/test/fetch/no-connection"
+tmp="/tmp/cxxhttp-fetch-test-no-connection"
+
+if ./fetch "${uri}" > "${tmp}" 2>&1; then
+  if diff --ignore-all-space -u "${out}" "${tmp}"; then
+    echo "OK"
+  else
+    echo "FAIL"
+    rv="false"
+  fi
+else
+  echo "FAIL"
+  rv="false"
+fi
+
+exec ${rv}

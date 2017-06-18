@@ -49,4 +49,4 @@ fi
 
 kill -KILL ${pid}
 
-exec $(${true})
+exec ${rv}

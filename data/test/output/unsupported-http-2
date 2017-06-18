@@ -1,0 +1,8 @@
+HTTP/1.1 505 HTTP Version Not Supported
+Connection: close
+Content-Length: 98
+Content-Type: text/markdown
+
+# HTTP Version Not Supported
+
+An error occurred while processing your request. That's all I know.

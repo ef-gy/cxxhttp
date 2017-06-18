@@ -19,3 +19,6 @@ dependencies.mk
 # targets
 server
 fetch
+
+# test files
+!data/test/fetch

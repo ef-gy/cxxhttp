@@ -10,10 +10,11 @@ for i in ${tests}; do
 
   printf "running test case '%s': " "${i}"
 
-  cat "${in}" | ./server http:stdio > "$tmp"
-  if diff --ignore-all-space -u "$out" "$tmp"; then
+  cat "${in}" | ./server http:stdio > "${tmp}"
+  if diff --ignore-all-space -u "${out}" "${tmp}"; then
     echo "OK"
   else
+    echo "FAIL"
     exec false
   fi
 done

@@ -14,10 +14,9 @@
 #if !defined(CXXHTTP_HTTP_H)
 #define CXXHTTP_HTTP_H
 
-#include <system_error>
-
 #include <cxxhttp/network.h>
 
+#include <cxxhttp/http-flow.h>
 #include <cxxhttp/http-processor.h>
 
 namespace cxxhttp {
@@ -52,6 +51,13 @@ class session : public sessionData {
    */
   using socketType = typename transport::socket;
 
+  /* HTTP Coordinator type.
+   *
+   * We need one instance of this to do the actual work of talking with the
+   * other end of this connection.
+   */
+  using flowType = http::flow<requestProcessor, socketType>;
+
   /* Connection instance
    *
    * A reference to the server or client that this session belongs to and was
@@ -60,12 +66,21 @@ class session : public sessionData {
    */
   connectionType &connection;
 
+  /* HTTP Coordinator.
+   *
+   * Provides flow control for our HTTP session.
+   */
+  flowType flow;
+
   /* Stream socket
    *
    * This is the asynchronous I/O socket that is used to communicate with the
    * client.
+   *
+   * We have a reference to this here so that the session can accept incoming
+   * connections into this socket.
    */
-  socketType socket;
+  socketType &socket;
 
   /* Construct with I/O connection
    * @pConnection The connection instance this session belongs to.
@@ -74,7 +89,8 @@ class session : public sessionData {
    */
   session(connectionType &pConnection)
       : connection(pConnection),
-        socket(connection.io),
+        flow(connection.processor, connection.io, *this),
+        socket(flow.inputConnection),
         beacon(*this, connection.sessions) {}
 
   /* Destructor.
@@ -92,91 +108,14 @@ class session : public sessionData {
    *
    * Starts processing the incoming request.
    */
-  void start(void) {
-    connection.processor.start(*this);
-    if (status == stRequest || status == stStatus) {
-      readLine();
-    } else if (status == stShutdown) {
-      recycle();
-    }
-    send();
-  }
+  void start(void) { flow.start(); }
 
-  /* Send the next message.
+  /* Recycle session.
    *
-   * Sends the next message in the <outboundQueue>, if there is one and no
-   * message is currently in flight.
+   * Forwards to `flow.recycle()`, and should only be used by the connection
+   * handler and our destructor.
    */
-  void send(void) {
-    if (status != stShutdown) {
-      if (!writePending) {
-        if (outboundQueue.size() > 0) {
-          writePending = true;
-          const std::string &msg = outboundQueue.front();
-
-          asio::async_write(socket, asio::buffer(msg),
-                            [this](std::error_code ec,
-                                   std::size_t length) { handleWrite(ec); });
-
-          outboundQueue.pop_front();
-        } else if (closeAfterSend) {
-          recycle();
-        }
-      }
-    }
-  }
-
-  /* Read enough off the input socket to fill a line.
-   *
-   * Issue a read that will make sure there's at least one full line available
-   * for processing in the input buffer.
-   */
-  void readLine(void) {
-    asio::async_read_until(
-        socket, input, "\n",
-        [&](const asio::error_code &error,
-            std::size_t bytes_transferred) { handleRead(error); });
-  }
-
-  /* Read remainder of the request body.
-   *
-   * Issues a read for anything left to read in the request body, if there's
-   * anything left to read.
-   */
-  void readRemainingContent(void) {
-    asio::async_read(socket, input, asio::transfer_at_least(remainingBytes()),
-                     [&](const asio::error_code &error,
-                         std::size_t bytes_transferred) { handleRead(error); });
-  }
-
-  /* Make session reusable for future use.
-   *
-   * Destroys all pending data that needs to be cleaned up, and tags the session
-   * as clean. This allows reusing the session, or destruction out of band.
-   */
-  void recycle(void) {
-    connection.processor.recycle(*this);
-
-    status = stShutdown;
-
-    closeAfterSend = false;
-    outboundQueue.clear();
-
-    send();
-
-    asio::error_code ec;
-
-    socket.shutdown(socketType::shutdown_both, ec);
-    socket.close(ec);
-
-    // we should do something here with ec, but then we've already given up on
-    // this connection, so meh.
-    errors = ec ? errors + 1 : errors;
-
-    input.consume(input.size() + 1);
-
-    free = true;
-  }
+  void recycle(void) { flow.recycle(); }
 
  protected:
   /* Session beacon.
@@ -185,111 +124,6 @@ class session : public sessionData {
    * the lot of them.
    */
   efgy::beacon<session> beacon;
-
-  /* Callback after more data has been read.
-   * @error Current error state.
-   *
-   * Called by ASIO to indicate that new data has been read and can now be
-   * processed.
-   *
-   * The actual processing for the header is done with a set of regexen, which
-   * greatly simplifies the header parsing.
-   */
-  void handleRead(const std::error_code &error) {
-    if (status == stShutdown) {
-      return;
-    }
-
-    if (error) {
-      status = stError;
-    }
-
-    bool wasRequest = status == stRequest;
-    bool wasStart = wasRequest || status == stStatus;
-
-    if (status == stRequest) {
-      inboundRequest = buffer();
-      status = inboundRequest.valid() ? stHeader : stError;
-    } else if (status == stStatus) {
-      inboundStatus = buffer();
-      status = inboundStatus.valid() ? stHeader : stError;
-    } else if (status == stHeader) {
-      inbound.absorb(buffer());
-      // this may return false, and if it did then what the client sent was
-      // not valid HTTP and we should send back an error.
-      if (inbound.complete) {
-        // we're done parsing headers, so change over to streaming in the
-        // results.
-        status = connection.processor.afterHeaders(*this);
-        send();
-        content.clear();
-      }
-    }
-
-    if (wasStart && status == stHeader) {
-      inbound = {};
-    } else if (wasRequest && status == stError) {
-      // We had an edge from trying to read a request line to an error, so send
-      // a message to the other end about this.
-      http::error(*this).reply(400);
-      send();
-      status = stProcessing;
-    }
-
-    if (status == stHeader) {
-      readLine();
-    } else if (status == stContent) {
-      content += buffer();
-      if (remainingBytes() == 0) {
-        status = stProcessing;
-
-        /* processing the request takes place here */
-        connection.processor.handle(*this);
-
-        status = connection.processor.afterProcessing(*this);
-        send();
-
-        if (status == stShutdown) {
-          recycle();
-        } else if (status == stRequest || status == stStatus) {
-          readLine();
-        }
-      } else {
-        readRemainingContent();
-      }
-    }
-
-    if (status == stError) {
-      recycle();
-    }
-  }
-
-  /* Asynchronouse write handler
-   * @error Current error state.
-   *
-   * Decides whether or not things need to be written to the stream, or if
-   * things need to be read instead.
-   *
-   * Automatically deletes the object on errors - which also closes the
-   * connection automagically.
-   */
-  void handleWrite(const std::error_code error) {
-    if (status != stShutdown) {
-      writePending = false;
-      if (error) {
-        recycle();
-      } else {
-        if (status == stProcessing) {
-          status = connection.processor.afterProcessing(*this);
-        }
-        if (status == stShutdown) {
-          recycle();
-        } else {
-          send();
-        }
-      }
-    }
-  }
 };
 
 /* HTTP server template.

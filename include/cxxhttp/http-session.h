@@ -406,10 +406,10 @@ class sessionData {
     replies++;
   }
 
- protected:
   /* ASIO input stream buffer
    *
-   * This is the stream buffer that the object is reading from.
+   * This is the stream buffer that the object is reading from. This is filled
+   * with data elsewhere.
    */
   asio::streambuf input;
 };

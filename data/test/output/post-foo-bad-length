@@ -1,0 +1,8 @@
+HTTP/1.1 400 Client Error
+Connection: close
+Content-Length: 84
+Content-Type: text/markdown
+
+# Client Error
+
+An error occurred while processing your request. That's all I know.

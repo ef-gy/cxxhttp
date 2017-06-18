@@ -1,0 +1,8 @@
+HTTP/1.1 417 Expectation Failed
+Connection: close
+Content-Length: 90
+Content-Type: text/markdown
+
+# Expectation Failed
+
+An error occurred while processing your request. That's all I know.

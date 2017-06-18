@@ -174,7 +174,8 @@ class server {
       try {
         sess.contentLength = std::stoi(cli->second);
       } catch (...) {
-        sess.contentLength = 0;
+        error(sess).reply(400);
+        return stError;
       }
 
       if (sess.contentLength > maxContentLength) {

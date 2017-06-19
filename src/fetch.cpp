@@ -41,18 +41,16 @@ static option UNIX("-{0,2}http:unix:(.+):(.+)",
                    },
                    "Fetch resource[2] via HTTP from unix socket[1].");
 
-static option TCP("http://([^@:/]+)(:([0-9]+))?(/.*)",
-                  [](std::smatch &m) -> bool {
-                    const std::string url = m[0];
-                    call<tcp>(url)
-                        .success([](sessionData &sess) {
-                          std::cout << sess.content;
-                        })
-                        .failure([url](sessionData &sess) {
-                          std::cerr << "Failed to retrieve URL: " << url
-                                    << "\n";
-                        });
-                    return true;
-                  },
-                  "Fetch the given HTTP URL.");
+static option TCP(
+    "http://([^@:/]+)(:[0-9]+|:stdio)?(/.*)",
+    [](std::smatch &m) -> bool {
+      const std::string url = m[0];
+      call<tcp>(url)
+          .success([](sessionData &sess) { std::cout << sess.content; })
+          .failure([url](sessionData &sess) {
+            std::cerr << "Failed to retrieve URL: " << url << "\n";
+          });
+      return true;
+    },
+    "Fetch the given HTTP URL. Talk on STDIO if the port is 'stdio'.");
 }

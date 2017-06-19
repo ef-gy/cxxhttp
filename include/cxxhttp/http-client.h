@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include <cxxhttp/http-network.h>
+#include <cxxhttp/http-stdio.h>
 
 namespace cxxhttp {
 namespace http {
@@ -58,6 +59,10 @@ namespace http {
  *
  * For an example with UNIX sockets, see src/fetch.cpp.
  *
+ * If the port part of the authority part of the URI is set to 'stdio', then the
+ * conneciton will be established via STDIN and STDOUT. Those file descriptors
+ * would then have to be open and connected correctly.
+ *
  * @return An HTTP client reference, so you can set up success and failure
  * handlers like in the example.
  */
@@ -69,7 +74,7 @@ static processor::client &call(
         clients = efgy::global<efgy::beacons<client<transport>>>(),
     service & service = efgy::global<cxxhttp::service>()) {
   cxxhttp::uri u = uri;
-  std::regex rx("([^:]+)(:([0-9]+))?");
+  std::regex rx("([^:]+)(:([0-9]+|http|stdio))?");
   std::smatch match;
 
   static processor::client failure;
@@ -86,23 +91,32 @@ static processor::client &call(
       const std::string host = match[1];
       const std::string port = match[3];
       const std::string serv = port.empty() ? "http" : port;
-      net::endpoint<transport> endpoint(host, serv);
-      try {
-        for (net::endpointType<transport> e : endpoint) {
-          try {
-            auto &s = client<transport>::get(e, clients, service);
 
-            s.processor.doFail = false;
-            s.processor.query(method, u.path(), header, content);
-            return s.processor;
-          } catch (...) {
-            // ignore setup and connection errors, which will fall through to
-            // the specially crafted failure client.
+      if (serv == "stdio") {
+        static stdio::client io(service);
+
+        io.processor.query(method, u.path(), header, content);
+        io.start();
+        return io.processor;
+      } else {
+        net::endpoint<transport> endpoint(host, serv);
+        try {
+          for (net::endpointType<transport> e : endpoint) {
+            try {
+              auto &s = client<transport>::get(e, clients, service);
+
+              s.processor.doFail = false;
+              s.processor.query(method, u.path(), header, content);
+              return s.processor;
+            } catch (...) {
+              // ignore setup and connection errors, which will fall through to
+              // the specially crafted failure client.
+            }
           }
+        } catch (...) {
+          // this will throw if the host to connect to can't be found, in which
+          // case we want to fall back to returning the failure client.
         }
-      } catch (...) {
-        // this will throw if the host to connect to can't be found, in which
-        // case we want to fall back to returning the failure client.
       }
     }
   }

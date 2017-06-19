@@ -32,13 +32,15 @@ using namespace cxxhttp;
 bool testOptionsHandler(std::ostream &log) {
   struct sampleData {
     std::string request;
+    std::string method;
     http::headers inbound;
     std::string message;
     std::string describe;
   };
 
   std::vector<sampleData> tests{
-      {"OPTIONS / HTTP/1.1",
+      {"OPTIONS * HTTP/1.1",
+       httpd::options::method,
        {{"Accept", "text/markdown"}},
        "HTTP/1.1 200 OK\r\n"
        "Allow: OPTIONS\r\n"
@@ -48,30 +50,25 @@ bool testOptionsHandler(std::ostream &log) {
        "The following servlets are built into the application and match the "
        "given resource:\n\n"
        " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n",
-       " * _GET_ `/foo`\n   no description available\n\n"
        " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
-      {"OPTIONS * HTTP/1.1",
+      {"GET / HTTP/1.1",
+       "GET",
        {{"Accept", "text/markdown"}},
        "HTTP/1.1 200 OK\r\n"
-       "Allow: GET,HEAD,OPTIONS\r\n"
-       "Content-Length: 216\r\n"
+       "Allow: GET,HEAD\r\n"
+       "Content-Length: 167\r\n"
        "\r\n"
        "# Applicable Resource Processors\n\n"
        "The following servlets are built into the application and match the "
        "given resource:\n\n"
-       " * _GET_ `/foo`\n   no description available\n\n"
-       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n",
-       " * _GET_ `/foo`\n   no description available\n\n"
-       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
+       " * _GET_ `^\\*|/.*`\n   no description available\n\n",
+       " * _GET_ `^\\*|/.*`\n   no description available\n\n"},
   };
 
-  http::servlet fakeHandler(httpd::options::resource, httpd::options::options,
-                            httpd::options::method,
-                            httpd::options::negotiations);
-
-  http::servlet fakeHandlerFoo("/foo", httpd::options::options, "GET");
-
   for (const auto &tt : tests) {
+    http::servlet fakeHandler(httpd::options::resource, httpd::options::options,
+                              tt.method, httpd::options::negotiations);
+
     http::sessionData sess;
     std::smatch matches;
 

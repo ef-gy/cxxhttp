@@ -48,12 +48,28 @@ bool testOptionsHandler(std::ostream &log) {
        "The following servlets are built into the application and match the "
        "given resource:\n\n"
        " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n",
+       " * _GET_ `/foo`\n   no description available\n\n"
+       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
+      {"OPTIONS * HTTP/1.1",
+       {{"Accept", "text/markdown"}},
+       "HTTP/1.1 200 OK\r\n"
+       "Allow: GET,HEAD,OPTIONS\r\n"
+       "Content-Length: 216\r\n"
+       "\r\n"
+       "# Applicable Resource Processors\n\n"
+       "The following servlets are built into the application and match the "
+       "given resource:\n\n"
+       " * _GET_ `/foo`\n   no description available\n\n"
+       " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n",
+       " * _GET_ `/foo`\n   no description available\n\n"
        " * _OPTIONS_ `^\\*|/.*`\n   no description available\n\n"},
   };
 
   http::servlet fakeHandler(httpd::options::resource, httpd::options::options,
                             httpd::options::method,
                             httpd::options::negotiations);
+
+  http::servlet fakeHandlerFoo("/foo", httpd::options::options, "GET");
 
   for (const auto &tt : tests) {
     http::sessionData sess;

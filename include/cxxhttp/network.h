@@ -235,7 +235,7 @@ class connection {
    * @pConnections The root of the connection set to register with.
    *
    * This will scan through all connections to find one that is either idle and
-   * return that one, or one that has the same paramters to tag along to, or it
+   * return that one, or one that has the same parameters to tag along to, or it
    * will create an entirely new one.
    *
    * @return A connection, which is valid for the given parameters.

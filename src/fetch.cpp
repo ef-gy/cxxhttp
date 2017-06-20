@@ -15,6 +15,8 @@
 #define ASIO_DISABLE_THREADS
 #define USE_DEFAULT_IO_MAIN
 
+#include <unistd.h>
+
 #include <cxxhttp/http-client.h>
 
 using cxxhttp::http::call;
@@ -25,13 +27,24 @@ using cxxhttp::transport::tcp;
 using efgy::cli::option;
 
 namespace cli {
+static int output = STDOUT_FILENO;
+
+static option outFD(
+    "-{0,2}output-fd:([0-9]+)", [](std::smatch &m) -> bool {
+                                  std::string fdn = m[1];
+                                  output = std::stoi(fdn);
+                                  return true;
+                                },
+    "send output to the given file descriptor; the descriptor must be open");
+
 static option UNIX("-{0,2}http:unix:(.+):(.+)",
                    [](std::smatch &m) -> bool {
                      const std::string target = m[1];
                      const std::string path = m[2];
                      call<unix>(path, {{"Host", target}})
                          .success([](sessionData &sess) {
-                           std::cout << sess.content;
+                           write(output, sess.content.c_str(),
+                                 sess.content.size());
                          })
                          .failure([target, path](sessionData &sess) {
                            std::cerr << "Failed to retrieve URL: " << path
@@ -39,18 +52,21 @@ static option UNIX("-{0,2}http:unix:(.+):(.+)",
                          });
                      return true;
                    },
-                   "Fetch resource[2] via HTTP from unix socket[1].");
+                   "fetch resource[2] via HTTP from unix socket[1]; error "
+                   "output is on stderr");
 
 static option TCP(
     "http://([^@:/]+)(:[0-9]+|:stdio)?(/.*)",
     [](std::smatch &m) -> bool {
       const std::string url = m[0];
       call<tcp>(url)
-          .success([](sessionData &sess) { std::cout << sess.content; })
+          .success([](sessionData &sess) {
+            write(output, sess.content.c_str(), sess.content.size());
+          })
           .failure([url](sessionData &sess) {
             std::cerr << "Failed to retrieve URL: " << url << "\n";
           });
       return true;
     },
-    "Fetch the given HTTP URL. Talk on STDIO if the port is 'stdio'.");
+    "fetch the given HTTP URL; talk on STDIO if the port is 'stdio'");
 }

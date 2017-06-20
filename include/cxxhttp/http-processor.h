@@ -296,12 +296,14 @@ class client {
         return;
       }
       if (sess.inboundStatus.code >= 200 && sess.inboundStatus.code < 400) {
+        received++;
         if (onSuccess) {
           onSuccess(sess);
         }
         return;
       }
     }
+    received++;
     if (onFailure) {
       onFailure(sess);
     }
@@ -357,6 +359,7 @@ class client {
 
       requests.pop_front();
 
+      sent++;
       sess.request(req.method, req.resource, req.header, req.body);
       return stStatus;
     } else {
@@ -448,11 +451,33 @@ class client {
    * version of it.
    */
   void recycle(sessionData &sess) {
+    if (sent != received || requests.size() > 0) {
+      // if not all sent requests have gotten a response back, then inform the
+      // client here.
+      received = sent;
+
+      if (onFailure) {
+        onFailure(sess);
+      }
+    }
+
     // do something here if we still had queries to send.
     requests.clear();
   }
 
  protected:
+  /* Requests sent.
+   *
+   * How many requests this processor has sent down the wire.
+   */
+  unsigned sent = 0;
+
+  /* Requests processed.
+   *
+   * How many requests this processor has heard back from over the wire.
+   */
+  unsigned received = 0;
+
   /* Request pool.
    *
    * Will be processed in sequence until either the connection is closed or the

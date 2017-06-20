@@ -63,6 +63,10 @@ namespace http {
  * conneciton will be established via STDIN and STDOUT. Those file descriptors
  * would then have to be open and connected correctly.
  *
+ * Client limitation: if a host name resolves to more than one address, only the
+ * first of these addresses is used and the rest is ignored. This may be fixed
+ * in the future.
+ *
  * @return An HTTP client reference, so you can set up success and failure
  * handlers like in the example.
  */
@@ -102,16 +106,14 @@ static processor::client &call(
         net::endpoint<transport> endpoint(host, serv);
         try {
           for (net::endpointType<transport> e : endpoint) {
-            try {
-              auto &s = client<transport>::get(e, clients, service);
+            auto &s = client<transport>::get(e, clients, service);
 
-              s.processor.doFail = false;
-              s.processor.query(method, u.path(), header, content);
-              return s.processor;
-            } catch (...) {
-              // ignore setup and connection errors, which will fall through to
-              // the specially crafted failure client.
-            }
+            s.processor.doFail = false;
+            s.processor.query(method, u.path(), header, content);
+            return s.processor;
+
+            // ignore setup and connection errors, which will fall through to
+            // the specially crafted failure client.
           }
         } catch (...) {
           // this will throw if the host to connect to can't be found, in which

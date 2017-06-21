@@ -130,6 +130,11 @@ static option TCP(
 static option UNIX("-{0,2}http:unix:(.+)", setupUNIX,
                    "listen for HTTP connections on the given unix socket[1]");
 
+/* STDIO HTTP server CLI option.
+ *
+ * For when you want to talk on stdio. Because... testing things, maybe? Or
+ * inetd. Yeah, let's go with inetd.
+ */
 static option STDIO("-{0,2}http:stdio", setupSTDIO,
                     "process HTTP connections on STDIN and STDOUT.");
 }

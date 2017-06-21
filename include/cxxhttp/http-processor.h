@@ -333,6 +333,7 @@ class client {
           sess.contentLength = std::stoi(cli->second);
         } catch (...) {
           sess.contentLength = 0;
+          return stError;
         }
       } else {
         sess.contentLength = 0;

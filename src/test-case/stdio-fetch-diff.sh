@@ -13,7 +13,7 @@ for i in ${tests}; do
 
   printf "running test case '%s': " "${i}"
 
-  ./fetch output-fd:3 $(cat ${uri}) <"${in}" >"${tmpp}" 3>"${tmpc}"
+  ./fetch output-fd:3 $(cat ${uri}) <"${in}" >"${tmpp}" 3>"${tmpc}" 2>&3
   if diff --ignore-all-space -u "${outc}" "${tmpc}"; then
     if diff --ignore-all-space -u "${outp}" "${tmpp}"; then
       echo "OK"

@@ -82,6 +82,13 @@ static processor::client &call(
   std::smatch match;
 
   static processor::client failure;
+  static bool padded = false;
+
+  if (!padded) {
+    // pre-heat the connection pool a bit.
+    http::client<transport>::pad(5, clients, service);
+    padded = true;
+  }
 
   if (u.valid()) {
     std::string authority = u.authority();

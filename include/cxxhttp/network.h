@@ -210,6 +210,18 @@ class connection {
    */
   efgy::beacons<session> sessions;
 
+  /* Initialise with IO service.
+   * @pio IO service to use.
+   * @pConnections The root of the connection set to register with.
+   *
+   * Binds an IO service set up a new processor, but do not use an endpoint and
+   * do not start anything.
+   */
+  connection(efgy::beacons<connection> &pConnections =
+                 efgy::global<efgy::beacons<connection>>(),
+             service &pio = efgy::global<service>())
+      : io(pio), pending(false), acceptor(pio), beacon(*this, pConnections) {}
+
   /* Initialise with IO service and endpoint.
    * @endpoint Where to connect to, or listen on.
    * @pio IO service to use.
@@ -244,23 +256,57 @@ class connection {
                          efgy::beacons<connection> &pConnections =
                              efgy::global<efgy::beacons<connection>>(),
                          service &pio = efgy::global<service>()) {
+    connection *idle = 0;
+
     for (auto &c : pConnections) {
       if (&pio == &(c->io)) {
-        if (c->idle()) {
-          c->pending = true;
-          c->target = endpoint;
-          c->start();
-          return *c;
+        if (idle == 0 && c->idle()) {
+          idle = c;
         } else if (c->target == endpoint) {
           return *c;
         }
       }
     }
 
+    if (idle) {
+      // if we found an idle connection, then set it up and return it.
+      idle->pending = true;
+      idle->target = endpoint;
+      idle->start();
+      return *idle;
+    }
+
     // since we use beacons that insert and remove from pConnections, this does
     // not actually leak memory. Though it does seem to confuse valgrind. But
     // reusal is working, so it can't be leaking.
     return *(new connection(endpoint, pConnections, pio));
+  }
+
+  /* Pad a pool of connections to a given number.
+   * @n Pool up at least this many connections.
+   * @pio IO service to use.
+   * @pConnections The root of the connection set to register with.
+   *
+   * Pad the number of available connections so that there's at least `n`
+   * available in the connections pool.
+   */
+  static void pad(std::size_t n, efgy::beacons<connection> &pConnections =
+                                     efgy::global<efgy::beacons<connection>>(),
+                  service &pio = efgy::global<service>()) {
+    std::size_t have = 0;
+
+    for (auto &c : pConnections) {
+      if (&pio == &(c->io)) {
+        have++;
+      }
+    }
+
+    while (have < n) {
+      // not assigning this anywhere because pConnections is keeping track of
+      // this already.
+      new connection(pConnections, pio);
+      have++;
+    }
   }
 
   /* Destroy connection.

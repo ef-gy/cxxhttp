@@ -289,23 +289,18 @@ class connection {
    *
    * Pad the number of available connections so that there's at least `n`
    * available in the connections pool.
+   *
+   * This will ignore the connection's service for testing how many connections
+   * there are, although it will only create new ones for the correct service.
+   * If you need to have a certain number of connections available and you use
+   * separate IO services, you should warm up the cache for `n` of one type,
+   * then `n*2` for the next one, etc.
    */
   static void pad(std::size_t n, efgy::beacons<connection> &pConnections =
                                      efgy::global<efgy::beacons<connection>>(),
                   service &pio = efgy::global<service>()) {
-    std::size_t have = 0;
-
-    for (auto &c : pConnections) {
-      if (&pio == &(c->io)) {
-        have++;
-      }
-    }
-
-    while (have < n) {
-      // not assigning this anywhere because pConnections is keeping track of
-      // this already.
+    while (pConnections.size() < n) {
       new connection(pConnections, pio);
-      have++;
     }
   }
 

@@ -241,6 +241,18 @@ class connection {
     start();
   }
 
+  /* Destroy connection.
+   *
+   * This kills all the sessions that this connection kept track of.
+   */
+  ~connection(void) {
+    while (sessions.size() > 0) {
+      auto s = sessions.front();
+      sessions.pop_front();
+      delete s;
+    }
+  }
+
   /* Reuse idle connection, or create new one.
    * @endpoint Where to connect to, or listen on.
    * @pio IO service to use.
@@ -304,18 +316,6 @@ class connection {
     }
   }
 
-  /* Destroy connection.
-   *
-   * This kills all the sessions that this connection kept track of.
-   */
-  ~connection(void) {
-    while (sessions.size() > 0) {
-      auto s = sessions.front();
-      sessions.pop_front();
-      delete s;
-    }
-  }
-
   /* Is this connection idle?
    *
    * Used when trying to find a connection to reuse. This determines whether the
@@ -325,10 +325,6 @@ class connection {
    */
   bool idle(void) const {
     if (!pending) {
-      if (sessions.size() == 0) {
-        return true;
-      }
-
       for (const auto &s : sessions) {
         if (!s->free) {
           return false;

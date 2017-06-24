@@ -163,8 +163,98 @@ bool testLookup(std::ostream &log) {
   return true;
 }
 
+/* Test session and connection recycling invariants.
+ * @log Test output stream.
+ *
+ * Creates a few connections with sessions and examines some invariants on them.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testRecycling(std::ostream &log) {
+  service io;
+  struct acc {
+    acc(const service &){};
+  };
+  struct tr {
+    using endpoint = int;
+    using acceptor = acc;
+  };
+  struct proc {};
+  struct sess;
+
+  using conn = net::connection<sess, proc>;
+  struct sess {
+    using transportType = tr;
+
+    bool free = false;
+
+    sess(conn &c) : beacon(*this, c.sessions) {}
+
+    efgy::beacon<sess> beacon;
+  };
+
+  efgy::beacons<conn> conns;
+
+  if (!conns.empty()) {
+    log << "expected no connections after initialisation.\n";
+    return false;
+  }
+
+  {
+    // explicitly force the emission of a destructor by making this go out of
+    // scope. It'd also do this in the main scope of the function, but I like to
+    // think this makes it explicit - and we can test a post-condition.
+    conn c(conns, io);
+
+    if (conns.size() != 1) {
+      log << "expected one connection after constructor ran.\n";
+      return false;
+    }
+
+    if (!c.idle()) {
+      log << "expected connection to be idle immediately after construction.\n";
+      return false;
+    }
+
+    auto s = c.getSession();
+
+    if (s->free) {
+      log << "new session should not have been free.\n";
+      return false;
+    }
+
+    if (c.idle()) {
+      log << "new session should not be idle after creating session.\n";
+      return false;
+    }
+
+    c.pending = true;
+    s->free = true;
+
+    if (c.idle()) {
+      log << "connection should not be idle after setting the pending flag.\n";
+      return false;
+    }
+
+    c.pending = false;
+
+    if (!c.idle()) {
+      log << "connection should idle again after setting pending to false.\n";
+      return false;
+    }
+  }
+
+  if (!conns.empty()) {
+    log << "expected no connections after connection destructor ran.\n";
+    return false;
+  }
+
+  return true;
+}
+
 namespace test {
 using efgy::test::function;
 
 static function lookup(testLookup);
+static function recycling(testRecycling);
 }

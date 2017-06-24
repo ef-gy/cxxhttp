@@ -247,8 +247,9 @@ class connection {
    */
   ~connection(void) {
     while (sessions.size() > 0) {
-      auto s = sessions.front();
-      sessions.pop_front();
+      auto it = sessions.begin();
+      auto s = *it;
+      sessions.erase(it);
       delete s;
     }
   }
@@ -324,17 +325,13 @@ class connection {
    * @return Whether the session can be reused.
    */
   bool idle(void) const {
-    if (!pending) {
-      for (const auto &s : sessions) {
-        if (!s->free) {
-          return false;
-        }
-      }
+    bool isIdle = !pending;
 
-      return true;
+    for (const auto &s : sessions) {
+      isIdle = isIdle && s->free;
     }
 
-    return false;
+    return isIdle;
   }
 
   /* Query local endpoint.
@@ -359,6 +356,27 @@ class connection {
    * @return Whether the connection is still active or not.
    */
   bool active(void) const { return pending || sessions.size() > 0; }
+
+  /* Get a free session.
+   *
+   * Steps through all sessions to obtain a free one, If no sessions are free,
+   * this will instead return a brand new one.
+   *
+   * This allows recycling sessions, which in turn means we don't have to do
+   * ugly things like kill sessions ourselves.
+   *
+   * @return A free session, or null.
+   */
+  session *getSession(void) {
+    for (auto &sess : sessions) {
+      if (sess->free) {
+        sess->free = false;
+        return sess;
+      }
+    }
+
+    return new session(*this);
+  }
 
  protected:
   /* Socket acceptor
@@ -463,27 +481,6 @@ class connection {
     } else {
       newSession->start();
     }
-  }
-
-  /* Get a free session.
-   *
-   * Steps through all sessions to obtain a free one, If no sessions are free,
-   * this will instead return a brand new one.
-   *
-   * This allows recycling sessions, which in turn means we don't have to do
-   * ugly things like kill sessions ourselves.
-   *
-   * @return A free session, or null.
-   */
-  session *getSession(void) {
-    for (auto &sess : sessions) {
-      if (sess->free) {
-        sess->free = false;
-        return sess;
-      }
-    }
-
-    return new session(*this);
   }
 };
 }

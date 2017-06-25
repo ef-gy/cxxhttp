@@ -38,7 +38,7 @@ keep it small. Some of these are:
 
 * HTTP 'chunked' Transfer Encoding - or any non-identity encoding, really
 * HTTP Date headers, or any other timekeeping-related code
-* Query string parsign - use REST API style location strings instead
+* Query string parsing - use REST API style location strings instead
 * Logging - though there are internal flags and counters, which e.g. the
   Prometheus client library based on this makes use of
 * Any form of SSL/TLS support - use a frontend server to provide this for you

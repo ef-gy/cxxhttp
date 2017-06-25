@@ -90,6 +90,12 @@ static inline bool setupTCP(std::smatch &match) {
   return setup(net::endpoint<transport::tcp>(match[1], match[2]));
 }
 
+/* Whether or not to delete new UNIX sockets.
+ *
+ * By default any new UNIX sockets are deleted before being set up. This flag
+ * allows you to override this behavior, instead failing if the socket already
+ * exists.
+ */
 static efgy::cli::flag<bool> keepSocket(
     "keep-socket",
     "whether to keep a UNIX socket name if it already exists and fail");

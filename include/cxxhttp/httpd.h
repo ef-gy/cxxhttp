@@ -90,9 +90,9 @@ static inline bool setupTCP(std::smatch &match) {
   return setup(net::endpoint<transport::tcp>(match[1], match[2]));
 }
 
-static efgy::cli::flag<bool> unlinkSocket(
-    "unlink-socket",
-    "whether to unlink a UNIX socket name if it already exists");
+static efgy::cli::flag<bool> keepSocket(
+    "keep-socket",
+    "whether to keep a UNIX socket name if it already exists and fail");
 
 /* Set up an HTTP server on a UNIX socket.
  * @match The matches from the UNIX regex.
@@ -105,7 +105,7 @@ static efgy::cli::flag<bool> unlinkSocket(
  */
 static inline bool setupUNIX(std::smatch &match) {
   const std::string socket = match[1];
-  if (unlinkSocket) {
+  if (!keepSocket) {
     // ignore errors when unlinking the socket name; if it still exists later,
     // we'll get an error trying to listen on it, if it never existed then the
     // error is moot anyway.

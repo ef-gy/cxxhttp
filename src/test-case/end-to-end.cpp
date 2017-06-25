@@ -14,8 +14,6 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <cstdio>
-
 #define ASIO_DISABLE_THREADS
 #include <ef.gy/test-case.h>
 
@@ -115,7 +113,6 @@ bool testUNIX(std::ostream &log) {
                             },
                     "GET|FOO", {{"Accept", "text/foo"}});
 
-  std::remove(name);
   efgy::cli::options opts({"http:unix:/tmp/cxxhttp-test.socket"});
 
   net::endpoint<transport::unix> lookup(name);

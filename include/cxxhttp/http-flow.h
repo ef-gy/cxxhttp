@@ -139,12 +139,7 @@ class flow {
    */
   void start(void) {
     processor.start(session);
-    if (session.status == stRequest || session.status == stStatus) {
-      readLine();
-    } else if (session.status == stShutdown) {
-      recycle();
-    }
-    send();
+    handleStart();
   }
 
   /* Send the next message.
@@ -230,6 +225,20 @@ class flow {
   }
 
  protected:
+  /* Decide what to do after an initial setup.
+   *
+   * This does what start() does after telling the processor to get going. We
+   * also need this after processing an individual request.
+   */
+  void handleStart(void) {
+    if (session.status == stRequest || session.status == stStatus) {
+      readLine();
+    } else if (session.status == stShutdown) {
+      recycle();
+    }
+    send();
+  }
+
   /* Callback after more data has been read.
    * @error Current error state.
    * @length Length of the read; ignored.
@@ -243,9 +252,7 @@ class flow {
   void handleRead(const std::error_code &error, std::size_t length) {
     if (session.status == stShutdown) {
       return;
-    }
-
-    if (error) {
+    } else if (error) {
       session.status = stError;
     }
 
@@ -303,13 +310,7 @@ class flow {
         processor.handle(session);
 
         session.status = processor.afterProcessing(session);
-        send();
-
-        if (session.status == stShutdown) {
-          recycle();
-        } else if (session.status == stRequest || session.status == stStatus) {
-          readLine();
-        }
+        handleStart();
       } else {
         readRemainingContent();
       }

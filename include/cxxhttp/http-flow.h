@@ -15,6 +15,7 @@
 #if !defined(CXXHTTP_HTTP_FLOW_H)
 #define CXXHTTP_HTTP_FLOW_H
 
+#include <functional>
 #include <system_error>
 
 #define ASIO_STANDALONE
@@ -157,9 +158,9 @@ class flow {
         session.writePending = true;
         const std::string &msg = session.outboundQueue.front();
 
-        asio::async_write(outputConnection, asio::buffer(msg),
-                          [this](std::error_code ec,
-                                 std::size_t length) { handleWrite(ec); });
+        asio::async_write(
+            outputConnection, asio::buffer(msg),
+            std::bind(&flow::handleWrite, this, std::placeholders::_1));
 
         session.outboundQueue.pop_front();
       } else if (session.closeAfterSend) {
@@ -176,8 +177,8 @@ class flow {
   void readLine(void) {
     asio::async_read_until(
         inputConnection, session.input, "\n",
-        [&](const asio::error_code &error,
-            std::size_t bytes_transferred) { handleRead(error); });
+        std::bind(&flow::handleRead, this, std::placeholders::_1,
+                  std::placeholders::_2));
   }
 
   /* Read remainder of the request body.
@@ -188,8 +189,8 @@ class flow {
   void readRemainingContent(void) {
     asio::async_read(inputConnection, session.input,
                      asio::transfer_at_least(session.remainingBytes()),
-                     [&](const asio::error_code &error,
-                         std::size_t bytes_transferred) { handleRead(error); });
+                     std::bind(&flow::handleRead, this, std::placeholders::_1,
+                               std::placeholders::_2));
   }
 
   /* Make session reusable for future use.
@@ -231,6 +232,7 @@ class flow {
  protected:
   /* Callback after more data has been read.
    * @error Current error state.
+   * @length Length of the read; ignored.
    *
    * Called by ASIO to indicate that new data has been read and can now be
    * processed.
@@ -238,7 +240,7 @@ class flow {
    * The actual processing for the header is done with a set of regexen, which
    * greatly simplifies the header parsing.
    */
-  void handleRead(const std::error_code &error) {
+  void handleRead(const std::error_code &error, std::size_t length) {
     if (session.status == stShutdown) {
       return;
     }

@@ -15,6 +15,8 @@
 #if !defined(CXXHTTP_HTTPD_H)
 #define CXXHTTP_HTTPD_H
 
+#include <cstdio>
+
 #include <ef.gy/cli.h>
 
 #include <cxxhttp/http-network.h>
@@ -23,8 +25,6 @@
 namespace cxxhttp {
 namespace httpd {
 namespace cli {
-using efgy::cli::option;
-
 /* Set up an endpoint as an HTTP server.
  * @transport The transport type of the endpoint, e.g. transport::tcp.
  * @lookup The endpoint to bind to.
@@ -90,6 +90,10 @@ static inline bool setupTCP(std::smatch &match) {
   return setup(net::endpoint<transport::tcp>(match[1], match[2]));
 }
 
+static efgy::cli::flag<bool> unlinkSocket(
+    "unlink-socket",
+    "whether to unlink a UNIX socket name if it already exists");
+
 /* Set up an HTTP server on a UNIX socket.
  * @match The matches from the UNIX regex.
  *
@@ -100,7 +104,14 @@ static inline bool setupTCP(std::smatch &match) {
  * @return 'true' if the setup was successful.
  */
 static inline bool setupUNIX(std::smatch &match) {
-  return setup(net::endpoint<transport::unix>(match[1]));
+  const std::string socket = match[1];
+  if (unlinkSocket) {
+    // ignore errors when unlinking the socket name; if it still exists later,
+    // we'll get an error trying to listen on it, if it never existed then the
+    // error is moot anyway.
+    (void)std::remove(socket.c_str());
+  }
+  return setup(net::endpoint<transport::unix>(socket));
 }
 
 /* Set up an HTTP server on STDIO.
@@ -118,7 +129,7 @@ static inline bool setupSTDIO(std::smatch &match) { return setup(); }
  * The format is `http:(interface-address):(port)`. The server that is set up
  * will have all available servlets registered.
  */
-static option TCP(
+static efgy::cli::option TCP(
     "-{0,2}http:(.+):([0-9]+)", setupTCP,
     "listen for HTTP connections on the given host[1] and port[2]");
 
@@ -127,21 +138,20 @@ static option TCP(
  * The format is `http:unix:(socket-file)`. The server that is set up will have
  * all available servlets registered.
  */
-static option UNIX("-{0,2}http:unix:(.+)", setupUNIX,
-                   "listen for HTTP connections on the given unix socket[1]");
+static efgy::cli::option UNIX(
+    "-{0,2}http:unix:(.+)", setupUNIX,
+    "listen for HTTP connections on the given unix socket[1]");
 
 /* STDIO HTTP server CLI option.
  *
  * For when you want to talk on stdio. Because... testing things, maybe? Or
  * inetd. Yeah, let's go with inetd.
  */
-static option STDIO("-{0,2}http:stdio", setupSTDIO,
-                    "process HTTP connections on STDIN and STDOUT.");
+static efgy::cli::option STDIO("-{0,2}http:stdio", setupSTDIO,
+                               "process HTTP connections on STDIN and STDOUT");
 }
 
 namespace usage {
-using efgy::cli::hint;
-
 /* Create usage hint.
  *
  * This creates a brief textual summary of the available servlets, with the
@@ -162,7 +172,7 @@ static std::string describe(void) {
  *
  * Enables a description of all available HTTP servlets for the `--help` flag.
  */
-static hint endpointHint("HTTP Endpoints", describe);
+static efgy::cli::hint endpointHint("HTTP Endpoints", describe);
 }
 }
 }

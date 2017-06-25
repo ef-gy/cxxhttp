@@ -3,8 +3,7 @@
 
 socket="/tmp/cxxhttp-fetch-test-socket"
 
-rm -f ${socket}
-./server "http:unix:${socket}" &
+./server "unlink-socket" "http:unix:${socket}" &
 pid=$!
 rv="true"
 

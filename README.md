@@ -10,6 +10,43 @@ flag should do this for you:
 
     git clone --recursive https://github.com/ef-gy/cxxhttp.git
 
+## Features
+
+This library implements HTTP/1.1 for clients as well as servers. It's fairly
+minimalistic, yet there's a few nifty parts that wouldn't strictly have been
+necessary.
+
+Some of these are:
+
+* HTTP Content Negotation
+* HTTP over TCP, UNIX sockets and STDIO
+* CLI help screen with servlet summaries
+* Optional OPTIONS implementation, with a markdown body that shows the supported
+  methods and the relevant location regex
+* Optional TRACE implementation
+* Basic 100-continue flow
+* Basic request validation
+* Fallback HEAD handler
+
+I believe the STDIO feature is quite unique, as is the excellent test coverage
+of the library, for both the client and the server code.
+
+### Non-Features
+
+Some features didn't make it into the library for various reasons - mostly to
+keep it small. Some of these are:
+
+* HTTP 'chunked' Transfer Encoding - or any non-identity encoding, really
+* HTTP Date headers, or any other timekeeping-related code
+* Query string parsign - use REST API style location strings instead
+* Logging - though there are internal flags and counters, which e.g. the
+  Prometheus client library based on this makes use of
+* Any form of SSL/TLS support - use a frontend server to provide this for you
+
+Some of the omissions technically make this non-conforming to the HTTP/1.1
+standard, but seeing as how the primary purpose of this library is to sit behind
+an nginx (or similar) HTTP web server, this shouldn't be an issue in practice.
+
 ## Compiler Requirements
 
 You must have a GNU make and a C++ compiler that supports C++14. On most

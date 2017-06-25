@@ -152,20 +152,18 @@ class flow {
    * message is currently in flight.
    */
   void send(void) {
-    if (session.status != stShutdown) {
-      if (!session.writePending) {
-        if (session.outboundQueue.size() > 0) {
-          session.writePending = true;
-          const std::string &msg = session.outboundQueue.front();
+    if (session.status != stShutdown && !session.writePending) {
+      if (session.outboundQueue.size() > 0) {
+        session.writePending = true;
+        const std::string &msg = session.outboundQueue.front();
 
-          asio::async_write(outputConnection, asio::buffer(msg),
-                            [this](std::error_code ec,
-                                   std::size_t length) { handleWrite(ec); });
+        asio::async_write(outputConnection, asio::buffer(msg),
+                          [this](std::error_code ec,
+                                 std::size_t length) { handleWrite(ec); });
 
-          session.outboundQueue.pop_front();
-        } else if (session.closeAfterSend) {
-          recycle();
-        }
+        session.outboundQueue.pop_front();
+      } else if (session.closeAfterSend) {
+        recycle();
       }
     }
   }
@@ -207,8 +205,6 @@ class flow {
 
       session.closeAfterSend = false;
       session.outboundQueue.clear();
-
-      send();
 
       asio::error_code ec;
 
@@ -332,20 +328,16 @@ class flow {
    * connection automagically.
    */
   void handleWrite(const std::error_code error) {
-    if (session.status != stShutdown) {
-      session.writePending = false;
-      if (error) {
-        recycle();
-      } else {
-        if (session.status == stProcessing) {
-          session.status = processor.afterProcessing(session);
-        }
-        if (session.status == stShutdown) {
-          recycle();
-        } else {
-          send();
-        }
+    session.writePending = false;
+
+    if (!error) {
+      if (session.status == stProcessing) {
+        session.status = processor.afterProcessing(session);
       }
+      send();
+    }
+    if (error || session.status == stShutdown) {
+      recycle();
     }
   }
 };

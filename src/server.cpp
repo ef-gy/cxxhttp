@@ -31,7 +31,6 @@
 // Optional server features.
 #include <cxxhttp/httpd-options.h>
 #include <cxxhttp/httpd-trace.h>
-
 #include <ef.gy/json.h>
 
 using namespace cxxhttp;

@@ -13,9 +13,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/http-status.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -34,7 +33,9 @@ bool testDescription(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {0, "Other Status"}, {100, "Continue"}, {404, "Not Found"},
+      {0, "Other Status"},
+      {100, "Continue"},
+      {404, "Not Found"},
   };
 
   for (const auto &tt : tests) {
@@ -168,4 +169,4 @@ using efgy::test::function;
 static function description(testDescription);
 static function parse(testParse);
 static function generate(testGenerate);
-}
+}  // namespace test

@@ -102,8 +102,8 @@ static const char *description =
 static http::servlet servlet(resource, options, method, negotiations,
                              description);
 #endif
-}
-}
-}
+}  // namespace options
+}  // namespace httpd
+}  // namespace cxxhttp
 
 #endif

@@ -14,9 +14,8 @@
  */
 
 #define ASIO_DISABLE_THREADS
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/http-session.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -186,10 +185,8 @@ bool testTrigger405(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {{}, false},
-      {{"OPTIONS"}, false},
-      {{"TRACE"}, false},
-      {{"OPTIONS", "GET"}, true},
+      {{}, false},        {{"OPTIONS"}, false},
+      {{"TRACE"}, false}, {{"OPTIONS", "GET"}, true},
       {{"GET"}, true},
   };
 
@@ -212,4 +209,4 @@ static function basicSession(testBasicSession);
 static function reply(testReply);
 static function negotiate(testNegotiate);
 static function trigger405(testTrigger405);
-}
+}  // namespace test

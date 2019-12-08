@@ -16,12 +16,12 @@
 #if !defined(CXXHTTP_HTTP_HEADER_H)
 #define CXXHTTP_HTTP_HEADER_H
 
+#include <cxxhttp/http-grammar.h>
+#include <cxxhttp/string.h>
+
 #include <map>
 #include <regex>
 #include <set>
-
-#include <cxxhttp/http-grammar.h>
-#include <cxxhttp/string.h>
 
 namespace cxxhttp {
 namespace http {
@@ -172,7 +172,7 @@ class parser {
     return r;
   }
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

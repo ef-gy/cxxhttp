@@ -17,10 +17,10 @@
 #if !defined(CXXHTTP_HTTP_CLIENT_H)
 #define CXXHTTP_HTTP_CLIENT_H
 
-#include <iostream>
-
 #include <cxxhttp/http-network.h>
 #include <cxxhttp/http-stdio.h>
+
+#include <iostream>
 
 namespace cxxhttp {
 namespace http {
@@ -74,9 +74,9 @@ template <class transport>
 static processor::client &call(
     const std::string &uri, headers header = {},
     const std::string &content = "", const std::string method = "GET",
-    efgy::beacons<client<transport>> &
-        clients = efgy::global<efgy::beacons<client<transport>>>(),
-    service & service = efgy::global<cxxhttp::service>()) {
+    efgy::beacons<client<transport>> &clients =
+        efgy::global<efgy::beacons<client<transport>>>(),
+    service &service = efgy::global<cxxhttp::service>()) {
   cxxhttp::uri u = uri;
   std::regex rx("([^:]+)(:([0-9]+|http|stdio))?");
   std::smatch match;
@@ -135,7 +135,7 @@ static processor::client &call(
   }
   return failure;
 }
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

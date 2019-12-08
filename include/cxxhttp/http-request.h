@@ -14,11 +14,11 @@
 #if !defined(CXXHTTP_HTTP_REQUEST_H)
 #define CXXHTTP_HTTP_REQUEST_H
 
-#include <regex>
-
 #include <cxxhttp/http-grammar.h>
-#include <cxxhttp/uri.h>
 #include <cxxhttp/http-version.h>
+#include <cxxhttp/uri.h>
+
+#include <regex>
 
 namespace cxxhttp {
 namespace http {
@@ -125,7 +125,7 @@ class requestLine {
     return method + " " + std::string(resource) + " " + protocol() + trailer;
   }
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

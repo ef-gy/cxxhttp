@@ -54,6 +54,6 @@ class caseInsensitiveLT
     return std::tolower(c1) < std::tolower(c2);
   }
 };
-}
+}  // namespace cxxhttp
 
 #endif

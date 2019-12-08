@@ -70,8 +70,8 @@ static const char *description =
  */
 static http::servlet servlet(resource, trace, method, {}, description);
 #endif
-}
-}
-}
+}  // namespace trace
+}  // namespace httpd
+}  // namespace cxxhttp
 
 #endif

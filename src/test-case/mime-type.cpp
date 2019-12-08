@@ -13,9 +13,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/mime-type.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -188,4 +187,4 @@ using efgy::test::function;
 static function parser(testParser);
 static function normalise(testNormalise);
 static function compare(testCompare);
-}
+}  // namespace test

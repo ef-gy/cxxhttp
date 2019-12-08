@@ -76,8 +76,8 @@ using server = session<processor::server>;
  * A template for running an HTTP client through STDIO.
  */
 using client = session<processor::client>;
-}
-}
-}
+}  // namespace stdio
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

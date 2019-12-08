@@ -14,6 +14,7 @@
 #if !defined(CXXHTTP_URI_H)
 #define CXXHTTP_URI_H
 
+#include <map>
 #include <regex>
 #include <string>
 
@@ -184,6 +185,58 @@ class uri {
     return rv;
   }
 
+  /* Decode a form map.
+   * @s A map with encoded form data.
+   * @isValid Set to false iff decoding failed.
+   *
+   * Decodes a URI data map. As in, a application/x-www-form-urlencoded encoded
+   * string.
+   *
+   * @return The decoded map.
+   */
+  static std::map<std::string, std::string> map(const std::string &s,
+                                                bool &isValid) {
+    std::map<std::string, std::string> rv;
+
+    bool isKey = true;
+
+    std::string key = "";
+    std::string value;
+
+    isValid = true;
+
+    for (const auto &c : s) {
+      if (isKey) {
+        switch (c) {
+          case '=':
+            isKey = false;
+            value.clear();
+            break;
+          default:
+            key.push_back(c);
+        }
+      } else {
+        switch (c) {
+          case '&':
+            isKey = true;
+            rv[key] = decode(value, isValid);
+            key.clear();
+            break;
+          default:
+            value.push_back(c);
+        }
+      }
+    }
+
+    if (isKey) {
+      isValid = false;
+    } else {
+      rv[key] = decode(value, isValid);
+    }
+
+    return rv;
+  }
+
   /* Reconstitute URI.
    *
    * This creates a standard URI that can be sent on the wire and should parse
@@ -263,6 +316,6 @@ class uri {
     }
   }
 };
-}
+}  // namespace cxxhttp
 
 #endif

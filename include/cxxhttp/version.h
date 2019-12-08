@@ -15,6 +15,7 @@
 #define CXXHTTP_VERSION_H
 
 #include <ef.gy/version.h>
+
 #include <asio/version.hpp>
 #include <string>
 
@@ -34,6 +35,6 @@ static const unsigned int version = 3;
 static const std::string identifier =
     "cxxhttp/" + std::to_string(version) + " asio/" +
     std::to_string(ASIO_VERSION) + " libefgy/" + std::to_string(efgy::version);
-}
+}  // namespace cxxhttp
 
 #endif

@@ -15,12 +15,11 @@
 #if !defined(CXXHTTP_HTTPD_H)
 #define CXXHTTP_HTTPD_H
 
-#include <cstdio>
-
-#include <ef.gy/cli.h>
-
 #include <cxxhttp/http-network.h>
 #include <cxxhttp/http-stdio.h>
+#include <ef.gy/cli.h>
+
+#include <cstdio>
 
 namespace cxxhttp {
 namespace httpd {
@@ -42,9 +41,9 @@ template <class transport>
 static bool setup(net::endpoint<transport> lookup,
                   efgy::beacons<http::server<transport>> &servers =
                       efgy::global<efgy::beacons<http::server<transport>>>(),
-                  service & service = efgy::global<cxxhttp::service>(),
-                  efgy::beacons<http::servlet> &
-                      servlets = efgy::global<efgy::beacons<http::servlet>>()) {
+                  service &service = efgy::global<cxxhttp::service>(),
+                  efgy::beacons<http::servlet> &servlets =
+                      efgy::global<efgy::beacons<http::servlet>>()) {
   bool rv = false;
 
   for (net::endpointType<transport> endpoint : lookup) {
@@ -155,7 +154,7 @@ static efgy::cli::option UNIX(
  */
 static efgy::cli::option STDIO("-{0,2}http:stdio", setupSTDIO,
                                "process HTTP connections on STDIN and STDOUT");
-}
+}  // namespace cli
 
 namespace usage {
 /* Create usage hint.
@@ -179,8 +178,8 @@ static std::string describe(void) {
  * Enables a description of all available HTTP servlets for the `--help` flag.
  */
 static efgy::cli::hint endpointHint("HTTP Endpoints", describe);
-}
-}
-}
+}  // namespace usage
+}  // namespace httpd
+}  // namespace cxxhttp
 
 #endif

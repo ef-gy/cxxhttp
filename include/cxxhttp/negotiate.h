@@ -14,14 +14,14 @@
 #if !defined(CXXHTTP_NEGOTIATE_H)
 #define CXXHTTP_NEGOTIATE_H
 
+#include <cxxhttp/mime-type.h>
+
 #include <algorithm>
 #include <cmath>
 #include <regex>
 #include <set>
 #include <string>
 #include <vector>
-
-#include <cxxhttp/mime-type.h>
 
 namespace cxxhttp {
 /* Split string by delimiter.
@@ -427,6 +427,6 @@ static inline std::string negotiate(const std::string &theirs,
                                     const std::string &mine) {
   return negotiate(split(theirs), split(mine));
 }
-}
+}  // namespace cxxhttp
 
 #endif

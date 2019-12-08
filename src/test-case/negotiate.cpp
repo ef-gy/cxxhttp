@@ -13,9 +13,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/negotiate.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -370,4 +369,4 @@ static function qValueLessThan(testQvalueLessThan);
 static function qValueSort(testQvalueSort);
 static function qValueMatch(testQvalueMatch);
 static function fullNegotiation(testFullNegotiation);
-}
+}  // namespace test

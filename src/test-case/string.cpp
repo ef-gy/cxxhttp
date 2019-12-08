@@ -13,9 +13,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/string.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -35,10 +34,8 @@ bool testCompare(std::ostream &log) {
   };
 
   std::vector<sampleData> tests{
-      {"a", "b", true, false},
-      {"a", "a", false, false},
-      {"a", "A", false, false},
-      {"aa", "ab", true, false},
+      {"a", "b", true, false},    {"a", "a", false, false},
+      {"a", "A", false, false},   {"aa", "ab", true, false},
       {"aA", "Aa", false, false},
   };
 
@@ -64,4 +61,4 @@ namespace test {
 using efgy::test::function;
 
 static function compare(testCompare);
-}
+}  // namespace test

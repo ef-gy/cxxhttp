@@ -18,10 +18,10 @@
 #include <string>
 
 #define ASIO_STANDALONE
-#include <asio.hpp>
-
 #include <ef.gy/cli.h>
 #include <ef.gy/global.h>
+
+#include <asio.hpp>
 
 namespace cxxhttp {
 /* asio::io_service type.
@@ -57,7 +57,7 @@ IO_MAIN_SPEC int main(int argc, char *argv[]) {
 namespace transport {
 using tcp = asio::ip::tcp;
 using unix = asio::local::stream_protocol;
-}
+}  // namespace transport
 
 namespace net {
 /* Endpoint type alias.
@@ -309,8 +309,9 @@ class connection {
    * separate IO services, you should warm up the cache for `n` of one type,
    * then `n*2` for the next one, etc.
    */
-  static void pad(std::size_t n, efgy::beacons<connection> &pConnections =
-                                     efgy::global<efgy::beacons<connection>>(),
+  static void pad(std::size_t n,
+                  efgy::beacons<connection> &pConnections =
+                      efgy::global<efgy::beacons<connection>>(),
                   service &pio = efgy::global<service>()) {
     while (pConnections.size() < n) {
       new connection(pConnections, pio);
@@ -427,8 +428,8 @@ class connection {
 
     acceptor.async_accept(newSession->socket.lowest_layer(),
                           [newSession, this](const std::error_code &error) {
-      handleAccept(newSession, error);
-    });
+                            handleAccept(newSession, error);
+                          });
   }
 
   /* Connect to the socket.
@@ -483,7 +484,7 @@ class connection {
     }
   }
 };
-}
-}
+}  // namespace net
+}  // namespace cxxhttp
 
 #endif

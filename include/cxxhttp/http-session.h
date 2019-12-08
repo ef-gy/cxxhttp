@@ -15,15 +15,14 @@
 #if !defined(CXXHTTP_HTTP_SESSION_H)
 #define CXXHTTP_HTTP_SESSION_H
 
-#include <list>
-
+#include <cxxhttp/http-header.h>
+#include <cxxhttp/http-request.h>
+#include <cxxhttp/http-status.h>
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
 #include <cxxhttp/version.h>
 
-#include <cxxhttp/http-header.h>
-#include <cxxhttp/http-request.h>
-#include <cxxhttp/http-status.h>
+#include <list>
 
 namespace cxxhttp {
 namespace http {
@@ -413,7 +412,7 @@ class sessionData {
    */
   asio::streambuf input;
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

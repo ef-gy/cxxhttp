@@ -14,12 +14,12 @@
 #if !defined(CXXHTTP_HTTP_ERROR_H)
 #define CXXHTTP_HTTP_ERROR_H
 
-#include <set>
-
 #include <cxxhttp/http-header.h>
 #include <cxxhttp/http-session.h>
 #include <cxxhttp/http-status.h>
 #include <cxxhttp/negotiate.h>
+
+#include <set>
 
 namespace cxxhttp {
 namespace http {
@@ -62,8 +62,9 @@ class error {
         "# " + statusLine::getDescription(status) +
         "\n\n"
         "An error occurred while processing your request. " +
-        (negotiationSuccess ? "" : "Additionally, content type negotiation for "
-                                   "this error page failed. ") +
+        (negotiationSuccess ? ""
+                            : "Additionally, content type negotiation for "
+                              "this error page failed. ") +
         "That's all I know.\n";
 
     parser<headers> p{{{"Content-Type", type}}};
@@ -82,7 +83,7 @@ class error {
    */
   sessionData &session;
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

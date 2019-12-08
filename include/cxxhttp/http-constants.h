@@ -94,7 +94,8 @@ static const std::set<std::string> method{
  * then this will result in a 404 (not found) as opposed to a 405 status code.
  */
 static const std::set<std::string> non405method{
-    "OPTIONS", "TRACE",
+    "OPTIONS",
+    "TRACE",
 };
 
 /* HTTP request lifecycle status.
@@ -117,7 +118,7 @@ enum status {
   /* Will shut down the connection now. Set in the destructor. */
   stShutdown
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

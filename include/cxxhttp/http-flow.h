@@ -19,10 +19,10 @@
 #include <system_error>
 
 #define ASIO_STANDALONE
-#include <asio.hpp>
-
-#include <cxxhttp/http-session.h>
 #include <cxxhttp/http-error.h>
+#include <cxxhttp/http-session.h>
+
+#include <asio.hpp>
 
 namespace cxxhttp {
 namespace http {
@@ -344,7 +344,7 @@ class flow {
     }
   }
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

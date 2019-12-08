@@ -14,17 +14,16 @@
 #if !defined(CXXHTTP_HTTP_PROCESSOR_H)
 #define CXXHTTP_HTTP_PROCESSOR_H
 
-#include <algorithm>
-#include <functional>
-#include <list>
-
-#include <cxxhttp/negotiate.h>
-#include <cxxhttp/network.h>
-
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-error.h>
 #include <cxxhttp/http-servlet.h>
 #include <cxxhttp/http-session.h>
+#include <cxxhttp/negotiate.h>
+#include <cxxhttp/network.h>
+
+#include <algorithm>
+#include <functional>
+#include <list>
 
 namespace cxxhttp {
 namespace http {
@@ -499,8 +498,8 @@ class client {
    */
   std::function<void(sessionData &)> onFailure;
 };
-}
-}
-}
+}  // namespace processor
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

@@ -13,9 +13,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/uri.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -89,8 +88,49 @@ bool testParsing(std::ostream &log) {
   return true;
 }
 
+/* Test URI map parsing.
+ * @log Test output stream.
+ *
+ * Test cases for parsing URI encoded maps.
+ *
+ * @return 'true' on success, 'false' otherwise.
+ */
+bool testMapParsing(std::ostream &log) {
+  struct sampleData {
+    std::string in;
+    bool valid;
+    std::map<std::string, std::string> out;
+  };
+
+  std::vector<sampleData> tests{
+      {"a=b&c=d", true, {{"a", "b"}, {"c", "d"}}},
+      {"a=b&c=d&", false, {}},
+      {"a=b&a=foo", true, {{"a", "foo"}}},
+      {"foo=frob&a=foo", true, {{"foo", "frob"}, {"a", "foo"}}},
+  };
+
+  for (const auto &tt : tests) {
+    bool isValid = true;
+    const auto v = uri::map(tt.in, isValid);
+
+    if (isValid != tt.valid) {
+      log << "uri::map('" << tt.in << "', isValid) = " << isValid << "\n";
+      return false;
+    }
+
+    if (isValid) {
+      if (v != tt.out) {
+        log << "uri::map('" << tt.in << "') did not decode right.\n";
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 namespace test {
 using efgy::test::function;
 
 static function parsing(testParsing);
-}
+static function mapParsing(testMapParsing);
+}  // namespace test

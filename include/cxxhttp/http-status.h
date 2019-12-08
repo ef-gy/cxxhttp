@@ -14,11 +14,11 @@
 #if !defined(CXXHTTP_HTTP_STATUS_H)
 #define CXXHTTP_HTTP_STATUS_H
 
-#include <regex>
-
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-grammar.h>
 #include <cxxhttp/http-version.h>
+
+#include <regex>
 
 namespace cxxhttp {
 namespace http {
@@ -146,7 +146,7 @@ class statusLine {
     return "Other Status";
   }
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

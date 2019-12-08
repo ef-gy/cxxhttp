@@ -13,9 +13,9 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <sstream>
-
 #include <ef.gy/test-case.h>
+
+#include <sstream>
 
 #define ASIO_DISABLE_THREADS
 #define NO_DEFAULT_OPTIONS
@@ -257,4 +257,4 @@ using efgy::test::function;
 
 static function lookup(testLookup);
 static function recycling(testRecycling);
-}
+}  // namespace test

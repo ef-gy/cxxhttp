@@ -17,12 +17,11 @@
 #if !defined(CXXHTTP_HTTP_SERVLET_H)
 #define CXXHTTP_HTTP_SERVLET_H
 
-#include <regex>
-
-#include <ef.gy/global.h>
-
 #include <cxxhttp/http-header.h>
 #include <cxxhttp/http-session.h>
+#include <ef.gy/global.h>
+
+#include <regex>
 
 namespace cxxhttp {
 namespace http {
@@ -162,7 +161,7 @@ class servlet {
    */
   efgy::beacon<servlet> beacon;
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

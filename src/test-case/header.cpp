@@ -14,9 +14,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/http-header.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 using namespace cxxhttp::http;
@@ -209,9 +208,11 @@ bool testMerge(std::ostream &log) {
       parser<headers> a{tt.a};
       parser<headers> b{tt.b};
       parser<headers> out{tt.out};
-      log << "bad header merge; expected:\n" << std::string(out) << "got:\n"
-          << std::string(p) << "with left hand side:\n" << std::string(a)
-          << "and right hand side:\n" << std::string(b);
+      log << "bad header merge; expected:\n"
+          << std::string(out) << "got:\n"
+          << std::string(p) << "with left hand side:\n"
+          << std::string(a) << "and right hand side:\n"
+          << std::string(b);
       return false;
     }
   }
@@ -226,4 +227,4 @@ static function toString(testToString);
 static function append(testAppend);
 static function absorb(testAbsorb);
 static function clear(testClear);
-}
+}  // namespace test

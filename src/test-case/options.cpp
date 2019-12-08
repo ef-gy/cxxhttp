@@ -106,4 +106,4 @@ namespace test {
 using efgy::test::function;
 
 static function optionsHandler(testOptionsHandler);
-}
+}  // namespace test

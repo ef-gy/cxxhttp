@@ -73,7 +73,7 @@ class version : public std::array<int, 2> {
            std::to_string((*this)[1]);
   }
 };
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

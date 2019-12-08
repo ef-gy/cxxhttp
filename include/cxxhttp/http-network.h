@@ -14,10 +14,9 @@
 #if !defined(CXXHTTP_HTTP_NETWORK_H)
 #define CXXHTTP_HTTP_NETWORK_H
 
-#include <cxxhttp/network.h>
-
 #include <cxxhttp/http-flow.h>
 #include <cxxhttp/http-processor.h>
+#include <cxxhttp/network.h>
 
 namespace cxxhttp {
 namespace http {
@@ -134,7 +133,7 @@ using server =
 template <class transport>
 using client =
     net::connection<session<transport, processor::client>, processor::client>;
-}
-}
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

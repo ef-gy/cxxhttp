@@ -291,8 +291,8 @@ static const std::string fieldVcharWS = "[ \t!-\\\x7e\\\x80-\\\xff]";
  *      field-content  = field-vchar [ 1*( SP / HTAB ) field-vchar ]
  */
 static const std::string fieldContent = fieldVchar + fieldVcharWS + "*";
-}
-}
-}
+}  // namespace grammar
+}  // namespace http
+}  // namespace cxxhttp
 
 #endif

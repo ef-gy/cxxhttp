@@ -13,9 +13,8 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <ef.gy/test-case.h>
-
 #include <cxxhttp/http-request.h>
+#include <ef.gy/test-case.h>
 
 using namespace cxxhttp;
 
@@ -81,4 +80,4 @@ namespace test {
 using efgy::test::function;
 
 static function parse(testParse);
-}
+}  // namespace test

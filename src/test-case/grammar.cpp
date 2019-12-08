@@ -15,11 +15,10 @@
  * under the terms of an MIT/X11-style licence, described in the COPYING file.
  */
 
-#include <regex>
-
+#include <cxxhttp/http-grammar.h>
 #include <ef.gy/test-case.h>
 
-#include <cxxhttp/http-grammar.h>
+#include <regex>
 
 using namespace cxxhttp;
 
@@ -95,4 +94,4 @@ namespace test {
 using efgy::test::function;
 
 static function grammar(testGrammar);
-}
+}  // namespace test

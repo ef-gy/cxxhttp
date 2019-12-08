@@ -110,4 +110,4 @@ namespace test {
 using efgy::test::function;
 
 static function errorHandler(testErrorHandler);
-}
+}  // namespace test

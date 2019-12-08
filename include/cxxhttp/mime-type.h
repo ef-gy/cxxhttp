@@ -15,10 +15,10 @@
 #if !defined(CXXHTTP_MIME_TYPE_H)
 #define CXXHTTP_MIME_TYPE_H
 
+#include <cxxhttp/string.h>
+
 #include <map>
 #include <regex>
-
-#include <cxxhttp/string.h>
 
 namespace cxxhttp {
 /* Represents a MIME type.
@@ -303,6 +303,6 @@ class mimeType {
    */
   static bool isSpace(int c) { return c == ' ' || c == '\t'; }
 };
-}
+}  // namespace cxxhttp
 
 #endif

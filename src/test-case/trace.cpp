@@ -77,4 +77,4 @@ namespace test {
 using efgy::test::function;
 
 static function traceHandler(testTraceHandler);
-}
+}  // namespace test

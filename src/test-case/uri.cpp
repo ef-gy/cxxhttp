@@ -105,6 +105,8 @@ bool testMapParsing(std::ostream &log) {
   std::vector<sampleData> tests{
       {"a=b&c=d", true, {{"a", "b"}, {"c", "d"}}},
       {"a=b&c=d&", false, {}},
+      {"a&", false, {}},
+      {"a=c%2Ad", true, {{"a", "c*d"}}},
       {"a=b&a=foo", true, {{"a", "foo"}}},
       {"foo=frob&a=foo", true, {{"foo", "frob"}, {"a", "foo"}}},
   };

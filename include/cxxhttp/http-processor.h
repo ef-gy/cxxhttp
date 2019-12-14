@@ -14,6 +14,8 @@
 #if !defined(CXXHTTP_HTTP_PROCESSOR_H)
 #define CXXHTTP_HTTP_PROCESSOR_H
 
+#include <ef.gy/cli.h>
+
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-error.h>
 #include <cxxhttp/http-servlet.h>
@@ -27,6 +29,12 @@
 
 namespace cxxhttp {
 namespace http {
+namespace cli {
+efgy::cli::flag<long> maxContentLength(
+  "max-content-length", (1024 * 1024 * 12),
+  "max size of HTTP request bodies; default is 12 MiB");
+}
+
 template <typename transport, typename requestProcessor>
 class session;
 /* Default servers headers.
@@ -63,7 +71,7 @@ class server {
    * The maximum number of octets supported for a request body. Requests larger
    * than this are cancelled with an error.
    */
-  std::size_t maxContentLength = (1024 * 1024 * 12);
+  std::size_t maxContentLength = long(cli::maxContentLength);
 
   /* Bound servlets.
    *

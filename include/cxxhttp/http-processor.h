@@ -14,14 +14,13 @@
 #if !defined(CXXHTTP_HTTP_PROCESSOR_H)
 #define CXXHTTP_HTTP_PROCESSOR_H
 
-#include <ef.gy/cli.h>
-
 #include <cxxhttp/http-constants.h>
 #include <cxxhttp/http-error.h>
 #include <cxxhttp/http-servlet.h>
 #include <cxxhttp/http-session.h>
 #include <cxxhttp/negotiate.h>
 #include <cxxhttp/network.h>
+#include <ef.gy/cli.h>
 
 #include <algorithm>
 #include <functional>
@@ -31,8 +30,8 @@ namespace cxxhttp {
 namespace http {
 namespace cli {
 efgy::cli::flag<long> maxContentLength(
-  "max-content-length", (1024 * 1024 * 12),
-  "max size of HTTP request bodies; default is 12 MiB");
+    "max-content-length", (1024 * 1024 * 12),
+    "max size of HTTP request bodies; default is 12 MiB");
 }
 
 template <typename transport, typename requestProcessor>

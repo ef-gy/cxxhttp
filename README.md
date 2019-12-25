@@ -1,8 +1,5 @@
 # CXXHTTP
 
-[![Build Status](https://travis-ci.org/ef-gy/cxxhttp.svg?branch=master)](https://travis-ci.org/ef-gy/cxxhttp)
-[![Coverage Status](https://coveralls.io/repos/github/ef-gy/cxxhttp/badge.svg?branch=master)](https://coveralls.io/github/ef-gy/cxxhttp?branch=master)
-
 A C++ library implementing an asynchronous HTTP server and client.
 
 To clone this library, make sure you also clone the submodules. The --recursive

@@ -1,6 +1,6 @@
 -include ef.gy/base.mk include/ef.gy/base.mk
 
 NAME:=cxxhttp
-VERSION:=2
+VERSION:=3
 
 CXXFLAGS+=-pedantic -Wall

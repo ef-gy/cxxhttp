@@ -33,3 +33,4 @@ script:
 
 after_success:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then coveralls  -t DcluU4eNb0fYJrVslE8kUyEOnl9sMMrSE --exclude dependencies --exclude src --exclude include/asio --exclude include/asio.hpp --exclude include/ef.gy --gcov-options '\-lp'; fi
+  - bash <(curl -s https://codecov.io/bash)

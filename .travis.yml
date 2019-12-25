@@ -1,7 +1,6 @@
 language: cpp
 compiler:
   - clang
-  - gcc
 
 dist: trusty
 sudo: false
@@ -10,27 +9,17 @@ os:
   - osx
   - linux
 
+env:
+  - CXX_STDLIB=-stdlib=libc++
+
 addons:
   apt:
-    sources:
-      - sourceline: 'ppa:ubuntu-toolchain-r/test'
     packages:
       - libc++1
       - libc++-dev
-      - g++-4.9
-
-before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then eval "$(pyenv init -)"; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then pyenv install 2.7.6; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then pyenv global 2.7.6; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then pyenv rehash; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then pip install cpp-coveralls; else pip install --user cpp-coveralls; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then pyenv rehash; fi
 
 script:
-  - if [ "$TRAVIS_OS_NAME" != "osx" -a "$CXX" = "g++" ]; then export CXX="g++-4.9"; fi
-  - make test CFLAGS="-O2 -coverage" CXX=${CXX}
+  - make test CFLAGS="-O2 -coverage" CXX_STDLIB=${CXX_STDLIB}
 
 after_success:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then coveralls  -t DcluU4eNb0fYJrVslE8kUyEOnl9sMMrSE --exclude dependencies --exclude src --exclude include/asio --exclude include/asio.hpp --exclude include/ef.gy --gcov-options '\-lp'; fi
   - bash <(curl -s https://codecov.io/bash)

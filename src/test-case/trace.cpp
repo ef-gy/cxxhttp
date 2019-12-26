@@ -16,7 +16,6 @@
 #include <ef.gy/test-case.h>
 
 #define ASIO_DISABLE_THREADS
-#define NO_DEFAULT_TRACE
 #include <cxxhttp/httpd-trace.h>
 
 using namespace cxxhttp;

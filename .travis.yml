@@ -17,7 +17,7 @@ addons:
       - libc++-dev
 
 script:
-  - make test CFLAGS="-O2 -coverage" CXX=${CXX} DEBUG=true
+  - make test CFLAGS="-O2 -coverage -fprofile-abs-path" CXX=${CXX} DEBUG=true
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

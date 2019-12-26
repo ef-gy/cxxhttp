@@ -22,3 +22,7 @@ fetch
 
 # test files
 !data/test/fetch
+
+# coverage files
+*.gcda
+*.gcno

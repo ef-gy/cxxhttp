@@ -29,6 +29,12 @@ else
   rv="false"
 fi
 
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-test-hello-${p}.${ex}
+  done
+done
+
 printf "running test case 2: "
 
 uri="http://localhost:${port}/404"
@@ -49,6 +55,12 @@ fi
 
 kill -KILL ${pid}
 
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-test-404-tcp-${p}.${ex}
+  done
+done
+
 printf "running test case 3: "
 
 uri="http://localhost:${port}/"
@@ -67,6 +79,12 @@ else
   rv="false"
 fi
 
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-test-no-connection-${p}.${ex}
+  done
+done
+
 printf "running test case 4: "
 
 uri="http://localhost-but-actually-not-really:${port}/"
@@ -84,5 +102,11 @@ else
   echo "FAIL"
   rv="false"
 fi
+
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-test-bad-host-${p}.${ex}
+  done
+done
 
 exec ${rv}

@@ -26,4 +26,10 @@ else
   rv="false"
 fi
 
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-stdio-${p}.${ex}
+  done
+done
+
 exec ${rv}

@@ -28,6 +28,12 @@ else
   rv="false"
 fi
 
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-test-hello-unix-${p}.${ex}
+  done
+done
+
 printf "running test case 2: "
 
 uri="http:unix:${socket}:/404"
@@ -45,6 +51,12 @@ else
   echo "FAIL"
   rv="false"
 fi
+
+for ex in gcda gcno; do
+  for p in server fetch; do
+    [ -f ${p}.${ex} ] && mv -f ${p}.${ex} fetch-test-404-unix-${p}.${ex}
+  done
+done
 
 kill -KILL ${pid}
 

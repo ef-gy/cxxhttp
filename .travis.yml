@@ -3,6 +3,7 @@ compiler:
   - clang
   - gcc
 
+dist: bionic
 sudo: false
 
 os:

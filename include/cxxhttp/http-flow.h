@@ -94,13 +94,6 @@ class flow {
    */
   outputType outputConnection;
 
-  /* Reference to the HTTP session object.
-   *
-   * Used with the processor to handle a request. This class used to be the
-   * session, but now it's split up to improve separation of concerns here.
-   */
-  sessionData &session;
-
   /* A control flow object for the HTTP session.
    *
    * Used to decide what to do at each stage of processing a request.
@@ -110,24 +103,23 @@ class flow {
   /* Construct with I/O service.
    * @processor Reference to the HTTP processor to use.
    * @service Which ASIO I/O service to bind to.
-   * @pSession The session to use for inbound requests.
+   * @session The session to use for inbound requests.
    *
    * Allows specifying the I/O service instance and nothing more. This is for
    * when the output is really supposed to be a reference to the input, such as
    * with TCP or UNIX sockets.
    */
   flow(requestProcessor &processor, asio::io_service &service,
-       sessionData &pSession)
+       sessionData &session)
       : inputConnection(service),
         outputConnection(inputConnection),
-        session(pSession),
         controller(processor, session) {}
 
   /* Construct with I/O service and input/output data.
    * @T Input and output connection parameter type.
    * @processor Reference to the HTTP processor to use.
    * @service Which ASIO I/O service to bind to.
-   * @pSession The session to use for inbound requests.
+   * @session The session to use for inbound requests.
    * @pInput Passed to the input connection's constructor.
    * @pOutput Passed to the output connection's constructor.
    *
@@ -137,11 +129,16 @@ class flow {
    */
   template <typename T>
   flow(requestProcessor &processor, asio::io_service &service,
-       sessionData &pSession, const T &pInput, const T &pOutput)
+       sessionData &session, const T &pInput, const T &pOutput)
       : inputConnection(service, pInput),
         outputConnection(service, pOutput),
-        session(pSession),
         controller(processor, session) {}
+
+  /* Get reference to the HTTP session object.
+   *
+   * @returns reference to the flow controller's session().
+   */
+  inline http::sessionData &session(void) const { return controller.session(); }
 
   /* Destructor.
    *
@@ -160,50 +157,6 @@ class flow {
     actOnFlowInstructions(controller.start(initial));
   }
 
-  /* Send the next message.
-   *
-   * Sends the next message in the <outboundQueue>, if there is one and no
-   * message is currently in flight.
-   */
-  void send(void) {
-    if (session.status != stShutdown && !session.writePending) {
-      if (session.outboundQueue.size() > 0) {
-        session.writePending = true;
-        const std::string &msg = session.outboundQueue.front();
-
-        asio::async_write(outputConnection, asio::buffer(msg),
-                          std::bind(&flow::write, this, std::placeholders::_1));
-
-        session.outboundQueue.pop_front();
-      } else if (session.closeAfterSend) {
-        recycle();
-      }
-    }
-  }
-
-  /* Read enough off the input socket to fill a line.
-   *
-   * Issue a read that will make sure there's at least one full line available
-   * for processing in the input buffer.
-   */
-  void readLine(void) {
-    asio::async_read_until(inputConnection, session.input, "\n",
-                           std::bind(&flow::read, this, std::placeholders::_1,
-                                     std::placeholders::_2));
-  }
-
-  /* Read remainder of the request body.
-   *
-   * Issues a read for anything left to read in the request body, if there's
-   * anything left to read.
-   */
-  void readRemainingContent(void) {
-    asio::async_read(inputConnection, session.input,
-                     asio::transfer_at_least(session.remainingBytes()),
-                     std::bind(&flow::read, this, std::placeholders::_1,
-                               std::placeholders::_2));
-  }
-
   /* Make session reusable for future use.
    *
    * Destroys all pending data that needs to be cleaned up, and tags the session
@@ -212,7 +165,7 @@ class flow {
   void recycle(void) {
     controller.recycle();
 
-    if (!session.free) {
+    if (!session().free) {
       asio::error_code ec;
 
       closeConnection(inputConnection, ec);
@@ -225,11 +178,11 @@ class flow {
 
       // we should do something here with ec, but then we've already given up on
       // this connection, so meh.
-      session.errors = ec ? session.errors + 1 : session.errors;
+      session().errors += ec ? 1 : 0;
 
-      session.input.consume(session.input.size() + 1);
+      session().input.consume(session().input.size() + 1);
 
-      session.free = true;
+      session().free = true;
     }
   }
 
@@ -279,6 +232,29 @@ class flow {
     actOnFlowInstructions(controller.read(error));
   }
 
+  /* Read enough off the input socket to fill a line.
+   *
+   * Issue a read that will make sure there's at least one full line available
+   * for processing in the input buffer.
+   */
+  void readLine(void) {
+    asio::async_read_until(inputConnection, session().input, "\n",
+                           std::bind(&flow::read, this, std::placeholders::_1,
+                                     std::placeholders::_2));
+  }
+
+  /* Read remainder of the request body.
+   *
+   * Issues a read for anything left to read in the request body, if there's
+   * anything left to read.
+   */
+  void readRemainingContent(void) {
+    asio::async_read(inputConnection, session().input,
+                     asio::transfer_at_least(session().remainingBytes()),
+                     std::bind(&flow::read, this, std::placeholders::_1,
+                               std::placeholders::_2));
+  }
+
   /* Asynchronouse write handler
    * @error Current error state.
    *
@@ -290,6 +266,36 @@ class flow {
    */
   void write(const std::error_code error) {
     actOnFlowInstructions(controller.write(error));
+  }
+
+  /* Asynchronously write a string.
+   * @msg The message to write.
+   *
+   * Write a full message to an output connection.
+   */
+  void writeMessage(const std::string &msg) {
+    asio::async_write(outputConnection, asio::buffer(msg),
+                      std::bind(&flow::write, this, std::placeholders::_1));
+  }
+
+  /* Send the next message.
+   *
+   * Sends the next message in the <outboundQueue>, if there is one and no
+   * message is currently in flight.
+   */
+  void send(void) {
+    if (session().status != stShutdown && !session().writePending) {
+      if (session().outboundQueue.size() > 0) {
+        session().writePending = true;
+        const std::string &msg = session().outboundQueue.front();
+
+        writeMessage(msg);
+
+        session().outboundQueue.pop_front();
+      } else if (session().closeAfterSend) {
+        recycle();
+      }
+    }
   }
 };
 }  // namespace http

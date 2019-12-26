@@ -49,19 +49,6 @@ enum action {
 template <typename requestProcessor>
 class http11 {
  public:
-  /* Processor reference.
-   *
-   * Used to handle requests, whenever we've completed one.
-   */
-  requestProcessor &processor;
-
-  /* Reference to the HTTP session object.
-   *
-   * Used with the processor to handle a request. This class used to be the
-   * session, but now it's split up to improve separation of concerns here.
-   */
-  http::sessionData &session;
-
   /* Construct with Processor and Session.
    * @pProcessor Reference to the HTTP processor to use.
    * @pSession The session to use for inbound requests.
@@ -70,7 +57,13 @@ class http11 {
    * the corresponding session to construct it.
    */
   http11(requestProcessor &pProcessor, http::sessionData &pSession)
-      : processor(pProcessor), session(pSession) {}
+      : processor_(pProcessor), session_(pSession) {}
+
+  /* Get reference to the HTTP session object.
+   *
+   * @returns reference to session_.
+   */
+  inline http::sessionData &session(void) const { return session_; }
 
   /* Make session reusable for future use.
    *
@@ -78,13 +71,13 @@ class http11 {
    * as clean. This allows reusing the session, or destruction out of band.
    */
   void recycle(void) {
-    if (!session.free) {
-      processor.recycle(session);
+    if (!session_.free) {
+      processor_.recycle(session_);
 
-      session.status = http::stShutdown;
+      session_.status = http::stShutdown;
 
-      session.closeAfterSend = false;
-      session.outboundQueue.clear();
+      session_.closeAfterSend = false;
+      session_.outboundQueue.clear();
     }
   }
 
@@ -100,12 +93,13 @@ class http11 {
     std::vector<action> emit = {};
 
     if (initial) {
-      processor.start(session);
+      processor_.start(session_);
     }
 
-    if (session.status == http::stRequest || session.status == http::stStatus) {
+    if (session_.status == http::stRequest ||
+        session_.status == http::stStatus) {
       emit.push_back(actReadLine);
-    } else if (session.status == http::stShutdown) {
+    } else if (session_.status == http::stShutdown) {
       emit.push_back(actRecycle);
     }
     emit.push_back(actSend);
@@ -123,75 +117,75 @@ class http11 {
   std::vector<action> read(const std::error_code &error) {
     std::vector<action> emit = {};
 
-    if (session.status == http::stShutdown) {
+    if (session_.status == http::stShutdown) {
       return emit;
     } else if (error) {
-      session.status = http::stError;
+      session_.status = http::stError;
     }
 
-    bool wasRequest = session.status == http::stRequest;
-    bool wasStart = wasRequest || session.status == http::stStatus;
+    bool wasRequest = session_.status == http::stRequest;
+    bool wasStart = wasRequest || session_.status == http::stStatus;
     http::version version;
     static const http::version limVersion{2, 0};
 
-    if (session.status == http::stRequest) {
-      session.inboundRequest = session.buffer();
-      session.status =
-          session.inboundRequest.valid() ? http::stHeader : http::stError;
-      version = session.inboundRequest.version;
-    } else if (session.status == http::stStatus) {
-      session.inboundStatus = session.buffer();
-      session.status =
-          session.inboundStatus.valid() ? http::stHeader : http::stError;
-      version = session.inboundStatus.version;
-    } else if (session.status == http::stHeader) {
-      session.inbound.absorb(session.buffer());
+    if (session_.status == http::stRequest) {
+      session_.inboundRequest = session_.buffer();
+      session_.status =
+          session_.inboundRequest.valid() ? http::stHeader : http::stError;
+      version = session_.inboundRequest.version;
+    } else if (session_.status == http::stStatus) {
+      session_.inboundStatus = session_.buffer();
+      session_.status =
+          session_.inboundStatus.valid() ? http::stHeader : http::stError;
+      version = session_.inboundStatus.version;
+    } else if (session_.status == http::stHeader) {
+      session_.inbound.absorb(session_.buffer());
       // this may return false, and if it did then what the client sent was
       // not valid HTTP and we should send back an error.
-      if (session.inbound.complete) {
+      if (session_.inbound.complete) {
         // we're done parsing headers, so change over to streaming in the
         // results.
-        session.status = processor.afterHeaders(session);
+        session_.status = processor_.afterHeaders(session_);
         emit.push_back(actSend);
-        session.content.clear();
+        session_.content.clear();
       }
     }
 
-    if (wasStart && session.status != http::stError && version >= limVersion) {
+    if (wasStart && session_.status != http::stError && version >= limVersion) {
       // reject any requests with a major version over 1.x
-      session.status = http::stError;
+      session_.status = http::stError;
     }
 
-    if (wasStart && session.status == http::stHeader) {
-      session.inbound = {};
-    } else if (wasRequest && session.status == http::stError) {
+    if (wasStart && session_.status == http::stHeader) {
+      session_.inbound = {};
+    } else if (wasRequest && session_.status == http::stError) {
       // We had an edge from trying to read a request line to an error, so send
       // a message to the other end about this.
       // The error code is a 400 for a generic error or an invalid request line,
       // or a 505 if we can't handle the message framing.
-      http::error(session).reply(version >= limVersion ? 505 : 400);
+      http::error(session_).reply(version >= limVersion ? 505 : 400);
       emit.push_back(actSend);
-      session.status = http::stProcessing;
+      session_.status = http::stProcessing;
     }
 
-    if (session.status == http::stHeader) {
+    if (session_.status == http::stHeader) {
       emit.push_back(actReadLine);
-    } else if (session.status == http::stContent) {
-      session.content += session.buffer();
-      if (session.remainingBytes() == 0) {
-        session.status = http::stProcessing;
+    } else if (session_.status == http::stContent) {
+      session_.content += session_.buffer();
+      if (session_.remainingBytes() == 0) {
+        session_.status = http::stProcessing;
 
         /* processing the request takes place here */
-        processor.handle(session);
+        processor_.handle(session_);
 
-        session.status = processor.afterProcessing(session);
+        session_.status = processor_.afterProcessing(session_);
         emit.push_back(actStart);
       } else {
         emit.push_back(actReadRemainingContent);
       }
     }
 
-    if (session.status == http::stError) {
+    if (session_.status == http::stError) {
       emit.push_back(actRecycle);
     }
 
@@ -211,20 +205,34 @@ class http11 {
   std::vector<action> write(const std::error_code error) {
     std::vector<action> emit = {};
 
-    session.writePending = false;
+    session_.writePending = false;
 
     if (!error) {
-      if (session.status == http::stProcessing) {
-        session.status = processor.afterProcessing(session);
+      if (session_.status == http::stProcessing) {
+        session_.status = processor_.afterProcessing(session_);
       }
       emit.push_back(actSend);
     }
-    if (error || session.status == http::stShutdown) {
+    if (error || session_.status == http::stShutdown) {
       emit.push_back(actRecycle);
     }
 
     return emit;
   }
+
+ protected:
+  /* Processor reference.
+   *
+   * Used to handle requests, whenever we've completed one.
+   */
+  requestProcessor &processor_;
+
+  /* Reference to the HTTP session object.
+   *
+   * Used with the processor to handle a request. This class used to be the
+   * session, but now it's split up to improve separation of concerns here.
+   */
+  http::sessionData &session_;
 };
 }  // namespace control
 }  // namespace cxxhttp

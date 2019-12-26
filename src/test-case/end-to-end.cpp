@@ -32,7 +32,7 @@ using namespace cxxhttp;
 bool testUNIX(std::ostream &log) {
   const char *name = "/tmp/cxxhttp-test.socket";
   bool result = true;
-  int replies = 0;
+  std::size_t replies = 0;
 
   struct sampleData {
     std::string method, resource;

@@ -22,6 +22,8 @@
 #include <cxxhttp/http-error.h>
 #include <cxxhttp/http-session.h>
 
+#include <cxxhttp/flow-http11.h>
+
 #include <asio.hpp>
 
 namespace cxxhttp {
@@ -50,10 +52,24 @@ template <>
 inline void maybeShutdown<asio::posix::stream_descriptor>(
     asio::posix::stream_descriptor &connection, asio::error_code &ec) {}
 
-/* HTTP I/O control flow.
+/* Close a connection, maybe shut it down first.
+ * @T The connection type.
+ * @connection The connection to manipulate.
+ * @ec Output error code.
+ *
+ * Calls maybeShutdown() then close() on a connection.
+ */
+template <typename T>
+static inline void closeConnection(T &connection, asio::error_code &ec) {
+  maybeShutdown(connection, ec);
+  connection.close(ec);
+}
+
+/* HTTP I/O tansport flow.
  * @requestProcessor The functor class to handle requests.
  * @inputType An ASIO-compatible type for the input stream.
  * @outputType An ASIO-compatible type for the output stream; optional.
+ * @controlFlow The control flow for the connection, default: control::http11.
  *
  * Instantated by a session to do the actual grunt work of deciding when to talk
  * back on the wire, and how.
@@ -62,15 +78,10 @@ inline void maybeShutdown<asio::posix::stream_descriptor>(
  * depending on what the processor will need.
  */
 template <typename requestProcessor, typename inputType,
-          typename outputType = inputType &>
+          typename outputType = inputType &,
+          typename controlFlow = control::http11<requestProcessor>>
 class flow {
  public:
-  /* Processor reference.
-   *
-   * Used to handle requests, whenever we've completed one.
-   */
-  requestProcessor &processor;
-
   /* Input stream descriptor.
    *
    * Will be read from, but not written to.
@@ -90,8 +101,14 @@ class flow {
    */
   sessionData &session;
 
+  /* A control flow object for the HTTP session.
+   *
+   * Used to decide what to do at each stage of processing a request.
+   */
+  controlFlow controller;
+
   /* Construct with I/O service.
-   * @pProcessor Reference to the HTTP processor to use.
+   * @processor Reference to the HTTP processor to use.
    * @service Which ASIO I/O service to bind to.
    * @pSession The session to use for inbound requests.
    *
@@ -99,16 +116,16 @@ class flow {
    * when the output is really supposed to be a reference to the input, such as
    * with TCP or UNIX sockets.
    */
-  flow(requestProcessor &pProcessor, asio::io_service &service,
+  flow(requestProcessor &processor, asio::io_service &service,
        sessionData &pSession)
-      : processor(pProcessor),
-        inputConnection(service),
+      : inputConnection(service),
         outputConnection(inputConnection),
-        session(pSession) {}
+        session(pSession),
+        controller(processor, session) {}
 
   /* Construct with I/O service and input/output data.
    * @T Input and output connection parameter type.
-   * @pProcessor Reference to the HTTP processor to use.
+   * @processor Reference to the HTTP processor to use.
    * @service Which ASIO I/O service to bind to.
    * @pSession The session to use for inbound requests.
    * @pInput Passed to the input connection's constructor.
@@ -119,12 +136,12 @@ class flow {
    * input and output point to, such as when running over STDIO.
    */
   template <typename T>
-  flow(requestProcessor &pProcessor, asio::io_service &service,
+  flow(requestProcessor &processor, asio::io_service &service,
        sessionData &pSession, const T &pInput, const T &pOutput)
-      : processor(pProcessor),
-        inputConnection(service, pInput),
+      : inputConnection(service, pInput),
         outputConnection(service, pOutput),
-        session(pSession) {}
+        session(pSession),
+        controller(processor, session) {}
 
   /* Destructor.
    *
@@ -133,13 +150,14 @@ class flow {
    */
   ~flow(void) { recycle(); }
 
-  /* Start processing.
+  /* Decide what to do after an initial setup.
+   * @initial Set to true if start() is called in the constructor.
    *
-   * Starts processing the incoming request.
+   * This does what start() does after telling the processor to get going. We
+   * also need this after processing an individual request.
    */
-  void start(void) {
-    processor.start(session);
-    handleStart();
+  void start(bool initial = true) {
+    actOnFlowInstructions(controller.start(initial));
   }
 
   /* Send the next message.
@@ -153,9 +171,8 @@ class flow {
         session.writePending = true;
         const std::string &msg = session.outboundQueue.front();
 
-        asio::async_write(
-            outputConnection, asio::buffer(msg),
-            std::bind(&flow::handleWrite, this, std::placeholders::_1));
+        asio::async_write(outputConnection, asio::buffer(msg),
+                          std::bind(&flow::write, this, std::placeholders::_1));
 
         session.outboundQueue.pop_front();
       } else if (session.closeAfterSend) {
@@ -170,10 +187,9 @@ class flow {
    * for processing in the input buffer.
    */
   void readLine(void) {
-    asio::async_read_until(
-        inputConnection, session.input, "\n",
-        std::bind(&flow::handleRead, this, std::placeholders::_1,
-                  std::placeholders::_2));
+    asio::async_read_until(inputConnection, session.input, "\n",
+                           std::bind(&flow::read, this, std::placeholders::_1,
+                                     std::placeholders::_2));
   }
 
   /* Read remainder of the request body.
@@ -184,7 +200,7 @@ class flow {
   void readRemainingContent(void) {
     asio::async_read(inputConnection, session.input,
                      asio::transfer_at_least(session.remainingBytes()),
-                     std::bind(&flow::handleRead, this, std::placeholders::_1,
+                     std::bind(&flow::read, this, std::placeholders::_1,
                                std::placeholders::_2));
   }
 
@@ -194,24 +210,17 @@ class flow {
    * as clean. This allows reusing the session, or destruction out of band.
    */
   void recycle(void) {
+    controller.recycle();
+
     if (!session.free) {
-      processor.recycle(session);
-
-      session.status = stShutdown;
-
-      session.closeAfterSend = false;
-      session.outboundQueue.clear();
-
       asio::error_code ec;
 
-      maybeShutdown(inputConnection, ec);
-      inputConnection.close(ec);
+      closeConnection(inputConnection, ec);
 
       if (&inputConnection != &outputConnection) {
         // avoid closing the descriptor twice, if one is a reference to the
         // other.
-        maybeShutdown(outputConnection, ec);
-        outputConnection.close(ec);
+        closeConnection(outputConnection, ec);
       }
 
       // we should do something here with ec, but then we've already given up on
@@ -225,18 +234,35 @@ class flow {
   }
 
  protected:
-  /* Decide what to do after an initial setup.
+  /* Act on flow controller instructions.
+   * @actions What to do.
    *
-   * This does what start() does after telling the processor to get going. We
-   * also need this after processing an individual request.
+   * The flow controller basically just queues up actions and then returns the
+   * next instruction for what to do on a given connection. This function calls
+   * that next instruction.
    */
-  void handleStart(void) {
-    if (session.status == stRequest || session.status == stStatus) {
-      readLine();
-    } else if (session.status == stShutdown) {
-      recycle();
+  void actOnFlowInstructions(const std::vector<control::action> &actions) {
+    for (const auto &action : actions) {
+      switch (action) {
+        case control::actRecycle:
+          recycle();
+          break;
+        case control::actStart:
+          start(false);
+          break;
+        case control::actReadLine:
+          readLine();
+          break;
+        case control::actReadRemainingContent:
+          readRemainingContent();
+          break;
+        case control::actSend:
+          send();
+          break;
+        default:
+          break;
+      }
     }
-    send();
   }
 
   /* Callback after more data has been read.
@@ -249,76 +275,8 @@ class flow {
    * The actual processing for the header is done with a set of regexen, which
    * greatly simplifies the header parsing.
    */
-  void handleRead(const std::error_code &error, std::size_t length) {
-    if (session.status == stShutdown) {
-      return;
-    } else if (error) {
-      session.status = stError;
-    }
-
-    bool wasRequest = session.status == stRequest;
-    bool wasStart = wasRequest || session.status == stStatus;
-    http::version version;
-    static const http::version limVersion{2, 0};
-
-    if (session.status == stRequest) {
-      session.inboundRequest = session.buffer();
-      session.status = session.inboundRequest.valid() ? stHeader : stError;
-      version = session.inboundRequest.version;
-    } else if (session.status == stStatus) {
-      session.inboundStatus = session.buffer();
-      session.status = session.inboundStatus.valid() ? stHeader : stError;
-      version = session.inboundStatus.version;
-    } else if (session.status == stHeader) {
-      session.inbound.absorb(session.buffer());
-      // this may return false, and if it did then what the client sent was
-      // not valid HTTP and we should send back an error.
-      if (session.inbound.complete) {
-        // we're done parsing headers, so change over to streaming in the
-        // results.
-        session.status = processor.afterHeaders(session);
-        send();
-        session.content.clear();
-      }
-    }
-
-    if (wasStart && session.status != stError && version >= limVersion) {
-      // reject any requests with a major version over 1.x
-      session.status = stError;
-    }
-
-    if (wasStart && session.status == stHeader) {
-      session.inbound = {};
-    } else if (wasRequest && session.status == stError) {
-      // We had an edge from trying to read a request line to an error, so send
-      // a message to the other end about this.
-      // The error code is a 400 for a generic error or an invalid request line,
-      // or a 505 if we can't handle the message framing.
-      http::error(session).reply(version >= limVersion ? 505 : 400);
-      send();
-      session.status = stProcessing;
-    }
-
-    if (session.status == stHeader) {
-      readLine();
-    } else if (session.status == stContent) {
-      session.content += session.buffer();
-      if (session.remainingBytes() == 0) {
-        session.status = stProcessing;
-
-        /* processing the request takes place here */
-        processor.handle(session);
-
-        session.status = processor.afterProcessing(session);
-        handleStart();
-      } else {
-        readRemainingContent();
-      }
-    }
-
-    if (session.status == stError) {
-      recycle();
-    }
+  void read(const std::error_code &error, std::size_t length) {
+    actOnFlowInstructions(controller.read(error));
   }
 
   /* Asynchronouse write handler
@@ -330,18 +288,8 @@ class flow {
    * Automatically deletes the object on errors - which also closes the
    * connection automagically.
    */
-  void handleWrite(const std::error_code error) {
-    session.writePending = false;
-
-    if (!error) {
-      if (session.status == stProcessing) {
-        session.status = processor.afterProcessing(session);
-      }
-      send();
-    }
-    if (error || session.status == stShutdown) {
-      recycle();
-    }
+  void write(const std::error_code error) {
+    actOnFlowInstructions(controller.write(error));
   }
 };
 }  // namespace http

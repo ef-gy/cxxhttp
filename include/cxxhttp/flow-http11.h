@@ -129,17 +129,17 @@ class http11 {
     static const http::version limVersion{2, 0};
 
     if (session_.status == http::stRequest) {
-      session_.inboundRequest = session_.buffer();
+      session_.inboundRequest = session_.bufferLine();
       session_.status =
           session_.inboundRequest.valid() ? http::stHeader : http::stError;
       version = session_.inboundRequest.version;
     } else if (session_.status == http::stStatus) {
-      session_.inboundStatus = session_.buffer();
+      session_.inboundStatus = session_.bufferLine();
       session_.status =
           session_.inboundStatus.valid() ? http::stHeader : http::stError;
       version = session_.inboundStatus.version;
     } else if (session_.status == http::stHeader) {
-      session_.inbound.absorb(session_.buffer());
+      session_.inbound.absorb(session_.bufferLine());
       // this may return false, and if it did then what the client sent was
       // not valid HTTP and we should send back an error.
       if (session_.inbound.complete) {
@@ -171,7 +171,7 @@ class http11 {
     if (session_.status == http::stHeader) {
       emit.push_back(actReadLine);
     } else if (session_.status == http::stContent) {
-      session_.content += session_.buffer();
+      session_.content += session_.bufferContent();
       if (session_.remainingBytes() == 0) {
         session_.status = http::stProcessing;
 

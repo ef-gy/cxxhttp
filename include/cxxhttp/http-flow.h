@@ -65,7 +65,7 @@ static inline void closeConnection(T &connection, asio::error_code &ec) {
   connection.close(ec);
 }
 
-/* HTTP I/O tansport flow.
+/* HTTP I/O transport flow.
  * @requestProcessor The functor class to handle requests.
  * @inputType An ASIO-compatible type for the input stream.
  * @outputType An ASIO-compatible type for the output stream; optional.

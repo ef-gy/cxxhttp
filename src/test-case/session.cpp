@@ -62,9 +62,13 @@ bool testBasicSession(std::ostream &log) {
       return false;
     }
 
-    if (v.buffer() != tt.buffer) {
-      log << "buffer() = " << v.buffer() << ", but expected " << tt.buffer
-          << "\n";
+    if (v.bufferLine() != tt.buffer) {
+      log << "bufferLine(): expected " << tt.buffer << "\n";
+      return false;
+    }
+
+    if (v.bufferContent() != tt.buffer) {
+      log << "bufferContent(): expected " << tt.buffer << "\n";
       return false;
     }
   }

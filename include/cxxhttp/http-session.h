@@ -275,22 +275,33 @@ class sessionData {
     return reply;
   }
 
-  /* Extract partial data from the session.
+  /* Extract line of data from the session.
    *
-   * This reads data that is already available in `input` and returns it as a
-   * string. How much data is extracted depends on the current state. It'll
-   * either be a full line if we're still parsing headers, or as much of the
-   * remainder of the message body we can, if we're doing that.
+   * This reads a single line from `input`.
    *
-   * @return Partial data from the `input`, as needed by the current context.
+   * @returns The next line from `input`.
    */
-  std::string buffer(void) {
+  std::string bufferLine(void) {
     std::istream is(&input);
-    std::string s;
+    std::string s = "";
 
-    if (status == stRequest || status == stStatus || status == stHeader) {
-      std::getline(is, s);
-    } else if (status == stContent && remainingBytes() > 0) {
+    std::getline(is, s);
+
+    return s;
+  }
+
+  /* Extract remaining content data from the session.
+   *
+   * This reads as much of the `input` as is possible right now, up to the
+   * amount of bytes missing from the content buffer.
+   *
+   * @returns Up to remainingBytes() worth' of content.
+   */
+  std::string bufferContent(void) {
+    std::istream is(&input);
+    std::string s = "";
+
+    if (remainingBytes() > 0) {
       s = std::string(std::min(remainingBytes(), input.size()), 0);
       is.read(&s[0], std::min(remainingBytes(), input.size()));
     }

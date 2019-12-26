@@ -196,7 +196,9 @@ class sessionData {
         closeAfterSend(false),
         writePending(false),
         free(false),
-        isHEAD(false) {}
+        isHEAD(false),
+        input(),
+        inputstream(&input) {}
 
   /* Calculate number of queries from this session.
    *
@@ -282,10 +284,9 @@ class sessionData {
    * @returns The next line from `input`.
    */
   std::string bufferLine(void) {
-    std::istream is(&input);
     std::string s = "";
 
-    std::getline(is, s);
+    std::getline(inputstream, s);
 
     return s;
   }
@@ -298,12 +299,13 @@ class sessionData {
    * @returns Up to remainingBytes() worth' of content.
    */
   std::string bufferContent(void) {
-    std::istream is(&input);
     std::string s = "";
 
     if (remainingBytes() > 0) {
-      s = std::string(std::min(remainingBytes(), input.size()), 0);
-      is.read(&s[0], std::min(remainingBytes(), input.size()));
+      std::size_t toRead = std::min(remainingBytes(), input.size());
+
+      s = std::string(toRead, 0);
+      inputstream.read(&s[0], toRead);
     }
 
     return s;
@@ -422,6 +424,12 @@ class sessionData {
    * with data elsewhere.
    */
   asio::streambuf input;
+
+  /* Input stream buffer.
+   *
+   * stdio wrapper around `input`.
+   */
+  std::istream inputstream;
 };
 }  // namespace http
 }  // namespace cxxhttp

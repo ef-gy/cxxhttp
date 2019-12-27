@@ -16,6 +16,7 @@
 #if !defined(CXXHTTP_FLOW_HTTP11_H)
 #define CXXHTTP_FLOW_HTTP11_H
 
+#include <cxxhttp/http-error.h>
 #include <cxxhttp/http-session.h>
 
 namespace cxxhttp {

@@ -19,9 +19,6 @@
 #include <system_error>
 
 #define ASIO_STANDALONE
-#include <cxxhttp/http-error.h>
-#include <cxxhttp/http-session.h>
-
 #include <cxxhttp/flow-http11.h>
 
 #include <asio.hpp>

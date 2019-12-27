@@ -10,6 +10,10 @@ os:
   - osx
   - linux
 
+env:
+  - CFLAGS="-O2 -coverage"
+  - CFLAGS="-O0 -coverage"
+
 addons:
   apt:
     packages:
@@ -17,7 +21,7 @@ addons:
       - libc++-dev
 
 script:
-  - make test CFLAGS="-O2 -coverage" CXX=${CXX} DEBUG=true
+  - make test CFLAGS="${CFLAGS}" CXX=${CXX} DEBUG=true
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

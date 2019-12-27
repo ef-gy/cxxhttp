@@ -153,32 +153,24 @@ class uri {
   static std::string decode(const std::string &s, bool &isValid) {
     std::string rv;
 
-    bool isEncoded = false;
-    bool haveFirst = false;
+    int expectEncoded = 0;
     int first = 0;
 
     for (const auto &c : s) {
-      if (isEncoded) {
-        if (haveFirst) {
-          isEncoded = false;
-          haveFirst = false;
-          rv.push_back((decode(first, isValid) << 4) | decode(c, isValid));
-        } else {
-          haveFirst = true;
-          first = c;
-        }
+      if (expectEncoded == 2) {
+        expectEncoded = 0;
+        rv.push_back(first | decode(c, isValid));
+      } else if (expectEncoded == 1) {
+        expectEncoded = 2;
+        first = decode(c, isValid) << 4;
+      } else if (c == '%') {
+        expectEncoded = 1;
       } else {
-        if (c == '%') {
-          isEncoded = true;
-        } else {
-          rv.push_back(c);
-        }
+        rv.push_back(c);
       }
     }
 
-    if (haveFirst || isEncoded) {
-      isValid = false;
-    }
+    isValid = isValid && (expectEncoded == 0);
 
     return rv;
   }
@@ -199,38 +191,27 @@ class uri {
     bool isKey = true;
 
     std::string key = "";
-    std::string value;
+    std::string value = "";
 
     isValid = true;
 
     for (const auto &c : s) {
-      if (isKey) {
-        switch (c) {
-          case '=':
-            isKey = false;
-            value.clear();
-            break;
-          default:
-            key.push_back(c);
-        }
+      if (isKey && c == '=') {
+        isKey = false;
+        value.clear();
+      } else if (isKey) {
+        key.push_back(c);
+      } else if (c == '&') {
+        isKey = true;
+        rv[key] = decode(value, isValid);
+        key.clear();
       } else {
-        switch (c) {
-          case '&':
-            isKey = true;
-            rv[key] = decode(value, isValid);
-            key.clear();
-            break;
-          default:
-            value.push_back(c);
-        }
+        value.push_back(c);
       }
     }
 
-    if (isKey) {
-      isValid = false;
-    } else {
-      rv[key] = decode(value, isValid);
-    }
+    rv[key] = decode(value, isValid);
+    isValid = isValid && !isKey;
 
     return rv;
   }

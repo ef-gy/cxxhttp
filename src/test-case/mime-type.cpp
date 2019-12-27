@@ -140,16 +140,19 @@ bool testNormalise(std::ostream &log) {
 bool testCompare(std::ostream &log) {
   struct sampleData {
     std::string a, b;
-    bool less, rless, equal, awildcard, bwildcard;
+    bool less, rless, equal, subset, awildcard, bwildcard;
   };
 
   std::vector<sampleData> tests{
-      {"a/b", "a/b", false, false, true, false, false},
-      {"a/b", "c/d", true, false, false, false, false},
-      {"a/*", "c/d", true, false, false, true, false},
-      {"foo/bar", "foo/*", false, true, true, false, true},
-      {"foo/bar; a=b", "foo/* ; a =b", false, true, true, false, true},
-      {"foo/bar ;a= b", "foo/bar; a =c", true, false, false, false, false},
+      {"a/b", "a/b", false, false, true, true, false, false},
+      {"a/b", "c/d", true, false, false, false, false, false},
+      {"a/*", "c/d", true, false, false, false, true, false},
+      {"foo/bar", "foo/*", false, true, true, true, false, true},
+      {"foo/bar; a=b", "foo/* ; a =b", false, true, true, true, false, true},
+      {"foo/bar ;a= b", "foo/bar; a =c", true, false, false, false, false,
+       false},
+      {"foo/bar", "foo/bar; a=c", true, false, false, true, false, false},
+      {"foo/bar; a =b", "foo/bar", false, true, false, false, false, false},
   };
 
   for (const auto &tt : tests) {
@@ -166,6 +169,10 @@ bool testCompare(std::ostream &log) {
     }
     if ((a == b) != tt.equal) {
       log << "('" << tt.a << "' == '" << tt.b << "') = '" << (a == b) << "'\n";
+      return false;
+    }
+    if ((a <= b) != tt.subset) {
+      log << "('" << tt.a << "' <= '" << tt.b << "') = '" << (a <= b) << "'\n";
       return false;
     }
     if (a.wildcard() != tt.awildcard) {

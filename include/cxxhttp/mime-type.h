@@ -91,55 +91,67 @@ class mimeType {
     } state = inType;
 
     std::string key, value;
+    std::string *collectTo = &type;
     bool space = false;
 
     for (const auto &c : pType) {
-      if (!isValid) {
-        // do nothing if we're in a bad state.
-      } else if (state == inValueEscaped) {
+      bool token = isToken(c);
+      bool tokenShiftSpace = token && !space;
+      bool tokenTargetEmpty = token && collectTo->empty();
+      bool doCollect = tokenShiftSpace || tokenTargetEmpty;
+      bool pushLC =
+          doCollect && (state == inType || state == inSub || state == inKey);
+      bool pushCS = state == inValueQuoted || (doCollect && state == inValue);
+      space = isSpace(c);
+
+      if (state == inValueEscaped) {
         state = inValueQuoted;
-        value.push_back(c);
+        collectTo->push_back(c);
       } else if (state == inValueQuoted && c == '"') {
         state = inValue;
-      } else if (state == inValue && c == '"' && value.empty()) {
-        state = inValueQuoted;
       } else if (state == inValueQuoted && c == '\\') {
         state = inValueEscaped;
-      } else if (state == inValueQuoted) {
-        value.push_back(c);
-      } else if (state == inType && isToken(c) && (!space || type.empty())) {
-        type.push_back(std::tolower(c));
-      } else if (state == inSub && isToken(c) && (!space || subtype.empty())) {
-        subtype.push_back(std::tolower(c));
-      } else if (state == inKey && isToken(c) && (!space || key.empty())) {
-        key.push_back(std::tolower(c));
-      } else if (state == inValue && isToken(c) && (!space || value.empty())) {
-        value.push_back(c);
+      } else if (state == inValue && c == '"' && value.empty()) {
+        state = inValueQuoted;
       } else if (state == inType && c == '/' && !type.empty()) {
         state = inSub;
+        collectTo = &subtype;
       } else if (state == inSub && c == ';' && !subtype.empty()) {
         state = inKey;
+        collectTo = &key;
       } else if (state == inValue && c == ';') {
-        isValid = !key.empty() && !value.empty();
-        state = inKey;
         attributes[key] = value;
+        state = inKey;
         key.clear();
         value.clear();
+        collectTo = &key;
       } else if (state == inKey && c == '=') {
         state = inValue;
-      } else if (!isSpace(c)) {
+        collectTo = &value;
+        isValid = isValid && !key.empty();
+      } else if (pushLC) {
+        collectTo->push_back(std::tolower(c));
+      } else if (pushCS) {
+        collectTo->push_back(c);
+      } else if (!space) {
         // ignore free spaces; this is somewhat more lenient than the original
         // grammar, but then that also insists on some level of leniency there.
         isValid = false;
       }
-      space = isSpace(c);
+
+      if (state == inSub && type == "*" && !subtype.empty()) {
+        isValid = subtype == "*";
+      }
+
+      if (!isValid) {
+        break;
+      }
     }
 
-    isValid = isValid && (state == inSub || state == inValue) &&
-              (type != "*" || subtype == "*");
-
-    if (isValid && state == inValue) {
+    if (state == inValue) {
       attributes[key] = value;
+    } else if (state != inSub) {
+      isValid = false;
     }
   }
 
@@ -200,10 +212,35 @@ class mimeType {
    * @return Whether or not the two mime types match.
    */
   bool operator==(const mimeType &b) const {
-    return valid() && b.valid() && (!wildcard() || !b.wildcard()) &&
-           (type == "*" || b.type == "*" || type == b.type) &&
-           (subtype == "*" || b.subtype == "*" || subtype == b.subtype) &&
-           (attributes == b.attributes);
+    return typeMatch(b) && attributes == b.attributes;
+  }
+
+  /* Subset operator.
+   * @b The instance to compare to.
+   *
+   * Similar to the quality operator, except that the attribute set is allowed
+   * to be a subset of the right-hand side.
+   * This is for cases where two mime types are basically the same, except one
+   * side is a more specific version of the other side, e.g. the charset is
+   * specified explicitly.
+   *
+   * @return Whether or not the two mime types match.
+   */
+  bool operator<=(const mimeType &b) const {
+    if (!typeMatch(b)) {
+      return false;
+    }
+
+    // we already have a type match at this point, so just check that all
+    // attributes in this instance are the same in the b instance.
+    for (const auto &v : attributes) {
+      const auto &bv = b.attributes.find(v.first);
+      if (bv == b.attributes.end() || bv->second != v.second) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /* Does this media type contain wildcards?
@@ -224,6 +261,21 @@ class mimeType {
    * Set to false when trying to parse an invalid media type.
    */
   bool isValid;
+
+  /* Type equality match.
+   * @b The instance to compare to.
+   *
+   * Full wildcards for either the type or subtype are allowed as well.
+   * Two types do not match if both sides have wildcards.
+   * Does not look at attribute values.
+   *
+   * @return Whether or not the two mime types match.
+   */
+  bool typeMatch(const mimeType &b) const {
+    return valid() && b.valid() && (!wildcard() || !b.wildcard()) &&
+           (type == "*" || b.type == "*" || type == b.type) &&
+           (subtype == "*" || b.subtype == "*" || subtype == b.subtype);
+  }
 
   /* Check character against the set of control characters.
    * @c The character to check.

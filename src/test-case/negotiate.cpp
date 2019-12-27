@@ -276,7 +276,9 @@ bool testQvalueMatch(std::ostream &log) {
       {"*", "foo;bar", false, true, false},
       {"*;baz", "foo", false, true, false},
       {"a/b", "*/*", true, false, true},
-      {"a/b", "a/b;c=d", false, false, false},
+      {"a/b", "a/b;c=d", true, false, false},
+      {"a/b;c=d", "a/b", false, false, false},
+      {"a/b;d=e", "a/b;c=d", false, false, false},
       {"a/*;c=d", "a/b;c=d", true, true, false},
       {"*/*;c=d", "a/b;c=d", true, true, false},
   };
@@ -339,7 +341,11 @@ bool testFullNegotiation(std::ostream &log) {
        "text/*, text/*;level=1", "text/html;level=1", "text/html;level=1"},
       {"text/*;q=0.3, text/html;q=0.7, text/html;level=1,"
        "text/html;level=2;q=0.4, */*;q=0.5",
-       "text/*;q=0.1, text/html", "text/html", "text/html"},
+       "text/*;q=0.1, text/html", "text/html", "text/html;level=1"},
+      // upcasting example
+      {"text/markdown, text/plain;q=0.9",
+       "text/markdown; charset=utf-8, text/plain",
+       "text/markdown;charset=utf-8", "text/plain"},
   };
 
   for (const auto &tt : tests) {

@@ -292,7 +292,11 @@ class qvalue {
     }
 
     if (mime.valid() && b.mime.valid()) {
-      return mime == b.mime;
+      // for MIME types, allow a subset match; the server-side value is later
+      // expected to be the one actually supported and fully qualified.
+      // We expect that the right-hand side is the server-side for negotiations,
+      // so the client specification has to be a subset of ours.
+      return mime == b.mime || mime <= b.mime;
     }
 
     // since the two items aren't MIME types, if either of the two is a wildcard
